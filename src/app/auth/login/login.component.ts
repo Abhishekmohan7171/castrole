@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [],
+  imports: [RouterLink],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Brand -->
@@ -56,7 +57,7 @@ import { Component } from '@angular/core';
 
       <!-- Register link -->
       <div class="mt-6 text-sm text-neutral-500">
-        new? <a href="#" class="text-neutral-300 font-semibold hover:text-white">register now</a>
+        new? <a routerLink="/register" class="text-neutral-300 font-semibold hover:text-white">register now</a>
       </div>
 
       <!-- Divider -->

@@ -47,6 +47,24 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             />
           </div>
 
+          <!-- Email -->
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+                <path d="m22 8-10 7L2 8" />
+              </svg>
+            </span>
+            <input
+              type="email"
+              name="email"
+              autocomplete="email"
+              placeholder="email"
+              aria-label="email"
+              class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
+            />
+          </div>
+
           <!-- Mobile number -->
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
