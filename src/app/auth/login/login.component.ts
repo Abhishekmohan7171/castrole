@@ -1,10 +1,14 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { Auth } from '@angular/fire/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, CommonModule, ReactiveFormsModule],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Brand -->
@@ -12,8 +16,8 @@ import { RouterLink } from '@angular/router';
 
       <!-- Card -->
       <div class="w-full max-w-xl rounded-3xl bg-neutral-900/60 border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">
-        <form class="space-y-5">
-          <!-- Username -->
+        <form class="space-y-5" [formGroup]="form" (ngSubmit)="onSubmit()">
+          <!-- Email -->
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
               <!-- user icon -->
@@ -23,8 +27,9 @@ import { RouterLink } from '@angular/router';
               </svg>
             </span>
             <input
-              type="text"
-              placeholder="username"
+              type="email"
+              placeholder="email"
+              formControlName="email"
               class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
             />
           </div>
@@ -41,6 +46,7 @@ import { RouterLink } from '@angular/router';
             <input
               type="password"
               placeholder="password"
+              formControlName="password"
               class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
             />
           </div>
@@ -49,7 +55,10 @@ import { RouterLink } from '@angular/router';
             <a href="#" class="text-xs text-neutral-500 hover:text-neutral-300">forgot password?</a>
           </div>
 
-          <button type="submit" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <!-- Error -->
+          <p *ngIf="error" class="text-sm text-red-400">{{ error }}</p>
+
+          <button type="submit" [disabled]="loading || form.invalid" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             sign in
           </button>
         </form>
@@ -84,4 +93,35 @@ import { RouterLink } from '@angular/router';
   `,
   styles: []
 })
-export class LoginComponent {}
+export class LoginComponent {
+  private fb = inject(FormBuilder);
+  private auth = inject(Auth);
+  private router = inject(Router);
+
+  loading = false;
+  error = '';
+
+  form = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+  });
+
+  async onSubmit() {
+    if (this.form.invalid) return;
+    const { email, password } = this.form.value;
+    if (!email || !password) return;
+
+    this.loading = true;
+    this.error = '';
+    try {
+      await signInWithEmailAndPassword(this.auth, email, password);
+      await this.router.navigateByUrl('/discover');
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to sign in';
+      this.error = msg;
+      console.error('[login] error', e);
+    } finally {
+      this.loading = false;
+    }
+  }
+}
