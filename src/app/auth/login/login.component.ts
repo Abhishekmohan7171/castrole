@@ -66,7 +66,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 
       <!-- Register link -->
       <div class="mt-6 text-sm text-neutral-500">
-        new? <a routerLink="/register" class="text-neutral-300 font-semibold hover:text-white">register now</a>
+        new? <a routerLink="/onboarding" class="text-neutral-300 font-semibold hover:text-white">register now</a>
       </div>
 
       <!-- Divider -->

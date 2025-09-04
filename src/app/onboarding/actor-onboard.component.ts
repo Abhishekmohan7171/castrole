@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { OtpComponent } from '../common-components/otp/otp.component';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-actor-onboard',
   standalone: true,
-  imports: [OtpComponent],
+  imports: [CommonModule, ReactiveFormsModule, OtpComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Brand -->
@@ -12,7 +14,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
 
       <!-- Card -->
       <div class="w-full max-w-xl rounded-3xl bg-neutral-900/60 border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">
-        <form class="space-y-5" autocomplete="off" novalidate>
+        <form class="space-y-5" [formGroup]="form" autocomplete="off" novalidate>
           <!-- Stage name -->
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
@@ -23,7 +25,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             </span>
             <input
               type="text"
-              name="stageName"
+              formControlName="stageName"
               placeholder="stage name"
               aria-label="stage name"
               class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
@@ -40,7 +42,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             </span>
             <input
               type="text"
-              name="location"
+              formControlName="location"
               placeholder="location"
               aria-label="location"
               class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
@@ -57,7 +59,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             </span>
             <input
               type="email"
-              name="email"
+              formControlName="email"
               autocomplete="email"
               placeholder="email"
               aria-label="email"
@@ -74,7 +76,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             </span>
             <input
               type="tel"
-              name="mobile"
+              formControlName="mobile"
               inputmode="numeric"
               placeholder="mobile number"
               aria-label="mobile number"
@@ -82,7 +84,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
             />
           </div>
 
-          <button type="button" (click)="otpOpen = true" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <button type="button" [disabled]="form.invalid" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             next
           </button>
         </form>
@@ -95,9 +97,21 @@ import { OtpComponent } from '../common-components/otp/otp.component';
 })
 export class ActorOnboardComponent {
   otpOpen = false;
+  private fb = inject(FormBuilder);
+
+  form = this.fb.group({
+    stageName: ['', [Validators.required, Validators.minLength(2)]],
+    location: ['', [Validators.required, Validators.minLength(2)]],
+    email: ['', [Validators.required, Validators.email]],
+    mobile: ['', [Validators.required, Validators.minLength(7)]],
+  });
+
+  onNext() {
+    if (this.form.invalid) return;
+    this.otpOpen = true;
+  }
 
   onOtpVerify(code: string) {
-    // Close modal and proceed (hook up navigation later)
     this.otpOpen = false;
     // TODO: implement navigation after verification
   }

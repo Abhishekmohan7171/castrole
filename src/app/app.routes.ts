@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
-import { SignupComponent } from './auth/signup/signup.component';
 import { DiscoverComponent } from './discover/discover.component';
 
 export const routes: Routes = [
@@ -9,7 +8,7 @@ export const routes: Routes = [
 
   // Auth
   { path: 'login', component: LoginComponent },
-  { path: 'register', component: SignupComponent },
+  { path: 'register', redirectTo: 'onboarding' },
 
   // Onboarding flow
   {
