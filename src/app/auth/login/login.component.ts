@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
       <h1 class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">castrole</h1>
 
       <!-- Card -->
-      <div class="w-full max-w-xl rounded-3xl bg-neutral-900/60 border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">
+      <div class="w-full max-w-xl rounded-3xl  border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">
         <form class="space-y-5" [formGroup]="form" (ngSubmit)="onSubmit()">
           <!-- Email -->
           <div class="relative">
@@ -79,11 +79,11 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 
         <!-- Social buttons -->
         <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button type="button" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
+          <button type="button" (click)="onGoogle()" [disabled]="loading" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/80 text-sm font-bold">G</span>
             <span class="tracking-wide">continue with google</span>
           </button>
-          <button type="button" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
+          <button type="button" (click)="onApple()" [disabled]="loading" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/80 text-base"></span>
             <span class="tracking-wide">continue with apple</span>
           </button>
@@ -97,6 +97,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);
   private auth = inject(Auth);
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   loading = false;
   error = '';
@@ -107,6 +108,10 @@ export class LoginComponent {
   });
 
   async onSubmit() {
+    await this.signinEmailandPassword();
+  }
+
+  async signinEmailandPassword() {
     if (this.form.invalid) return;
     const { email, password } = this.form.value;
     if (!email || !password) return;
@@ -114,12 +119,42 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
     try {
-      await signInWithEmailAndPassword(this.auth, email, password);
+      await this.authService.loginWithEmail(email, password);
       await this.router.navigateByUrl('/discover');
     } catch (e: any) {
       const msg = e?.message || 'Failed to sign in';
       this.error = msg;
       console.error('[login] error', e);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async onGoogle() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = '';
+    try {
+      await this.authService.signInWithGoogle();
+      await this.router.navigateByUrl('/discover');
+    } catch (e: any) {
+      console.error('[login] google error', e);
+      this.error = e?.message || 'Google sign-in failed';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async onApple() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = '';
+    try {
+      await this.authService.signInWithApple();
+      await this.router.navigateByUrl('/discover');
+    } catch (e: any) {
+      console.error('[login] apple error', e);
+      this.error = e?.message || 'Apple sign-in failed';
     } finally {
       this.loading = false;
     }

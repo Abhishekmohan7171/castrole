@@ -11,6 +11,12 @@ import {
   updateProfile,
   EmailAuthProvider,
   linkWithCredential,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
+  linkWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
 import type { ConfirmationResult } from 'firebase/auth';
@@ -129,11 +135,16 @@ export class AuthService {
 
     const ref = doc(this.db, 'users', cred.user.uid);
     await setDoc(ref, {
-      ...profile,
+      uid: cred.user.uid,
+      name: profile.name,
       email: profile.email ?? '',
+      phone: (profile as any).mobile ?? '',
+      location: profile.location,
+      role: profile.role,
       phoneVerified: true,
       createdAt: serverTimestamp(),
-    });
+      updatedAt: serverTimestamp(),
+    }, { merge: true } as any);
     return cred.user;
   }
 
@@ -174,5 +185,106 @@ export class AuthService {
   /** Writes/overwrites the user's profile document. */
   async saveUserProfile(uid: string, data: Partial<ProfileBase> & Record<string, any>): Promise<void> {
     await setDoc(doc(this.db, 'users', uid), { ...data, updatedAt: serverTimestamp() }, { merge: true } as any);
+  }
+
+  // =========================
+  // D. Google & Apple Auth
+  // =========================
+
+  /** Upserts a basic user profile from provider data. */
+  private async upsertFromProvider(user: User): Promise<void> {
+    const ref = doc(this.db, 'users', user.uid);
+    const base = {
+      name: user.displayName || '',
+      email: user.email || '',
+      mobile: user.phoneNumber || '',
+      location: '',
+      role: ('' as any) as UserRole, // role can be assigned later in onboarding
+      emailVerified: user.emailVerified || false,
+      phoneVerified: !!user.phoneNumber,
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(ref, { ...base }, { merge: true } as any);
+  }
+
+  // --- Google ---
+
+  /** Sign in with Google using a popup. */
+  async signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(this.auth, provider);
+    await this.upsertFromProvider(cred.user);
+    return cred.user;
+  }
+
+  /** Link Google to the currently signed-in user via popup. */
+  async linkGoogle(): Promise<User> {
+    if (!this.auth.currentUser) throw new Error('No authenticated user to link Google for');
+    const provider = new GoogleAuthProvider();
+    const cred = await linkWithPopup(this.auth.currentUser, provider);
+    await this.upsertFromProvider(cred.user);
+    return cred.user;
+  }
+
+  // --- Apple ---
+
+  /** Sign in with Apple using a popup. */
+  async signInWithApple(): Promise<User> {
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    const cred = await signInWithPopup(this.auth, provider);
+    await this.upsertFromProvider(cred.user);
+    return cred.user;
+  }
+
+  /** Link Apple to the currently signed-in user via popup. */
+  async linkApple(): Promise<User> {
+    if (!this.auth.currentUser) throw new Error('No authenticated user to link Apple for');
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    const cred = await linkWithPopup(this.auth.currentUser, provider);
+    await this.upsertFromProvider(cred.user);
+    return cred.user;
+  }
+
+  // --- Email/Password ---
+
+  /** Register a user with email/password and create a user profile document. */
+  async registerWithEmail(params: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string; // store in display format e.g. +91-9xxxxxxxxx
+    location: string;
+    role: string; // e.g., 'actor', 'producer', 'user'
+  }): Promise<User> {
+    const { name, email, password, phone, location, role } = params;
+    const cred = await createUserWithEmailAndPassword(this.auth, email, password);
+    // set displayName for convenience
+    try { await updateProfile(cred.user, { displayName: name }); } catch {}
+    // upsert user profile with requested schema
+    const ref = doc(this.db, 'users', cred.user.uid);
+    await setDoc(ref, {
+      uid: cred.user.uid,
+      name: name || '',
+      email: email || '',
+      phone: phone || '',
+      location: location || '',
+      role: role || 'user',
+      isLoggedIn: true,
+      device: 'web',
+      LoggedInTime: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    }, { merge: true } as any);
+    return cred.user;
+  }
+
+  /** Login with email/password and bump updatedAt. */
+  async loginWithEmail(email: string, password: string): Promise<User> {
+    const cred = await signInWithEmailAndPassword(this.auth, email, password);
+    const ref = doc(this.db, 'users', cred.user.uid);
+    await setDoc(ref, { updatedAt: serverTimestamp() }, { merge: true } as any);
+    return cred.user;
   }
 }
