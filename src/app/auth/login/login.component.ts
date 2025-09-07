@@ -4,13 +4,16 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
 import { AuthService } from '../../services/auth.service';
+import { LoaderComponent } from '../../common-components/loader/loader.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [RouterLink, CommonModule, ReactiveFormsModule],
+  imports: [RouterLink, CommonModule, ReactiveFormsModule, LoaderComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
+      <!-- Loader -->
+      <app-loader [show]="loading" message="Authenticating..."></app-loader>
       <!-- Brand -->
       <h1 class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">castrole</h1>
 
@@ -135,8 +138,17 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
     try {
-      await this.authService.signInWithGoogle();
-      await this.router.navigateByUrl('/discover');
+      const { user, exists } = await this.authService.signInWithGoogle();
+      
+      // If user exists in the database, update login timestamp and navigate to discover
+      if (exists) {
+        // Update login timestamp similar to email login
+        await this.authService.updateLoginTimestamp(user.uid);
+        await this.router.navigateByUrl('/discover');
+      } else {
+        // If user doesn't exist, redirect to onboarding
+        await this.router.navigateByUrl('/onboarding');
+      }
     } catch (e: any) {
       console.error('[login] google error', e);
       this.error = e?.message || 'Google sign-in failed';
@@ -150,8 +162,17 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
     try {
-      await this.authService.signInWithApple();
-      await this.router.navigateByUrl('/discover');
+      const { user, exists } = await this.authService.signInWithApple();
+      
+      // If user exists in the database, update login timestamp and navigate to discover
+      if (exists) {
+        // Update login timestamp similar to email login
+        await this.authService.updateLoginTimestamp(user.uid);
+        await this.router.navigateByUrl('/discover');
+      } else {
+        // If user doesn't exist, redirect to onboarding
+        await this.router.navigateByUrl('/onboarding');
+      }
     } catch (e: any) {
       console.error('[login] apple error', e);
       this.error = e?.message || 'Apple sign-in failed';

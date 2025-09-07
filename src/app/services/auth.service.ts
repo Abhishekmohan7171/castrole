@@ -2,12 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import {
   Auth,
   User,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  linkWithPhoneNumber,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
   updateProfile,
   EmailAuthProvider,
   linkWithCredential,
@@ -17,9 +11,9 @@ import {
   linkWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut,
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
-import type { ConfirmationResult } from 'firebase/auth';
 
 export type UserRole = 'actor' | 'producer';
 
@@ -36,147 +30,9 @@ export class AuthService {
   private auth = inject(Auth);
   private db = inject(Firestore);
 
-  // We keep a reference so we can reuse between steps in a single page
-  private recaptcha?: RecaptchaVerifier;
-
-  /**
-   * Initializes an invisible reCAPTCHA verifier if not already created.
-   * Place a <div id="recaptcha-container"></div> in the template, or pass a custom container ID.
-   */
-  initRecaptcha(containerId: string = 'recaptcha-container', size: 'invisible' | 'normal' = 'invisible'): RecaptchaVerifier {
-    if (this.recaptcha) return this.recaptcha;
-    // Create at call time to avoid SSR issues with window/document
-    this.recaptcha = new RecaptchaVerifier(this.auth, containerId, { size });
-    return this.recaptcha;
-  }
-
   // =========================
-  // B. Passwordless Email Link
+  // Email/Password, Google, Apple Auth
   // =========================
-
-  /**
-   * Starts passwordless signup by sending a magic link to the provided email.
-   * The link will return to `${origin}${returnPath}` where you should call completeEmailLinkSignup.
-   */
-  async startEmailLinkSignup(email: string, returnPath: string = '/onboarding/complete'): Promise<void> {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const actionCodeSettings = { url: origin + returnPath, handleCodeInApp: true } as const;
-    await sendSignInLinkToEmail(this.auth, email, actionCodeSettings);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('emailForSignIn', email);
-    }
-  }
-
-  /**
-   * Completes the email link sign-in. Creates the user account if new, signs in if existing.
-   * Also writes the basic profile to Firestore.
-   */
-  async completeEmailLinkSignup(linkHref: string, profile: ProfileBase): Promise<User | null> {
-    if (!isSignInWithEmailLink(this.auth, linkHref)) return null;
-    const email = (typeof window !== 'undefined') ? window.localStorage.getItem('emailForSignIn') || profile.email : profile.email;
-    const cred = await signInWithEmailLink(this.auth, email, linkHref);
-
-    // Set display name
-    await updateProfile(cred.user, { displayName: profile.name });
-
-    // Upsert profile document
-    const ref = doc(this.db, 'users', cred.user.uid);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      await updateDoc(ref, { ...profile, emailVerified: true });
-    } else {
-      await setDoc(ref, { ...profile, emailVerified: true, createdAt: serverTimestamp() });
-    }
-
-    return cred.user;
-  }
-
-  /**
-   * Begins linking a phone number to the currently signed-in user.
-   * Returns a ConfirmationResult to be confirmed with the OTP code.
-   */
-  async startLinkPhone(phone: string, containerId: string = 'recaptcha-container'): Promise<ConfirmationResult> {
-    if (!this.auth.currentUser) throw new Error('No authenticated user to link phone for');
-    const verifier = this.initRecaptcha(containerId);
-    return linkWithPhoneNumber(this.auth.currentUser, phone, verifier);
-  }
-
-  /**
-   * Confirms the OTP to finish linking the phone number.
-   * Optionally updates the user profile document with the mobile number if provided.
-   */
-  async confirmLinkPhone(confirmation: ConfirmationResult, otp: string, mobile?: string): Promise<User> {
-    const cred = await confirmation.confirm(otp);
-    if (mobile) {
-      const ref = doc(this.db, 'users', cred.user.uid);
-      await updateDoc(ref, { mobile, phoneVerified: true });
-    }
-    return cred.user;
-  }
-
-  // =========================
-  // C. Phone OTP as primary, then link Email via magic link
-  // =========================
-
-  /**
-   * Starts phone-based signup. Returns a ConfirmationResult; call confirmPhoneSignup with the OTP.
-   */
-  async startPhoneSignup(phone: string, containerId: string = 'recaptcha-container'): Promise<ConfirmationResult> {
-    const verifier = this.initRecaptcha(containerId);
-    return signInWithPhoneNumber(this.auth, phone, verifier);
-  }
-
-  /**
-   * Confirms the phone OTP and writes the base profile. Use sendEmailLinkToLinkAccount next to verify/link the email.
-   */
-  async confirmPhoneSignup(confirmation: ConfirmationResult, otp: string, profile: Omit<ProfileBase, 'email'> & { email?: string }): Promise<User> {
-    const cred = await confirmation.confirm(otp);
-    await updateProfile(cred.user, { displayName: profile.name });
-
-    const ref = doc(this.db, 'users', cred.user.uid);
-    await setDoc(ref, {
-      uid: cred.user.uid,
-      name: profile.name,
-      email: profile.email ?? '',
-      phone: (profile as any).mobile ?? '',
-      location: profile.location,
-      role: profile.role,
-      phoneVerified: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }, { merge: true } as any);
-    return cred.user;
-  }
-
-  /**
-   * Sends an email link to link an email to the currently signed-in (phone) user.
-   */
-  async sendEmailLinkToLinkAccount(email: string, returnPath: string = '/onboarding/link-email'): Promise<void> {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const actionCodeSettings = { url: origin + returnPath, handleCodeInApp: true } as const;
-    await sendSignInLinkToEmail(this.auth, email, actionCodeSettings);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('emailForLinking', email);
-    }
-  }
-
-  /**
-   * Completes linking of the email using the magic link on the current user (who signed up with phone).
-   */
-  async completeEmailLinking(linkHref: string): Promise<User | null> {
-    const user = this.auth.currentUser;
-    if (!user || !isSignInWithEmailLink(this.auth, linkHref)) return null;
-    const email = (typeof window !== 'undefined') ? window.localStorage.getItem('emailForLinking') || '' : '';
-    if (!email) throw new Error('Missing stored email for linking');
-    const credential = EmailAuthProvider.credentialWithLink(email, linkHref);
-    const cred = await linkWithCredential(user, credential);
-
-    // Update Firestore doc with email & verified flag
-    const ref = doc(this.db, 'users', user.uid);
-    await updateDoc(ref, { email, emailVerified: true });
-
-    return cred.user;
-  }
 
   // =========================
   // Utilities
@@ -209,12 +65,13 @@ export class AuthService {
 
   // --- Google ---
 
-  /** Sign in with Google using a popup. */
-  async signInWithGoogle(): Promise<User> {
+  /** Sign in with Google using a popup. Only login; do not create profile. */
+  async signInWithGoogle(): Promise<{ user: User; exists: boolean }> {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(this.auth, provider);
-    await this.upsertFromProvider(cred.user);
-    return cred.user;
+    const ref = doc(this.db, 'users', cred.user.uid);
+    const snap = await getDoc(ref);
+    return { user: cred.user, exists: snap.exists() };
   }
 
   /** Link Google to the currently signed-in user via popup. */
@@ -228,13 +85,14 @@ export class AuthService {
 
   // --- Apple ---
 
-  /** Sign in with Apple using a popup. */
-  async signInWithApple(): Promise<User> {
+  /** Sign in with Apple using a popup. Only login; do not create profile. */
+  async signInWithApple(): Promise<{ user: User; exists: boolean }> {
     const provider = new OAuthProvider('apple.com');
     provider.addScope('email');
     const cred = await signInWithPopup(this.auth, provider);
-    await this.upsertFromProvider(cred.user);
-    return cred.user;
+    const ref = doc(this.db, 'users', cred.user.uid);
+    const snap = await getDoc(ref);
+    return { user: cred.user, exists: snap.exists() };
   }
 
   /** Link Apple to the currently signed-in user via popup. */
@@ -283,8 +141,86 @@ export class AuthService {
   /** Login with email/password and bump updatedAt. */
   async loginWithEmail(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
-    const ref = doc(this.db, 'users', cred.user.uid);
-    await setDoc(ref, { updatedAt: serverTimestamp() }, { merge: true } as any);
+    await this.updateLoginTimestamp(cred.user.uid);
     return cred.user;
+  }
+
+  /** Update login timestamp for any authentication method */
+  async updateLoginTimestamp(uid: string): Promise<void> {
+    const ref = doc(this.db, 'users', uid);
+    await setDoc(ref, { 
+      updatedAt: serverTimestamp(),
+      isLoggedIn: true,
+      LoggedInTime: serverTimestamp() 
+    }, { merge: true } as any);
+  }
+
+  /** Returns the currently authenticated user (or null). */
+  getCurrentUser(): User | null {
+    return this.auth.currentUser;
+  }
+  
+  /** Logs out the current user and updates their status in Firestore */
+  async logout(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (user) {
+      // Update user status in Firestore
+      const ref = doc(this.db, 'users', user.uid);
+      await updateDoc(ref, { 
+        isLoggedIn: false,
+        LoggedOutTime: serverTimestamp() 
+      });
+    }
+    // Sign out from Firebase Auth
+    return signOut(this.auth);
+  }
+
+  /**
+   * Onboard a user who signed in with a provider (Google/Apple) by:
+   * - Optionally linking an email+password credential (so they can login via email too)
+   * - Upserting the profile document to Firestore
+   */
+  async onboardProviderUser(params: {
+    name: string;
+    email: string;
+    password?: string;
+    phone: string;
+    location: string;
+    role: string;
+  }): Promise<User> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user found for onboarding');
+
+    // If password is provided, link email/password to this provider account
+    // This avoids creating a separate account and fixes auth/email-already-in-use
+    if (params.password && params.email) {
+      try {
+        const cred = EmailAuthProvider.credential(params.email, params.password);
+        await linkWithCredential(user, cred);
+      } catch (err: any) {
+        // If it's already linked or email already in use by this user, ignore
+        if (err?.code !== 'auth/provider-already-linked' && err?.code !== 'auth/credential-already-in-use' && err?.code !== 'auth/email-already-in-use') {
+          throw err;
+        }
+      }
+    }
+
+    // Upsert profile document
+    const ref = doc(this.db, 'users', user.uid);
+    await setDoc(ref, {
+      uid: user.uid,
+      name: params.name || user.displayName || '',
+      email: params.email || user.email || '',
+      phone: params.phone || user.phoneNumber || '',
+      location: params.location || '',
+      role: params.role || 'user',
+      isLoggedIn: true,
+      device: 'web',
+      LoggedInTime: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    }, { merge: true } as any);
+
+    return user;
   }
 }
