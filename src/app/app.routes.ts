@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { DiscoverComponent } from './discover/discover.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // Default -> onboarding
@@ -25,6 +26,7 @@ export const routes: Routes = [
   {
     path: 'discover',
     component: DiscoverComponent,
+    canActivate: [authGuard],
     children: [
       { path: '', loadComponent: () => import('./discover/feed.component').then(m => m.FeedComponent) },
       { path: 'upload', loadComponent: () => import('./discover/upload.component').then(m => m.UploadComponent) },
@@ -35,5 +37,5 @@ export const routes: Routes = [
   },
 
   // Fallback
-  { path: '**', redirectTo: 'onboarding' }
+  { path: '**', redirectTo: 'login' }
 ];
