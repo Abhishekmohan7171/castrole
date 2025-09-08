@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
  
 
 @Component({
@@ -7,8 +8,8 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4">
-      <div class="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4 md:py-6">
+      <div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 md:gap-8 lg:gap-10">
         <!-- Left: Profile card + media -->
         <section class="space-y-5">
           <!-- Profile card (matches compact dark card in frame) -->
@@ -27,7 +28,7 @@ import { CommonModule } from '@angular/common';
                   <button class="ml-2 h-6 w-6 grid place-items-center rounded-full ring-1 ring-white/10 bg-white/5 hover:bg-white/10" aria-label="play">
                     <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-neutral-300"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
                   </button>
-                  <button class="h-6 w-6 grid place-items-center rounded-full ring-1 ring-white/10 bg-white/5 hover:bg-white/10" aria-label="edit">
+                  <button class="h-6 w-6 grid place-items-center rounded-full ring-1 ring-white/10 bg-white/5 hover:bg-white/10" aria-label="edit" (click)="navigateToSettings()">
                     <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-neutral-300"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
                   </button>
                 </div>
@@ -67,21 +68,21 @@ import { CommonModule } from '@angular/common';
             </div>
 
             <!-- Color tile grid, mimicking frame -->
-            <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-green-800/50 relative overflow-hidden">
+            <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-green-800/50 relative overflow-hidden hover:ring-white/20 transition-all duration-200 cursor-pointer">
                 <span class="absolute top-1.5 left-2 text-[10px] uppercase tracking-wide text-white/80">cassette</span>
               </div>
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-emerald-900/50 relative overflow-hidden">
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-emerald-900/50 relative overflow-hidden hover:ring-white/20 transition-all duration-200 cursor-pointer">
                 <span class="absolute top-1.5 left-2 text-[10px] uppercase tracking-wide text-white/80">character reel</span>
               </div>
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-red-900/60 relative overflow-hidden">
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-red-900/60 relative overflow-hidden hover:ring-white/20 transition-all duration-200 cursor-pointer">
                 <span class="absolute top-1.5 left-2 text-[10px] uppercase tracking-wide text-white/80">album</span>
               </div>
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-purple-900/50 hidden sm:block relative overflow-hidden">
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-purple-900/50 hidden sm:block relative overflow-hidden hover:ring-white/20 transition-all duration-200 cursor-pointer">
                 <span class="absolute top-1.5 left-2 text-[10px] uppercase tracking-wide text-white/80">showreel</span>
               </div>
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-neutral-800/70 hidden sm:block"></div>
-              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-neutral-700/60 hidden sm:block"></div>
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-neutral-800/70 hidden sm:block hover:ring-white/20 transition-all duration-200 cursor-pointer"></div>
+              <div class="aspect-video rounded-lg ring-1 ring-white/10 bg-neutral-700/60 hidden sm:block hover:ring-white/20 transition-all duration-200 cursor-pointer"></div>
             </div>
 
             <!-- Social links row -->
@@ -98,8 +99,8 @@ import { CommonModule } from '@angular/common';
         </section>
 
         <!-- Right: Details -->
-        <section class="space-y-6">
-          <div class="rounded-2xl bg-black/50 ring-2 ring-white/10 border border-neutral-800 p-6">
+        <section class="space-y-4 sm:space-y-6">
+          <div class="rounded-2xl bg-black/50 ring-2 ring-white/10 border border-neutral-800 p-4 sm:p-5 md:p-6 transition-all duration-300">
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-4">
               <div>
                 <dt class="text-neutral-500 text-xs uppercase tracking-wide">location</dt>
@@ -113,14 +114,14 @@ import { CommonModule } from '@angular/common';
 
               <div class="sm:col-span-2">
                 <dt class="text-neutral-500 text-xs uppercase tracking-wide">experiences</dt>
-                <dd class="mt-1 space-y-3">
-                  <div>
-                    <div class="text-neutral-200 text-sm">a journey within</div>
+                <dd class="mt-1 space-y-3 md:space-y-4">
+                  <div class="p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors duration-200">
+                    <div class="text-neutral-200 text-sm font-medium">a journey within</div>
                     <div class="text-neutral-400 text-xs">supporting role | tv series | thriller | 2012</div>
                     <a class="text-fuchsia-300 text-xs hover:underline" href="https://www.linkforproject.com" target="_blank">www.linkforproject.com</a>
                   </div>
-                  <div>
-                    <div class="text-neutral-200 text-sm">city lights</div>
+                  <div class="p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors duration-200">
+                    <div class="text-neutral-200 text-sm font-medium">city lights</div>
                     <div class="text-neutral-400 text-xs">lead role | film | comedy | 2020</div>
                     <a class="text-fuchsia-300 text-xs hover:underline" href="https://www.linkforproject.com" target="_blank">www.linkforproject.com</a>
                   </div>
@@ -128,20 +129,34 @@ import { CommonModule } from '@angular/common';
               </div>
 
               <div>
-                <dt class="text-neutral-500 text-xs uppercase tracking-wide">languages</dt>
-                <dd class="text-neutral-200 text-sm space-y-1 mt-1">
-                  <div class="flex items-center gap-2"><span>malayalam</span><span class="text-fuchsia-300">★★★★★</span></div>
-                  <div class="flex items-center gap-2"><span>english</span><span class="text-fuchsia-300">★★★★★</span></div>
-                  <div class="flex items-center gap-2"><span>hindi</span><span class="text-fuchsia-300">★★★★☆</span></div>
-                  <div class="flex items-center gap-2"><span>tamil</span><span class="text-fuchsia-300">★★★☆☆</span></div>
-                  <div class="flex items-center gap-2"><span>telugu</span><span class="text-fuchsia-300">★★☆☆☆</span></div>
+                <dt class="text-neutral-500 text-xs uppercase tracking-wide mb-2">languages</dt>
+                <dd class="text-neutral-200 text-sm space-y-2 mt-1">
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>malayalam</span><span class="text-fuchsia-300">★★★★★</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>english</span><span class="text-fuchsia-300">★★★★★</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>hindi</span><span class="text-fuchsia-300">★★★★☆</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>tamil</span><span class="text-fuchsia-300">★★★☆☆</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>telugu</span><span class="text-fuchsia-300">★★☆☆☆</span>
+                  </div>
                 </dd>
               </div>
               <div>
-                <dt class="text-neutral-500 text-xs uppercase tracking-wide">extra curricular</dt>
-                <dd class="text-neutral-200 text-sm space-y-1 mt-1">
-                  <div class="flex items-center gap-2"><span>singing</span><span class="text-fuchsia-300">★★★☆☆</span></div>
-                  <div class="flex items-center gap-2"><span>guitar</span><span class="text-fuchsia-300">★★★★★</span></div>
+                <dt class="text-neutral-500 text-xs uppercase tracking-wide mb-2">extra curricular</dt>
+                <dd class="text-neutral-200 text-sm space-y-2 mt-1">
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>singing</span><span class="text-fuchsia-300">★★★☆☆</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-white/5 transition-colors duration-200">
+                    <span>guitar</span><span class="text-fuchsia-300">★★★★★</span>
+                  </div>
                 </dd>
               </div>
             </dl>
@@ -154,4 +169,10 @@ import { CommonModule } from '@angular/common';
 })
 export class ProfileComponent {
   mediaTab: 'videos' | 'photos' = 'videos';
+  
+  constructor(private router: Router) {}
+  
+  navigateToSettings() {
+    this.router.navigate(['/discover/settings']);
+  }
 }
