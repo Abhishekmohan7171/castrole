@@ -1,14 +1,14 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { DiscoverComponent } from './discover/discover.component';
-import { authGuard } from './guards/auth.guard';
+import { authCanMatch, loggedOutOnlyGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // Default -> onboarding
-  { path: '', pathMatch: 'full', redirectTo: 'onboarding' },
+  { path: '', pathMatch: 'full', redirectTo: 'discover' },
 
   // Auth
-  { path: 'login', component: LoginComponent },
+  { path: 'login', component: LoginComponent, canMatch: [loggedOutOnlyGuard] },
   { path: 'register', redirectTo: 'onboarding' },
 
   // Onboarding flow
@@ -26,7 +26,7 @@ export const routes: Routes = [
   {
     path: 'discover',
     component: DiscoverComponent,
-    canActivate: [authGuard],
+    canMatch: [authCanMatch],
     children: [
       { path: '', loadComponent: () => import('./discover/feed.component').then(m => m.FeedComponent) },
       { path: 'upload', loadComponent: () => import('./discover/upload.component').then(m => m.UploadComponent) },
@@ -37,5 +37,5 @@ export const routes: Routes = [
   },
 
   // Fallback
-  { path: '**', redirectTo: 'login' }
+  // { path: '**', redirectTo: 'discover' }
 ];

@@ -1,0 +1,131 @@
+# Castrole Windsurf Rules v1.1
+
+intent
+  Build and maintain a modern Angular 19 monorepo (Nx) with SSR + hydration, minimal bundle sizes, efficient Firebase usage, and a crisp, accessible UI. Think like a senior engineer: clarify assumptions, prevent bugs early, and optimize for long-term maintainability.
+
+project
+  framework: Angular 19 (standalone APIs)
+  ui: Tailwind CSS, dark/light themes
+  repo: Nx monorepo (apps/*, libs/*)
+  ssr: Angular Universal with hydration
+  icons: do not use Lucide; prefer custom SVG or approved sets
+  logging: no console usage in shipped code
+
+golden_rules
+  1) Prefer latest Angular features where appropriate.
+  2) Code must be correct, typed, minimal, and benchmark-aware.
+  3) UI must be fast, accessible, and consistent.
+  4) Firebase access must minimize reads/writes and listeners.
+  5) Never leave console.* in source; use a Logger service gated by environment.
+  6) If critical ambiguity exists, ask a concise clarifying question before coding.
+  7) When tests are requested, implement proper unit tests in the same change set; do not merge without them.
+
+architecture
+  - Use standalone components, standalone routing, provideIn: 'root' services.
+  - Prefer inject() over constructor injection when ergonomic.
+  - Use Angular control flow (@if/@for/@switch) and defer for above/below-the-fold.
+  - Use signals for component-local state; use RxJS for async streams (HTTP, router, websockets). Bridge via toSignal/fromSignal.
+  - SSR + hydration on all apps that render public pages. Split routes and feature libs; lazy-load by default.
+  - Strict typing everywhere; no any. Enable full template type-check.
+  - Centralize cross-cutting concerns with HttpInterceptor (auth, retries, backoff, error normalization).
+
+angular_19_usage
+  - Control flow blocks: @if/@for with track directives; avoid *ngIf/*ngFor.
+  - Defer blocks for images, heavy widgets, and non-critical routes.
+  - Signals: use signal, computed, and effect for local state; avoid overusing global stores.
+  - Typed reactive forms or typed template inputs/outputs; prefer input required flags and signal inputs when suitable.
+  - Zoneless change detection is allowed only if app section is ready; otherwise, stick to default and keep change detection cheap.
+  - Router: route-level data resolvers with signals; enable view transitions if UX benefits.
+  - Image directive (ngSrc) for responsive, lazy images.
+
+performance_benchmarks
+  - LCP < 2.5s on mid-tier mobile, CLS < 0.1, TBT < 200ms.
+  - Bundle budgets enforced in angular.json; fail CI on regression.
+  - Prefer pure pipes or computed signals over heavy template logic.
+  - Always trackBy in @for.
+  - Memoize expensive computed state; avoid re-creating Observables in template.
+
+ui_principles
+  - Tailwind utilities first; extract components only when reused.
+  - Respect design tokens, spacing scale, and typography ramps.
+  - A11y: keyboard focus, roles/aria, color contrast AA+, reduced motion support.
+  - Empty, error, and loading states for every async UI.
+  - Avoid visual jank: skeletons or shimmer for long fetches; pre-size media.
+
+firebase_efficiency
+  - Initialize via AngularFire provide* APIs once. Keep DI singletons.
+  - Prefer get() over live listeners when live updates aren’t needed.
+  - When listening, scope queries narrowly with where/orderBy/limit and use startAfter cursors for pagination. Avoid offset.
+  - Batch writes and runTransaction for multi-doc invariants.
+  - Use collectionGroup when it saves fan-out.
+  - Minimize N+1 listeners: aggregate data where sensible; consider Cloud Functions for joins/denormalization.
+  - Enable persistence only where it reduces churn; beware multi-tab edge cases.
+  - Always index queries; ship firestore.indexes.json.
+  - Cache hot data in memory via signals; invalidate predictably.
+  - For Storage, pre-compress/resize images client-side; set caching headers; avoid redundant uploads.
+
+network_and_api
+  - HttpInterceptor: auth header, retry with exponential backoff (idempotent only), map errors to a normalized shape.
+  - Guard against overfetching: debounce user-typed queries, cancel stale requests (switchMap), use shareReplay for hot caches.
+  - Use ETag/If-None-Match when talking to HTTP APIs that support it.
+  - Prefer server-side rendering of SEO-critical pages; defer client-only widgets.
+
+code_quality
+  - ESLint: no-console, no-explicit-any, prefer-const, eqeqeq, rxjs/no-ignored-subscription, @angular-eslint/template/no-any.
+  - Use takeUntilDestroyed for subscriptions; never leak.
+  - Public APIs of libs are barrelled; avoid deep imports.
+  - Strict tsconfig. No implicit any, no unused locals/params.
+  - Commit small, focused changes; keep PRs under 400 lines of diff when possible.
+
+state_management
+  - Component local: signals + computed + effect.
+  - Cross-component: provide service with signals and safe selectors.
+  - Global/complex: introduce a store library only when justified by complexity; otherwise keep it simple.
+
+testing
+  - Write proper unit tests whenever requested; include them in the same PR as the implementation.
+  - Frameworks: Jest for unit tests; Playwright for E2E of SSR-critical paths, auth, and PWA install.
+  - Structure: Arrange–Act–Assert, deterministic tests only, avoid testing private implementation details.
+  - Coverage: for requested tests, target at least 85% lines/branches on affected files; justify exceptions in PR.
+  - Components: test inputs/outputs, DOM interactions, a11y roles/labels, and view logic (signals/computed/effect). Use TestBed and Harnesses where helpful.
+  - Services: test with HttpClientTestingModule and HttpTestingController; assert request method, URL, headers, and error paths.
+  - RxJS: verify operator behavior (switchMap/cancelation, debounceTime), use TestScheduler or fakeAsync where appropriate.
+  - Signals: verify computed memoization and effect cleanup; avoid long-running effects in tests.
+  - Firebase: mock AngularFire services or use local emulator in CI for integration suites; never hit live projects.
+  - CI: run unit tests on every push and block merge on failures or coverage regression for files under test.
+
+error_handling_and_ux
+  - Central error boundary UI per route shell.
+  - User-friendly messages; never leak internal error details.
+  - Telemetry hooks for failures (logger service) with environment gating. No console in prod or dev commits.
+
+security
+  - Sanitize dynamic HTML; avoid bypassSecurityTrust except in reviewed cases.
+  - Content Security Policy, SRI for third-party scripts, and strict MIME types.
+  - Firebase Security Rules reviewed for least privilege; tests for common paths.
+
+ci_cd
+  - Nx affected builds, cache, and parallelization.
+  - Lint, typecheck, test, e2e, lighthouse budgets in pipeline.
+  - Block merges on lint/type/test/perf failures.
+
+documentation
+  - TSDoc on public APIs. README per app/lib with usage and constraints.
+  - ADRs for non-obvious decisions; include trade-offs.
+
+ask_when_in_doubt
+  - If a requirement materially impacts architecture, data model, or UX and is ambiguous, ask a short targeted question before implementation. Otherwise proceed with best defaults above.
+
+forbidden
+  - console.log/warn/error in committed code.
+  - Any usage of Lucide icons.
+  - Untracked @for without trackBy.
+  - Large PRs without rationale.
+  - Any silent subscription without teardown.
+
+definition_of_done
+  - Meets benchmarks and budgets.
+  - Has loading/empty/error states.
+  - No console usage, no lint errors, strict types pass.
+  - Tests added or updated with meaningful coverage when requested.
+  - Docs updated (README/ADR) if behavior or decisions changed.
