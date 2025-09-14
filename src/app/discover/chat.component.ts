@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule,ReactiveFormsModule,FormControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { inject, OnDestroy, OnInit } from '@angular/core';
-import { BehaviorSubject, Observable, Subscription, combineLatest, debounceTime, distinctUntilChanged, map } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, combineLatest, debounceTime, distinctUntilChanged, map, switchMap, of, filter, shareReplay, take, tap } from 'rxjs';
 import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
@@ -22,7 +22,7 @@ type Conversation = {
 @Component({
   selector: 'app-discover-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule,ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   template: `
     <div class="min-h-[70vh] text-neutral-200">
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
@@ -58,6 +58,19 @@ type Conversation = {
                   }
                 </div>
               }
+            } @else if (myRole === 'actor') {
+              <div class="flex items-center gap-3">
+                <button type="button"
+                        (click)="setViewMode('chat')"
+                        [ngClass]="{ 'bg-fuchsia-600/20': viewMode === 'chat' }"
+                        class="px-4 py-1.5 rounded-full text-sm ring-1 ring-white/10 text-neutral-200 hover:bg-white/10 transition">chat</button>
+                <button type="button"
+                        (click)="setViewMode('requests')"
+                        [ngClass]="{ 'bg-fuchsia-600/20': viewMode === 'requests' }"
+                        class="px-4 py-1.5 rounded-full text-sm ring-1 ring-white/10 text-neutral-200 hover:bg-white/10 transition">
+                  requests
+                </button>
+              </div>
             }
           </div>
           <ul class="divide-y divide-white/5">
@@ -150,7 +163,7 @@ type Conversation = {
           <div class="flex-1 overflow-auto px-4 sm:px-6 py-4 space-y-4">
             <ng-container *ngIf="active; else emptyState">
               <div
-                *ngFor="let m of active.messages"
+                *ngFor="let m of filteredActiveMessages"
                 class="flex"
                 [class.justify-end]="m.from === 'me'"
               >
@@ -234,6 +247,30 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   user$ = this.user
 
+  // Actor: controls which list to show
+  viewMode: 'chat' | 'requests' = 'chat';
+
+  // Stream-driven state
+  private viewMode$ = new BehaviorSubject<'chat' | 'requests'>(this.viewMode);
+  private readonly LAST_ROOM_KEY = 'chat:lastRoomId';
+  private activeRoomId$ = new BehaviorSubject<string | null>(typeof localStorage !== 'undefined' ? localStorage.getItem('chat:lastRoomId') : null);
+
+  // Streams
+  myRole$?: Observable<UserRole>;
+  rooms$?: Observable<(ChatRoom & { id: string })[]>;
+  conversations$?: Observable<Conversation[]>;
+  active$?: Observable<Conversation | null>;
+  messages$?: Observable<Message[]>;
+
+  // Actor message search
+  messageSearch = new FormControl('');
+  get filteredActiveMessages(): Message[] {
+    const q = (this.messageSearch.value || '').toString().trim().toLowerCase();
+    const list = this.active?.messages ?? [];
+    if (!q) return list;
+    return list.filter(m => (m.text || '').toLowerCase().includes(q));
+  }
+
   async ngOnInit() {
     const me = this.auth.getCurrentUser();
     if (!me) {
@@ -242,22 +279,22 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
     this.meUid = me.uid;
 
-    // Resolve my role from users/{uid}
-    this.user.observeUser(me.uid).subscribe((u) => {
-      this.myRole = (u?.role as UserRole) || 'user';
-      this.subscribeRooms();
-      // Only producers should query actors
-      if (this.myRole === 'producer') {
-        this.actors$ = this.actor.getAllActors();
-        // Feed BehaviorSubject from the search control
-        this.searchControl.valueChanges
-          .pipe(debounceTime(150), distinctUntilChanged())
-          .subscribe((val) => this.search$.next((val || '').toString()));
+    // Role stream
+    this.myRole$ = this.user.observeUser(me.uid).pipe(
+      map(u => (u?.role as UserRole) || 'user'),
+      shareReplay(1)
+    );
 
-        // Live filter list using combineLatest of actors$ and current term
+    // Mirror role to existing field for template conditions that still use it
+    this.myRole$.subscribe(r => this.myRole = r);
+
+    // Producer: actor search streams
+    this.myRole$.subscribe((role) => {
+      if (role === 'producer') {
+        this.actors$ = this.actor.getAllActors();
         this.filteredActors$ = combineLatest([
-          this.actors$,
-          this.search$,
+          this.actors$!,
+          this.search$.pipe(debounceTime(150), distinctUntilChanged()),
         ]).pipe(
           map(([actors, term]) => {
             const t = (term || '').toLowerCase().trim();
@@ -268,10 +305,81 @@ export class ChatComponent implements OnInit, OnDestroy {
             );
           })
         );
-      } else {
-        this.showActorDropdown = false;
       }
     });
+
+    // Rooms stream depending on role and view mode
+    this.rooms$ = combineLatest([this.myRole$, this.viewMode$]).pipe(
+      switchMap(([role, mode]) => {
+        if (role === 'actor' && mode === 'requests') {
+          return this.chat.observeRequestsForActor(this.meUid!);
+        }
+        return this.chat.observeRoomsForUser(this.meUid!, role);
+      }),
+      shareReplay(1)
+    );
+
+    // Conversations stream with counterpart names
+    this.conversations$ = this.rooms$!.pipe(
+      switchMap((rooms) => {
+        if (!rooms.length) return of([] as Conversation[]);
+        const lookups = rooms.map((r) => {
+          const counterpartId = this.getCounterpartId(r);
+          this.counterpartByRoom.set(r.id!, counterpartId);
+          return this.user.observeUser(counterpartId).pipe(
+            take(1),
+            map(u => ({ id: r.id!, name: (u?.name as string) || counterpartId, last: r.lastMessage?.text || '', messages: [] as Message[] }))
+          );
+        });
+        return combineLatest(lookups);
+      }),
+      shareReplay(1)
+    );
+
+    // Mirror to existing conversations array for template
+    this.conversations$!.subscribe(cs => this.conversations = cs);
+
+    // Active conversation stream: restore last or pick first
+    this.active$ = combineLatest([
+      this.conversations$!,
+      this.activeRoomId$,
+    ]).pipe(
+      map(([cs, id]) => {
+        if (!cs.length) return null;
+        if (id) {
+          const found = cs.find(c => c.id === id);
+          return found ?? cs[0];
+        }
+        return cs[0];
+      }),
+      tap((c: Conversation | null) => {
+        if (!c) return;
+        try { localStorage.setItem(this.LAST_ROOM_KEY, c.id); } catch {}
+      }),
+      shareReplay(1)
+    );
+
+    // Mirror to this.active for existing template usage
+    this.active$!.subscribe(c => this.active = c);
+
+    // Messages stream based on active
+    this.messages$ = this.active$!.pipe(
+      filter((c): c is Conversation => !!c),
+      switchMap((c: Conversation) => this.chat.observeMessages(c.id)),
+      map((msgs): Message[] => msgs.map((m) => {
+        const from: 'me' | 'them' = m.senderId === this.meUid ? 'me' : 'them';
+        return {
+          id: m.id!,
+          from,
+          text: m.text,
+          time: this.formatTime(m.timestamp),
+        } as Message;
+      })),
+      shareReplay(1)
+    );
+
+    // Mirror to active.messages so the existing template works without async pipe rewrites
+    this.messages$!.subscribe(ms => { if (this.active) this.active.messages = ms; });
   }
 
   ngOnDestroy(): void {
@@ -279,44 +387,16 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.msgsSub?.unsubscribe();
   }
 
-  private subscribeRooms() {
-    if (!this.meUid) return;
-    this.roomsSub?.unsubscribe();
-    this.roomsSub = this.chat
-      .observeRoomsForUser(this.meUid, this.myRole)
-      .subscribe(async (rooms) => {
-        // Build conversation list with counterpart names and last previews
-        const mapped: Conversation[] = [];
-        for (const r of rooms) {
-          const counterpartId = this.getCounterpartId(r);
-          this.counterpartByRoom.set(r.id!, counterpartId);
-          const u$ = this.user.observeUser(counterpartId);
-          const uSnap = await u$.pipe().toPromise();
-          const name = (uSnap?.name as string) || counterpartId;
-          mapped.push({
-            id: r.id!,
-            name,
-            last: r.lastMessage?.text || '',
-            messages: [],
-          });
-        }
-        this.conversations = mapped;
-        if (!this.active && this.conversations.length) {
-          this.open(this.conversations[0]);
-        }
-      });
+  // Stream-based open
+  open(c: Conversation) {
+    this.active = c; // keep for template
+    this.activeRoomId$.next(c.id);
   }
 
-  open(c: Conversation) {
-    this.active = c;
-    this.msgsSub?.unsubscribe();
-    if (!c?.id) return;
-    this.msgsSub = this.chat.observeMessages(c.id).subscribe((msgs) => {
-      c.messages = msgs.map((m) => this.toUiMessage(m));
-      if (msgs.length) {
-        c.last = msgs[msgs.length - 1].text;
-      }
-    });
+  setViewMode(mode: 'chat' | 'requests') {
+    if (this.viewMode === mode) return;
+    this.viewMode = mode;
+    this.viewMode$.next(mode);
   }
 
   async send() {
@@ -333,13 +413,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.draft = '';
   }
 
-  private toUiMessage(m: ChatMessage): Message {
-    const from: 'me' | 'them' = m.senderId === this.meUid ? 'me' : 'them';
-    const time = this.tsToTime(m.timestamp);
-    return { id: m.id!, from, text: m.text, time };
-  }
-
-  private tsToTime(ts: any): string {
+  private formatTime(ts: any): string {
     try {
       const d = ('toDate' in ts ? ts.toDate() : new Date()) as Date;
       const hh = d.getHours().toString().padStart(2, '0');

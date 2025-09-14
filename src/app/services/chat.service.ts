@@ -16,7 +16,7 @@ import {
   updateDoc,
   where
 } from '@angular/fire/firestore';
-import { Observable, map, switchMap } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 export type UserRole = 'actor' | 'producer' | 'user';
 
@@ -27,6 +27,7 @@ export interface ChatRoom {
   producerId: string;
   createdBy: string;                  // producerId
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
   lastMessage?: ChatMessage;
   actorCanSee: boolean;               // only true after producer sends first message
 }
@@ -50,7 +51,6 @@ export class ChatService {
   // Ensure a room exists (created by producer). Returns roomId
   async ensureRoom(actorId: string, producerId: string): Promise<string> {
     const participants = [actorId, producerId].sort();
-    // Use deterministic id based on participants for idempotency
     const roomId = participants.join('_');
     const roomRef = doc(this.db, 'chatRooms', roomId);
     const snap = await getDoc(roomRef);
@@ -61,6 +61,7 @@ export class ChatService {
         producerId,
         createdBy: producerId,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         actorCanSee: false,
       } as Partial<ChatRoom>);
     }
@@ -92,23 +93,44 @@ export class ChatService {
     };
     const created = await addDoc(msgRef, message);
 
-    // Update room lastMessage and set actorCanSee if first message from producer
     const roomRef = doc(this.db, 'chatRooms', roomId);
     await updateDoc(roomRef, {
       lastMessage: { ...message, id: created.id },
-      actorCanSee: true, // safe to set true always; actor needs visibility after any message exists
+      actorCanSee: true,
+      updatedAt: serverTimestamp(),
     } as any);
   }
 
-  // Observe rooms for a user by role
+  // Observe rooms for a user by role (client-side sort by updatedAt desc)
   observeRoomsForUser(uid: string, role: UserRole): Observable<(ChatRoom & { id: string })[]> {
     const roomsRef = collection(this.db, 'chatRooms');
     const baseQ = query(roomsRef, where('participants', 'array-contains', uid));
     const q$ = collectionData(baseQ, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
-    if (role === 'actor') {
-      return q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee)));
-    }
-    return q$; // producers can always see
+    const filtered$ = role === 'actor'
+      ? q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee)))
+      : q$;
+    return filtered$.pipe(
+      map(rooms => [...rooms].sort((a, b) => {
+        const at = (a.updatedAt as any)?.toMillis?.() ?? 0;
+        const bt = (b.updatedAt as any)?.toMillis?.() ?? 0;
+        return bt - at;
+      }))
+    );
+  }
+
+  // Observe "requests" for actors: rooms where actor can see, and the last message is from the producer (not the actor)
+  observeRequestsForActor(uid: string): Observable<(ChatRoom & { id: string })[]> {
+    const roomsRef = collection(this.db, 'chatRooms');
+    const baseQ = query(roomsRef, where('actorId', '==', uid), where('actorCanSee', '==', true));
+    const q$ = collectionData(baseQ, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
+    return q$.pipe(
+      map(rooms => rooms.filter(r => (r.lastMessage?.senderId ?? '') !== uid)),
+      map(rooms => [...rooms].sort((a, b) => {
+        const at = (a.updatedAt as any)?.toMillis?.() ?? 0;
+        const bt = (b.updatedAt as any)?.toMillis?.() ?? 0;
+        return bt - at;
+      }))
+    );
   }
 
   // Observe messages in a room ordered by timestamp
@@ -117,6 +139,4 @@ export class ChatService {
     const qMsgs = query(msgsRef, orderBy('timestamp', 'asc'));
     return collectionData(qMsgs, { idField: 'id' }) as Observable<(ChatMessage & { id: string })[]>;
   }
-
-
 }
