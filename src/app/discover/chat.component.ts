@@ -172,7 +172,9 @@ type Conversation = {
             </ng-container>
             <ng-template #emptyState>
               <div
-                class="h-40 flex items-center justify-center text-neutral-500"
+                class="h-40 flex items-center justify-center text-neutral-500 cursor-pointer select-none"
+                (click)="openDefaultConversation()"
+                title="Click to open a conversation"
               >
                 Select a conversation to start messaging
               </div>
@@ -359,6 +361,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   onSearch(term: string) { this.search$.next(term); }
 
   async startChatWith(u: UserDoc) {
+    console.log('startChatWith', u);
     if (!this.meUid || this.myRole !== 'producer') return;
     // Auto-start the conversation by sending the first message from producer
     const greeting = 'Hi! Thanks for connecting.';
@@ -375,5 +378,15 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.open(existing);
     this.showActorDropdown = false;
     this.mobileListOpen = false;
+  }
+
+  openDefaultConversation() {
+    if (this.conversations?.length) {
+      this.open(this.conversations[0]);
+      return;
+    }
+    if (this.myRole === 'producer') {
+      this.openActorDropdown();
+    }
   }
 }
