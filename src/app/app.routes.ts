@@ -17,7 +17,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./onboarding/role.component').then(m => m.RoleComponent) },
       { path: 'actor', loadComponent: () => import('./onboarding/actor-onboard.component').then(m => m.ActorOnboardComponent) },
-      // { path: 'actor/otp', loadComponent: () => import('./onboarding/otp-actor.component').then(m => m.OtpActorComponent) },
+      { path: 'actor/otp', loadComponent: () => import('./common-components/otp/otp.component').then(m => m.OtpComponent) },
       { path: 'producer', loadComponent: () => import('./onboarding/producer-onboard.component').then(m => m.ProducerOnboardComponent ) },
       // { path: 'producer/otp', loadComponent: () => import('./onboarding/otp-producer.component').then(m => m.OtpProducerComponent) },
     ]

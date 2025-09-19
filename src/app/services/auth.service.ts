@@ -12,8 +12,18 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  signInWithPhoneNumber,
+  linkWithPhoneNumber,
 } from '@angular/fire/auth';
+import { RecaptchaVerifier } from 'firebase/auth';
+// Try to import Enterprise verifier if available in SDK; fall back at runtime if not
+let RecaptchaEnterpriseVerifierRef: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  RecaptchaEnterpriseVerifierRef = (require('firebase/auth') as any).RecaptchaEnterpriseVerifier;
+} catch {}
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
+import type { ConfirmationResult } from 'firebase/auth';
 
 export type UserRole = 'actor' | 'producer';
 
@@ -30,9 +40,77 @@ export class AuthService {
   private auth = inject(Auth);
   private db = inject(Firestore);
 
+  // Keep latest confirmation for OTP across components if needed
+  private lastPhoneConfirmation?: ConfirmationResult;
+  private lastPhoneDisplay?: string;
+
+  // Maintain a single RecaptchaVerifier instance per page
+  private recaptcha?: any;
+
   // =========================
   // Email/Password, Google, Apple Auth
   // =========================
+
+  // =========================
+  // Phone verification (OTP)
+  // =========================
+  /** Start phone verification or link phone to current user. phoneE164: +<country><number> */
+  async startPhoneVerification(phoneE164: string, containerId: string = 'recaptcha-container', phoneDisplay?: string): Promise<ConfirmationResult> {
+    // Clear any previous widget bound to a different container to avoid captcha-check-failed
+    try { await this.recaptcha?.clear?.(); } catch {}
+
+    // Prefer Enterprise verifier when available (project may have Enterprise enabled)
+    const VerifierCtor: any = RecaptchaEnterpriseVerifierRef || RecaptchaVerifier as any;
+    this.recaptcha = new VerifierCtor(this.auth, containerId, { size: 'invisible' } as any);
+
+    // Ensure the widget is created and execute invisible challenge where supported
+    await (this.recaptcha.render?.() ?? Promise.resolve());
+    try {
+      if (typeof this.recaptcha.verify === 'function') {
+        await this.recaptcha.verify();
+      }
+    } catch (err) {
+      const e: any = err || {};
+      // Fallback to visible widget when captcha blocked or requires interaction
+      if (e?.code === 'auth/captcha-check-failed' || e?.message?.toLowerCase?.().includes('captcha')) {
+        try { await this.recaptcha.clear?.(); } catch {}
+        this.recaptcha = new VerifierCtor(this.auth, containerId, { size: 'normal' } as any);
+        await (this.recaptcha.render?.() ?? Promise.resolve());
+        const friendly = new Error('Captcha blocked. Please complete the captcha below, then tap Verify again.');
+        (friendly as any).code = 'auth/captcha-visible-required';
+        throw friendly;
+      }
+      throw err;
+    }
+
+    const user = this.auth.currentUser;
+    let confirmation: ConfirmationResult;
+    if (user) {
+      confirmation = await linkWithPhoneNumber(user, phoneE164, this.recaptcha);
+    } else {
+      confirmation = await signInWithPhoneNumber(this.auth, phoneE164, this.recaptcha);
+    }
+    this.lastPhoneConfirmation = confirmation;
+    this.lastPhoneDisplay = phoneDisplay;
+    return confirmation;
+  }
+
+  getLastPhoneConfirmation(): ConfirmationResult | undefined { return this.lastPhoneConfirmation; }
+  getLastPhoneDisplay(): string | undefined { return this.lastPhoneDisplay; }
+
+  /** Confirm OTP and persist verification flag. Optionally persist display phone (e.g., +91-9xxxxxxxxx). */
+  async confirmPhoneVerification(confirmation: ConfirmationResult, otp: string, phoneDisplay?: string): Promise<User> {
+    const cred = await confirmation.confirm(otp);
+    const ref = doc(this.db, 'users', cred.user.uid);
+    await setDoc(ref, {
+      uid: cred.user.uid,
+      phone: phoneDisplay ?? cred.user.phoneNumber ?? '',
+      isPhoneVerified: true,
+      phoneVerified: true,
+      updatedAt: serverTimestamp(),
+    }, { merge: true } as any);
+    return cred.user;
+  }
 
   // =========================
   // Utilities
@@ -55,7 +133,7 @@ export class AuthService {
       email: user.email || '',
       mobile: user.phoneNumber || '',
       location: '',
-      role: ('' as any) as UserRole, // role can be assigned later in onboarding
+      role: ('' as any) as UserRole,
       emailVerified: user.emailVerified || false,
       phoneVerified: !!user.phoneNumber,
       updatedAt: serverTimestamp(),
@@ -64,8 +142,6 @@ export class AuthService {
   }
 
   // --- Google ---
-
-  /** Sign in with Google using a popup. Only login; do not create profile. */
   async signInWithGoogle(): Promise<{ user: User; exists: boolean }> {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(this.auth, provider);
@@ -74,7 +150,6 @@ export class AuthService {
     return { user: cred.user, exists: snap.exists() };
   }
 
-  /** Link Google to the currently signed-in user via popup. */
   async linkGoogle(): Promise<User> {
     if (!this.auth.currentUser) throw new Error('No authenticated user to link Google for');
     const provider = new GoogleAuthProvider();
@@ -84,8 +159,6 @@ export class AuthService {
   }
 
   // --- Apple ---
-
-  /** Sign in with Apple using a popup. Only login; do not create profile. */
   async signInWithApple(): Promise<{ user: User; exists: boolean }> {
     const provider = new OAuthProvider('apple.com');
     provider.addScope('email');
@@ -95,7 +168,6 @@ export class AuthService {
     return { user: cred.user, exists: snap.exists() };
   }
 
-  /** Link Apple to the currently signed-in user via popup. */
   async linkApple(): Promise<User> {
     if (!this.auth.currentUser) throw new Error('No authenticated user to link Apple for');
     const provider = new OAuthProvider('apple.com');
@@ -106,21 +178,10 @@ export class AuthService {
   }
 
   // --- Email/Password ---
-
-  /** Register a user with email/password and create a user profile document. */
-  async registerWithEmail(params: {
-    name: string;
-    email: string;
-    password: string;
-    phone: string; // store in display format e.g. +91-9xxxxxxxxx
-    location: string;
-    role: string; // e.g., 'actor', 'producer', 'user'
-  }): Promise<User> {
+  async registerWithEmail(params: { name: string; email: string; password: string; phone: string; location: string; role: string; }): Promise<User> {
     const { name, email, password, phone, location, role } = params;
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
-    // set displayName for convenience
     try { await updateProfile(cred.user, { displayName: name }); } catch {}
-    // upsert user profile with requested schema
     const ref = doc(this.db, 'users', cred.user.uid);
     await setDoc(ref, {
       uid: cred.user.uid,
@@ -138,74 +199,43 @@ export class AuthService {
     return cred.user;
   }
 
-  /** Login with email/password and bump updatedAt. */
   async loginWithEmail(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
     await this.updateLoginTimestamp(cred.user.uid);
     return cred.user;
   }
 
-  /** Update login timestamp for any authentication method */
   async updateLoginTimestamp(uid: string): Promise<void> {
     const ref = doc(this.db, 'users', uid);
-    await setDoc(ref, { 
-      updatedAt: serverTimestamp(),
-      isLoggedIn: true,
-      LoggedInTime: serverTimestamp() 
-    }, { merge: true } as any);
+    await setDoc(ref, { updatedAt: serverTimestamp(), isLoggedIn: true, LoggedInTime: serverTimestamp() }, { merge: true } as any);
   }
 
-  /** Returns the currently authenticated user (or null). */
-  getCurrentUser(): User | null {
-    return this.auth.currentUser;
-  }
-  
-  /** Logs out the current user and updates their status in Firestore */
+  getCurrentUser(): User | null { return this.auth.currentUser; }
+
   async logout(): Promise<void> {
     const user = this.auth.currentUser;
     if (user) {
-      // Update user status in Firestore
       const ref = doc(this.db, 'users', user.uid);
-      await updateDoc(ref, { 
-        isLoggedIn: false,
-        LoggedOutTime: serverTimestamp() 
-      });
+      await updateDoc(ref, { isLoggedIn: false, LoggedOutTime: serverTimestamp() });
     }
-    // Sign out from Firebase Auth
     return signOut(this.auth);
   }
 
-  /**
-   * Onboard a user who signed in with a provider (Google/Apple) by:
-   * - Optionally linking an email+password credential (so they can login via email too)
-   * - Upserting the profile document to Firestore
-   */
-  async onboardProviderUser(params: {
-    name: string;
-    email: string;
-    password?: string;
-    phone: string;
-    location: string;
-    role: string;
-  }): Promise<User> {
+  async onboardProviderUser(params: { name: string; email: string; password?: string; phone: string; location: string; role: string; }): Promise<User> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No authenticated user found for onboarding');
 
-    // If password is provided, link email/password to this provider account
-    // This avoids creating a separate account and fixes auth/email-already-in-use
     if (params.password && params.email) {
       try {
         const cred = EmailAuthProvider.credential(params.email, params.password);
         await linkWithCredential(user, cred);
       } catch (err: any) {
-        // If it's already linked or email already in use by this user, ignore
         if (err?.code !== 'auth/provider-already-linked' && err?.code !== 'auth/credential-already-in-use' && err?.code !== 'auth/email-already-in-use') {
           throw err;
         }
       }
     }
 
-    // Upsert profile document
     const ref = doc(this.db, 'users', user.uid);
     await setDoc(ref, {
       uid: user.uid,

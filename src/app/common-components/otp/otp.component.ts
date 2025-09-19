@@ -1,5 +1,7 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, Output, QueryList, ViewChildren } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, QueryList, ViewChildren, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-otp',
@@ -36,6 +38,7 @@ import { CommonModule } from '@angular/common';
             Enter the 6-digit code sent to
             <span class="text-neutral-200 font-medium" *ngIf="phone as p">{{ maskPhone(p) }}</span>
           </p>
+          <p *ngIf="errorMsg" class="mt-2 text-sm text-red-400">{{ errorMsg }}</p>
         </div>
 
         <!-- OTP inputs -->
@@ -78,7 +81,7 @@ import { CommonModule } from '@angular/common';
   styles: []
 })
 export class OtpComponent {
-  @Input() open = false;
+  @Input() open = true;
   @Input() phone: string | null = null;
   @Input() length = 6;
 
@@ -86,6 +89,10 @@ export class OtpComponent {
   @Output() close = new EventEmitter<void>();
   @Output() resend = new EventEmitter<void>();
 
+  private auth = inject(AuthService);
+  private router = inject(Router);
+
+  errorMsg = '';
   digits: string[] = Array(this.length).fill('');
 
   @ViewChildren('otpInput') otpInputs!: QueryList<ElementRef<HTMLInputElement>>;
@@ -158,14 +165,40 @@ export class OtpComponent {
     return this.digits.every((d) => d.length === 1);
   }
 
-  onSubmit(ev: Event) {
+  async onSubmit(ev: Event) {
     ev.preventDefault();
     if (!this.isComplete()) return;
-    this.verify.emit(this.digits.join(''));
+
+    const code = this.digits.join('');
+
+    // If the component is embedded in a parent template, use the output
+    if (this.verify.observers?.length) {
+      this.verify.emit(code);
+      return;
+    }
+
+    // If routed as a standalone page, try confirming via AuthService
+    const confirmation = this.auth.getLastPhoneConfirmation();
+    if (!confirmation) {
+      this.errorMsg = 'No pending verification. Please go back and request a new OTP.';
+      return;
+    }
+    try {
+      await this.auth.confirmPhoneVerification(confirmation, code, this.auth.getLastPhoneDisplay());
+      // After success, navigate back to actor onboarding with a verified flag
+      this.router.navigate(['/onboarding/actor'], { queryParams: { verified: '1' }, replaceUrl: true });
+    } catch (e: any) {
+      this.errorMsg = e?.message || 'Invalid OTP. Please try again.';
+    }
   }
 
   onResend() {
-    this.resend.emit();
+    if (this.resend.observers?.length) {
+      this.resend.emit();
+      return;
+    }
+    // Routed mode: suggest going back and re-requesting
+    this.errorMsg = 'Please go back and tap Verify again to resend the OTP.';
   }
 
   maskPhone(p: string): string {

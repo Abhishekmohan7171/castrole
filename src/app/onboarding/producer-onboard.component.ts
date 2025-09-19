@@ -6,6 +6,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
+import type { ConfirmationResult } from 'firebase/auth';
 
 @Component({
   selector: 'app-producer-onboard',
@@ -105,7 +106,7 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
 
           <!-- Mobile number (country code + number) -->
           <div class="relative">
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center">
               <select formControlName="countryCode" aria-label="country code" class="w-36 sm:w-40 bg-neutral-800/80 text-neutral-200 rounded-full px-3 py-3 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 outline-none">
                 <option *ngFor="let c of countryCodes" [value]="c.dialCode">
                   {{ c.flag }} {{ c.dialCode }} {{ c.name }}
@@ -126,16 +127,24 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
                   class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 transition"
                 />
               </div>
+              <button type="button" (click)="onVerifyPhone()" class="shrink-0 rounded-full px-4 py-2 bg-neutral-100/10 hover:bg-neutral-100/20 text-neutral-100 ring-1 ring-white/10">Verify</button>
+              <span *ngIf="isPhoneVerified" class="ml-2 inline-flex items-center gap-1 text-emerald-400 text-sm">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                Verified
+              </span>
             </div>
+            <p *ngIf="errorMsg" class="mt-2 text-sm text-red-400">{{ errorMsg }}</p>
           </div>
 
-          <button type="button" [disabled]="form.invalid" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <button type="button" [disabled]="form.invalid || !isPhoneVerified || loading" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             next
           </button>
         </form>
       </div>
+      <!-- reCAPTCHA container (invisible) required for phone auth -->
+      <div id="recaptcha-container" class="hidden"></div>
       <!-- OTP Modal -->
-      <app-otp [open]="otpOpen" (close)="otpOpen = false" (verify)="onOtpVerify($event)"></app-otp>
+      <app-otp [open]="otpOpen" [phone]="phoneDisplay" (close)="otpOpen = false" (verify)="onOtpVerify($event)"></app-otp>
     </div>
   `,
   styles: []
@@ -149,6 +158,10 @@ export class ProducerOnboardComponent {
   private http = inject(HttpClient);
 
   errorMsg = '';
+  private phoneConfirmation?: ConfirmationResult;
+  isPhoneVerified = false;
+  private phoneE164 = '';
+  phoneDisplay = '';
 
   countryCodes: Array<{ name: string; dialCode: string; flag: string }> = [];
   // Location data and suggestions
@@ -172,8 +185,7 @@ export class ProducerOnboardComponent {
         next: (data) => {
           this.countryCodes = data ?? [];
         },
-        error: (err) => {
-          console.error('Failed to load country codes', err);
+        error: () => {
           this.countryCodes = [];
         },
       });
@@ -195,16 +207,31 @@ export class ProducerOnboardComponent {
             this.updateLocationSuggestions((val || '').toString());
           });
         },
-        error: (err) => {
-          console.error('Failed to load locations', err);
+        error: () => {
           this.allLocations = [];
           this.locationSuggestions = [];
         },
       });
   }
 
+  async onVerifyPhone() {
+    this.errorMsg = '';
+    const v = this.form.value as any;
+    const cc = (v.countryCode || '').toString().trim().replace(/[^+\d]/g, '');
+    const num = (v.mobileNumber || '').toString().trim();
+    if (!cc || !num) { this.errorMsg = 'Enter country code and mobile number.'; return; }
+    this.phoneE164 = `${cc}${num}`;
+    this.phoneDisplay = `${cc}-${num}`;
+    try {
+      this.phoneConfirmation = await this.auth.startPhoneVerification(this.phoneE164, 'recaptcha-container');
+      this.otpOpen = true;
+    } catch (e: any) {
+      this.errorMsg = e?.message || 'Failed to start phone verification.';
+    }
+  }
+
   onNext() {
-    if (this.form.invalid) return;
+    if (this.form.invalid || !this.isPhoneVerified) return;
     this.errorMsg = '';
     this.loading = true;
     const v = this.form.value as any;
@@ -228,8 +255,7 @@ export class ProducerOnboardComponent {
         password: v.password ?? '',
       })
         .then(() => this.router.navigateByUrl('/discover'))
-        .catch((err) => {
-          console.error(err);
+        .catch((err: any) => {
           this.errorMsg = err?.message || 'Onboarding failed';
         })
         .finally(() => {
@@ -242,8 +268,7 @@ export class ProducerOnboardComponent {
         password: v.password ?? '',
       })
         .then(() => this.router.navigateByUrl('/discover'))
-        .catch((err) => {
-          console.error(err);
+        .catch((err: any) => {
           this.errorMsg = err?.message || 'Registration failed';
         })
         .finally(() => {
@@ -252,9 +277,15 @@ export class ProducerOnboardComponent {
     }
   }
 
-  onOtpVerify(code: string) {
-    this.otpOpen = false;
-    // TODO: implement navigation after verification
+  async onOtpVerify(code: string) {
+    if (!this.phoneConfirmation) { this.errorMsg = 'No pending verification.'; return; }
+    try {
+      await this.auth.confirmPhoneVerification(this.phoneConfirmation, code, this.phoneDisplay);
+      this.isPhoneVerified = true;
+      this.otpOpen = false;
+    } catch (e: any) {
+      this.errorMsg = e?.message || 'Invalid OTP. Please try again.';
+    }
   }
 
   private updateLocationSuggestions(query: string) {

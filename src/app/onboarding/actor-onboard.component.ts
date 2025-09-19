@@ -2,14 +2,16 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
+import { OtpComponent } from '../common-components/otp/otp.component';
+import type { ConfirmationResult } from 'firebase/auth';
 
 @Component({
   selector: 'app-actor-onboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, HttpClientModule, LoaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule, LoaderComponent, OtpComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Loader -->
@@ -103,7 +105,7 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
 
           <!-- Mobile number (country code + number) -->
           <div class="relative">
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center">
               <select formControlName="countryCode" aria-label="country code" class="w-36 sm:w-40 bg-neutral-800/80 text-neutral-200 rounded-full px-3 py-3 ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 outline-none">
                 <option *ngFor="let c of countryCodes" [value]="c.dialCode">
                   {{ c.flag }} {{ c.dialCode }} {{ c.name }}
@@ -124,15 +126,29 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
                   class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
                 />
               </div>
+              <button type="button" (click)="onVerifyPhone()"
+                      class="shrink-0 rounded-full px-4 py-2 bg-neutral-100/10 hover:bg-neutral-100/20 text-neutral-100 ring-1 ring-white/10"
+                      [disabled]="sendingOtp || !form.get('countryCode')?.valid || !form.get('mobileNumber')?.valid">
+                {{ sendingOtp ? 'Sending…' : 'Verify' }}
+              </button>
+              <span *ngIf="isPhoneVerified" class="ml-2 inline-flex items-center gap-1 text-emerald-400 text-sm">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                Verified
+              </span>
             </div>
+            <p *ngIf="errorMsg" class="mt-2 text-sm text-red-400">{{ errorMsg }}</p>
           </div>
 
-          <button type="button" [disabled]="form.invalid" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <button type="button" [disabled]="form.invalid || !isPhoneVerified || loading" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             next
           </button>
         </form>
       </div>
-      
+
+      <!-- Use a unique reCAPTCHA container for actor to avoid clashes -->
+      <div id="recaptcha-container-actor" class="mt-4"></div>
+      <!-- Inline OTP Modal kept available but not auto-opened once routing is used -->
+      <app-otp [open]="otpOpen" [phone]="phoneDisplay" (close)="otpOpen = false" (verify)="onOtpVerify($event)" (resend)="onResendOtp()"></app-otp>
     </div>
   `,
   styles: []
@@ -143,8 +159,15 @@ export class ActorOnboardComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
 
   errorMsg = '';
+  otpOpen = false;
+  private phoneConfirmation?: ConfirmationResult;
+  isPhoneVerified = false;
+  private phoneE164 = '';
+  phoneDisplay = '';
+  sendingOtp = false;
 
   countryCodes: Array<{ name: string; dialCode: string; flag: string }> = [];
   // Location data and suggestions
@@ -161,6 +184,15 @@ export class ActorOnboardComponent {
   });
 
   constructor() {
+    // Read verified flag when returning from routed OTP page
+    this.route.queryParamMap.subscribe((qp) => {
+      if (qp.get('verified') === '1') {
+        this.isPhoneVerified = true;
+        this.otpOpen = false;
+        this.errorMsg = '';
+      }
+    });
+
     // Load country codes from assets
     this.http
       .get<Array<{ name: string; dialCode: string; flag: string }>>('assets/json/country-code.json')
@@ -169,8 +201,7 @@ export class ActorOnboardComponent {
           this.countryCodes = data ?? [];
           // If current value isn't in the list, keep as-is; otherwise nothing to do
         },
-        error: (err) => {
-          console.error('Failed to load country codes', err);
+        error: () => {
           this.countryCodes = [];
         },
       });
@@ -192,16 +223,70 @@ export class ActorOnboardComponent {
             this.updateLocationSuggestions((val || '').toString());
           });
         },
-        error: (err) => {
-          console.error('Failed to load locations', err);
+        error: () => {
           this.allLocations = [];
           this.locationSuggestions = [];
         },
       });
   }
 
+  private buildPhones() {
+    const v = this.form.value as any;
+    const cc = (v.countryCode || '').toString().trim().replace(/[^+\d]/g, '');
+    const num = (v.mobileNumber || '').toString().trim();
+    this.phoneE164 = `${cc}${num}`;
+    this.phoneDisplay = `${cc}-${num}`;
+    return { cc, num };
+  }
+
+  async onVerifyPhone() {
+    if (this.sendingOtp) return;
+    this.errorMsg = '';
+    const { cc, num } = this.buildPhones();
+    if (!cc || !num) { this.errorMsg = 'Enter country code and mobile number.'; return; }
+    this.sendingOtp = true;
+    try {
+      this.phoneConfirmation = await this.auth.startPhoneVerification(this.phoneE164, 'recaptcha-container-actor', this.phoneDisplay);
+      // Route-only flow to OTP page after successful OTP send
+      this.router.navigate(['/onboarding/actor/otp']);
+    } catch (e: any) {
+      const msg = e?.message || '';
+      if (e?.code === 'auth/too-many-requests') {
+        this.errorMsg = 'Too many attempts. Please wait a minute before retrying.';
+      } else if (e?.code === 'auth/invalid-app-credential') {
+        this.errorMsg = 'Verification failed. Ensure reCAPTCHA is visible and your domain is authorized in Firebase.';
+      } else {
+        this.errorMsg = msg || 'Failed to start phone verification.';
+      }
+    } finally {
+      this.sendingOtp = false;
+    }
+  }
+
+  async onResendOtp() {
+    this.errorMsg = '';
+    const { cc, num } = this.buildPhones();
+    if (!cc || !num) { this.errorMsg = 'Enter country code and mobile number.'; return; }
+    try {
+      this.phoneConfirmation = await this.auth.startPhoneVerification(this.phoneE164, 'recaptcha-container-actor', this.phoneDisplay);
+    } catch (e: any) {
+      this.errorMsg = e?.message || 'Failed to resend OTP.';
+    }
+  }
+
+  async onOtpVerify(code: string) {
+    if (!this.phoneConfirmation) { this.errorMsg = 'No pending phone verification.'; return; }
+    try {
+      await this.auth.confirmPhoneVerification(this.phoneConfirmation, code, this.phoneDisplay);
+      this.isPhoneVerified = true;
+      this.otpOpen = false;
+    } catch (e: any) {
+      this.errorMsg = e?.message || 'Invalid OTP. Please try again.';
+    }
+  }
+
   onNext() {
-    if (this.form.invalid) return;
+    if (this.form.invalid || !this.isPhoneVerified) { this.errorMsg = 'Please verify your phone number.'; return; }
     this.errorMsg = '';
     this.loading = true;
     const v = this.form.value as any;
@@ -228,8 +313,7 @@ export class ActorOnboardComponent {
         .then(() => {
           this.router.navigateByUrl('/discover');
         })
-        .catch((err) => {
-          console.error(err);
+        .catch((err: any) => {
           this.errorMsg = err?.message || 'Onboarding failed';
         })
         .finally(() => {
@@ -246,7 +330,6 @@ export class ActorOnboardComponent {
           this.router.navigateByUrl('/discover');
         })
         .catch((err: any) => {
-          console.error(err);
           this.errorMsg = err?.message || 'Registration failed';
         })
         .finally(() => {
