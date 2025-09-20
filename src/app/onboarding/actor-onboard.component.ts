@@ -251,12 +251,18 @@ export class ActorOnboardComponent {
       this.router.navigate(['/onboarding/actor/otp']);
     } catch (e: any) {
       const msg = e?.message || '';
-      if (e?.code === 'auth/too-many-requests') {
+      if (e?.code === 'auth/captcha-visible-required') {
+        this.errorMsg = 'Please complete the captcha below, then tap Verify again.';
+      } else if (e?.code === 'auth/too-many-requests') {
         this.errorMsg = 'Too many attempts. Please wait a minute before retrying.';
-      } else if (e?.code === 'auth/invalid-app-credential') {
-        this.errorMsg = 'Verification failed. Ensure reCAPTCHA is visible and your domain is authorized in Firebase.';
+      } else if (e?.code === 'auth/invalid-app-credential' || e?.code === 'auth/captcha-check-failed') {
+        this.errorMsg = 'Captcha failed. Ensure blockers are disabled and your domain is authorized.';
       } else {
         this.errorMsg = msg || 'Failed to start phone verification.';
+      }
+      // Optional: include code for local debugging during dev builds
+      if (e?.code && !this.isPhoneVerified) {
+        this.errorMsg += ` (code: ${e.code})`;
       }
     } finally {
       this.sendingOtp = false;
