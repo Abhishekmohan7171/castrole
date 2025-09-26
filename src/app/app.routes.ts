@@ -2,10 +2,11 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { DiscoverComponent } from './discover/discover.component';
 import { authCanMatch, loggedOutOnlyGuard } from './guards/auth.guard';
+import { AuthLoadingComponent } from './auth/auth-loading.component';
 
 export const routes: Routes = [
-  // Default -> onboarding
-  { path: '', pathMatch: 'full', redirectTo: 'discover' },
+  // Default -> loading component while auth initializes
+  { path: '', pathMatch: 'full', component: AuthLoadingComponent },
 
   // Auth
   { path: 'login', component: LoginComponent, canMatch: [loggedOutOnlyGuard] },

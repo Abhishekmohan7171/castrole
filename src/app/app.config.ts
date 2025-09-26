@@ -1,5 +1,5 @@
 import { ApplicationConfig } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withDisabledInitialNavigation, NoPreloading } from '@angular/router';
 
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
@@ -10,7 +10,12 @@ import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { provideStorage, getStorage } from '@angular/fire/storage';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideRouter(routes), provideClientHydration(),
+  providers: [
+    provideRouter(
+      routes,
+      withDisabledInitialNavigation() // Disable initial navigation until we're ready
+    ), 
+    provideClientHydration(),
     provideFirebaseApp(() => initializeApp({
       apiKey: "AIzaSyDBkKWzCv-8DRbizBG3YBkmaUncRIAPsL0",
       authDomain: "yberhood-castrole.firebaseapp.com",
