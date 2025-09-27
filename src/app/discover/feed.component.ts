@@ -1,137 +1,287 @@
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { APITubeService, APITubeVideo, ContentCategory, ContentType } from './services/apitube.service';
 
 @Component({
   selector: 'app-discover-feed',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   template: `
-    <!-- Search + tabs -->
-    <section>
-      <div class="flex flex-col gap-4">
-        <!-- Search -->
-        <div class="relative max-w-xl w-full">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-3.5-3.5" />
-            </svg>
-          </span>
-          <input
-            type="search"
-            placeholder="search roles, projects, people..."
-            class="w-full bg-neutral-900/70 text-neutral-200 placeholder-neutral-500 rounded-full pl-11 pr-4 py-2 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/40 transition"
-            (input)="onSearch($any($event.target).value)"
-          />
-        </div>
+    <div class="min-h-screen bg-black text-white">
+      <!-- Header -->
+      <!-- <header class="text-center py-8 md:py-12">
+        <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+          DISCOVER
+        </h1>
+      </header> -->
 
-        <!-- Tabs -->
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='foryou'}" (click)="tab='foryou'">for you</button>
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='trending'}" (click)="tab='trending'">trending</button>
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='new'}" (click)="tab='new'">new</button>
+      <!-- Category Navigation -->
+      <nav class="px-4 md:px-6 lg:px-8 mb-8">
+        <div class="flex flex-wrap justify-center gap-2 md:gap-4 lg:gap-6 max-w-6xl mx-auto">
+          @for (category of apiTubeService.categories; track category.id) {
+            <button
+              type="button"
+              class="px-3 py-2 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-full transition-all duration-200 hover:scale-105"
+              [class]="selectedCategory() === category.id
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/25'
+                : 'bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 hover:text-white'"
+              (click)="selectCategory(category)">
+              {{ category.name }}
+            </button>
+          }
+        </div>
+      </nav>
+
+      <!-- Content Type Tabs -->
+      <div class="px-4 md:px-6 lg:px-8 mb-8">
+        <div class="flex flex-wrap justify-center gap-2 md:gap-4 max-w-4xl mx-auto">
+          @for (contentType of apiTubeService.contentTypes; track contentType.id) {
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium rounded-full transition-all duration-200"
+              [class]="selectedContentType() === contentType.id
+                ? 'bg-white text-black'
+                : 'text-neutral-400 hover:text-white'"
+              (click)="selectContentType(contentType.id)">
+              {{ contentType.name }}
+            </button>
+          }
         </div>
       </div>
-    </section>
 
-    <!-- Content grid -->
-    <section class="mt-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <ng-container *ngFor="let item of filteredItems">
-          <article class="group rounded-2xl bg-neutral-900/60 border border-white/5 p-4 flex flex-col gap-4 ring-1 ring-white/10 hover:ring-white/20 transition">
-            <!-- Thumbnail / avatar -->
-            <div class="aspect-video rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 ring-1 ring-white/10 flex items-center justify-center text-neutral-500">
-              <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8 6h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8" />
-                <path d="M6 18 2 12 6 6v12Z" />
-              </svg>
-            </div>
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <div class="flex justify-center items-center py-20">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        </div>
+      }
 
-            <div class="flex-1 flex flex-col gap-2">
-              <div class="flex items-start justify-between gap-3">
-                <h3 class="text-base font-semibold text-neutral-100 line-clamp-2">{{ item.title }}</h3>
-                <span class="text-xs px-2 py-1 rounded-full ring-1 ring-white/10"
-                      [ngClass]="{
-                        'bg-emerald-500/10 text-emerald-300': role==='actor',
-                        'bg-indigo-500/10 text-indigo-300': role==='producer'
-                      }">
-                  {{ item.tag }}
-                </span>
-              </div>
+      <!-- Content Grid -->
+      @if (!isLoading() && videos().length > 0) {
+        <main class="px-4 md:px-6 lg:px-8 pb-12">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 max-w-7xl mx-auto">
+            @for (video of videos(); track video.id) {
+              <article class="group cursor-pointer" (click)="onVideoClick(video)">
+                <!-- Thumbnail Container -->
+                <div class="relative aspect-video rounded-xl overflow-hidden bg-neutral-900 mb-3">
+                  @if (video.thumbnail) {
+                    <img
+                      [src]="video.thumbnail"
+                      [alt]="video.title"
+                      class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  } @else {
+                    <div class="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
+                      <svg class="h-12 w-12 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                    </div>
+                  }
 
-              <p class="text-sm text-neutral-400 line-clamp-2">{{ item.subtitle }}</p>
+                  <!-- Duration Badge -->
+                  @if (video.duration) {
+                    <div class="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
+                      {{ video.duration }}
+                    </div>
+                  }
 
-              <div class="mt-1 text-xs text-neutral-500 flex items-center gap-3">
-                <span class="truncate">{{ item.metaA }}</span>
-                <span class="h-1 w-1 rounded-full bg-neutral-700"></span>
-                <span class="truncate">{{ item.metaB }}</span>
-              </div>
-            </div>
+                  <!-- Overlay on hover -->
+                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <svg class="h-12 w-12 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-            <div class="flex items-center gap-3">
-              <button type="button" class="flex-1 rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition"
-                      (click)="onPrimary(item)">
-                {{ primaryCtaLabel }}
+                <!-- Content Info -->
+                <div class="space-y-2">
+                  <h3 class="font-bold text-sm md:text-base leading-tight line-clamp-2 group-hover:text-purple-400 transition-colors">
+                    {{ video.title }}
+                  </h3>
+
+                  <div class="text-xs text-neutral-400 space-y-1">
+                    <p class="truncate">{{ video.channelTitle }}</p>
+                    @if (video.views) {
+                      <p>{{ video.views }}</p>
+                    }
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+
+          <!-- Load More Button -->
+          @if (hasMoreContent()) {
+            <div class="text-center mt-12">
+              <button
+                type="button"
+                class="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-full transition-colors duration-200"
+                (click)="loadMore()"
+                [disabled]="isLoadingMore()">
+                @if (isLoadingMore()) {
+                  <span class="flex items-center gap-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Loading...
+                  </span>
+                } @else {
+                  Load More
+                }
               </button>
-              <a routerLink="/" class="rounded-full px-4 py-2 text-sm ring-1 ring-white/10 text-neutral-300 hover:text-white transition">details</a>
             </div>
-          </article>
-        </ng-container>
-      </div>
+          }
+        </main>
+      }
 
-      <!-- Empty state -->
-      <div *ngIf="filteredItems.length === 0" class="text-center text-neutral-500 py-20">No results</div>
-    </section>
+      <!-- Empty State -->
+      @if (!isLoading() && videos().length === 0) {
+        <div class="text-center py-20">
+          <div class="text-neutral-500 mb-4">
+            <svg class="h-16 w-16 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold text-neutral-300 mb-2">No content found</h3>
+          <p class="text-neutral-500">Try selecting a different category or check back later.</p>
+        </div>
+      }
+
+      <!-- Error State -->
+      @if (error()) {
+        <div class="text-center py-20">
+          <div class="text-red-500 mb-4">
+            <svg class="h-16 w-16 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold text-neutral-300 mb-2">Something went wrong</h3>
+          <p class="text-neutral-500 mb-4">{{ error() }}</p>
+          <button
+            type="button"
+            class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-full transition-colors duration-200"
+            (click)="retry()">
+            Try Again
+          </button>
+        </div>
+      }
+    </div>
   `,
-  styles: []
+  styles: [`
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  `]
 })
-export class FeedComponent {
-  private route = inject(ActivatedRoute);
-  private platformId = inject(PLATFORM_ID);
+export class FeedComponent implements OnInit {
+  readonly apiTubeService = inject(APITubeService);
+  private readonly platformId = inject(PLATFORM_ID);
 
-  role: 'actor' | 'producer' = 'actor';
-  tab: 'foryou' | 'trending' | 'new' = 'foryou';
-  search = '';
+  // Signals for reactive state management
+  readonly selectedCategory = signal<string>('bollywood');
+  readonly selectedContentType = signal<string>('movies');
+  readonly videos = signal<APITubeVideo[]>([]);
+  readonly isLoading = signal<boolean>(false);
+  readonly isLoadingMore = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+  readonly nextPageToken = signal<string | null>(null);
 
-  private actorItems = [
-    { id: 'a1', title: 'Lead role in indie drama', subtitle: 'Male, 20-30 • Mumbai • Paid', tag: 'audition', metaA: 'Deadline: Sep 30', metaB: 'Applicants: 124' },
-    { id: 'a2', title: 'Web series supporting cast', subtitle: 'Female, 22-35 • Remote • Paid', tag: 'audition', metaA: 'Deadline: Oct 10', metaB: 'Applicants: 89' },
-    { id: 'a3', title: 'TV ad - fitness brand', subtitle: 'All genders, 18-28 • Bangalore • Paid', tag: 'ad', metaA: 'Shoot: 2 days', metaB: 'Applicants: 210' },
-  ];
+  // Computed properties
+  readonly hasMoreContent = computed(() => !!this.nextPageToken());
 
-  private producerItems = [
-    { id: 'p1', title: 'Arjun K • 5y experience', subtitle: 'Action | Drama | Hindi, English', tag: 'actor', metaA: 'Mumbai', metaB: 'Shortlist score: 92' },
-    { id: 'p2', title: 'Meera S • 3y experience', subtitle: 'Romance | Comedy | Tamil, Telugu', tag: 'actor', metaA: 'Chennai', metaB: 'Shortlist score: 88' },
-    { id: 'p3', title: 'Ravi T • Newcomer', subtitle: 'Theatre | Hindi', tag: 'actor', metaA: 'Delhi', metaB: 'Shortlist score: 76' },
-  ];
-
-  get items() { return this.role === 'actor' ? this.actorItems : this.producerItems; }
-
-  get filteredItems() {
-    const q = this.search.trim().toLowerCase();
-    const base = this.items;
-    if (!q) return base;
-    return base.filter(i => [i.title, i.subtitle, i.tag, i.metaA, i.metaB].some(v => (v || '').toLowerCase().includes(q)));
+  ngOnInit() {
+    this.loadContent();
   }
 
-  get primaryCtaLabel() { return this.role === 'actor' ? 'apply' : 'shortlist'; }
-
-  constructor() {
-    const qpRole = this.route.snapshot.queryParamMap.get('role');
-    const stored = isPlatformBrowser(this.platformId) ? localStorage.getItem('role') : null;
-    const resolved = (qpRole || stored || 'actor').toLowerCase();
-    this.role = resolved === 'producer' ? 'producer' : 'actor';
-    if (qpRole && isPlatformBrowser(this.platformId)) localStorage.setItem('role', this.role);
+  selectCategory(category: ContentCategory) {
+    this.selectedCategory.set(category.id);
+    this.loadContent();
   }
 
-  onSearch(q: string) { this.search = q; }
+  selectContentType(contentTypeId: string) {
+    this.selectedContentType.set(contentTypeId);
+    this.loadContent();
+  }
 
-  onPrimary(item: any) {
-    if (this.role === 'actor') {
-      console.log('[discover] apply', item);
-    } else {
-      console.log('[discover] shortlist', item);
+  private loadContent() {
+    this.isLoading.set(true);
+    this.error.set(null);
+    this.videos.set([]);
+    this.nextPageToken.set(null);
+
+    const category = this.apiTubeService.categories.find(c => c.id === this.selectedCategory());
+    const contentType = this.apiTubeService.contentTypes.find(ct => ct.id === this.selectedContentType());
+    
+    if (!category || !contentType) {
+      this.error.set('Invalid category or content type selected.');
+      this.isLoading.set(false);
+      return;
+    }
+
+    this.apiTubeService.getContentByFilters(category, contentType, 20).subscribe({
+      next: (response) => {
+        this.videos.set(response.items);
+        this.nextPageToken.set(response.nextPageToken || null);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.error.set('Failed to load content. Please try again.');
+        this.isLoading.set(false);
+        this.logError('Content loading failed', err);
+      }
+    });
+  }
+
+  loadMore() {
+    if (!this.nextPageToken() || this.isLoadingMore()) return;
+
+    this.isLoadingMore.set(true);
+    
+    const category = this.apiTubeService.categories.find(c => c.id === this.selectedCategory());
+    const contentType = this.apiTubeService.contentTypes.find(ct => ct.id === this.selectedContentType());
+    
+    if (!category || !contentType) {
+      this.isLoadingMore.set(false);
+      return;
+    }
+
+    this.apiTubeService.getContentByFilters(category, contentType, 20, this.nextPageToken()!).subscribe({
+      next: (response) => {
+        const currentVideos = this.videos();
+        this.videos.set([...currentVideos, ...response.items]);
+        this.nextPageToken.set(response.nextPageToken || null);
+        this.isLoadingMore.set(false);
+      },
+      error: (err) => {
+        this.error.set('Failed to load more content.');
+        this.isLoadingMore.set(false);
+        this.logError('Load more failed', err);
+      }
+    });
+  }
+
+  retry() {
+    this.loadContent();
+  }
+
+  onVideoClick(video: APITubeVideo) {
+    // Open video in new tab (YouTube)
+    if (isPlatformBrowser(this.platformId)) {
+      window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank');
+    }
+  }
+
+  private logError(context: string, error: any) {
+    // In production, this would go to a proper logging service
+    if (isPlatformBrowser(this.platformId)) {
+      console.error(`[FeedComponent] ${context}:`, error);
     }
   }
 }

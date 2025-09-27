@@ -1,5 +1,6 @@
 import { ApplicationConfig } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation, NoPreloading } from '@angular/router';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
@@ -16,6 +17,7 @@ export const appConfig: ApplicationConfig = {
       withDisabledInitialNavigation() // Disable initial navigation until we're ready
     ), 
     provideClientHydration(),
+    provideHttpClient(withFetch()),
     provideFirebaseApp(() => initializeApp({
       apiKey: "AIzaSyDBkKWzCv-8DRbizBG3YBkmaUncRIAPsL0",
       authDomain: "yberhood-castrole.firebaseapp.com",
