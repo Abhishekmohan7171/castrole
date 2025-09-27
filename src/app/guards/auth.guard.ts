@@ -1,8 +1,10 @@
 import { CanActivateFn, CanMatchFn, Router, UrlSegment } from '@angular/router';
 import { inject } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
-import { authState } from '@angular/fire/auth';
-import { map, take } from 'rxjs';
+import { Auth, User } from '@angular/fire/auth';
+import { Observable, map, filter, take } from 'rxjs';
+import { LoadingService } from '../services/loading.service';
+
+// No longer needed as we use LoadingService to wait for auth initialization
 
 /**
  * Wait for Firebase Auth to initialize and allow navigation only if a user is logged in.
@@ -11,10 +13,16 @@ import { map, take } from 'rxjs';
 export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
   const auth = inject(Auth);
+  const loadingService = inject(LoadingService);
 
-  return authState(auth).pipe(
+  return loadingService.isLoading$.pipe(
+    // Wait until loading is complete
+    filter(isLoading => !isLoading),
     take(1),
-    map(user => (user ? true : router.createUrlTree(['/login'])))
+    map(() => {
+      const user = auth.currentUser;
+      return user ? true : router.createUrlTree(['/login']);
+    })
   );
 };
 
@@ -25,9 +33,16 @@ export const authGuard: CanActivateFn = () => {
 export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
   const router = inject(Router);
   const auth = inject(Auth);
-  return authState(auth).pipe(
+  const loadingService = inject(LoadingService);
+  
+  return loadingService.isLoading$.pipe(
+    // Wait until loading is complete
+    filter(isLoading => !isLoading),
     take(1),
-    map(user => (user ? true : router.createUrlTree(['/login'])))
+    map(() => {
+      const user = auth.currentUser;
+      return user ? true : router.createUrlTree(['/login']);
+    })
   );
 };
 
@@ -38,8 +53,15 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
 export const loggedOutOnlyGuard: CanMatchFn = () => {
   const router = inject(Router);
   const auth = inject(Auth);
-  return authState(auth).pipe(
+  const loadingService = inject(LoadingService);
+  
+  return loadingService.isLoading$.pipe(
+    // Wait until loading is complete
+    filter(isLoading => !isLoading),
     take(1),
-    map(user => (user ? router.createUrlTree(['/discover']) : true))
+    map(() => {
+      const user = auth.currentUser;
+      return user ? router.createUrlTree(['/discover']) : true;
+    })
   );
 };

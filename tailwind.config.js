@@ -2,5 +2,10 @@
 module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: { extend: {} },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar'),
+  ],
+  variants: {
+    scrollbar: ['rounded']
+  }
 };
