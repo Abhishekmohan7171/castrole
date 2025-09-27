@@ -4,13 +4,12 @@ import { CommonModule } from '@angular/common';
 import { Auth } from '@angular/fire/auth';
 import { inject } from '@angular/core';
 import { LoadingService } from './services/loading.service';
-import { LoaderComponent } from './common-components/loader/loader.component';
 import { filter, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, LoaderComponent],
+  imports: [RouterOutlet, CommonModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

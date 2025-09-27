@@ -1,15 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { inject, OnDestroy, OnInit } from '@angular/core';
-import { LoaderComponent } from '../common-components/loader/loader.component';
-import { BehaviorSubject, Observable, Subscription, combineLatest, debounceTime, distinctUntilChanged, map, switchMap, of, filter, shareReplay, take, tap } from 'rxjs';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
+import { LoaderComponent } from '../common-components/loader/loader.component';
 
 type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
 type Conversation = {
@@ -292,10 +291,17 @@ type Conversation = {
             />
             <button
               type="submit"
-              class="rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition disabled:opacity-50"
-              [disabled]="!draft.trim()"
+              class="rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+              [disabled]="!draft.trim() || isSending"
             >
-              send
+              <span *ngIf="!isSending">send</span>
+              <span *ngIf="isSending" class="flex items-center gap-1">
+                <span class="inline-flex space-x-1">
+                  <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                  <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                  <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </span>
+              </span>
             </button>
           </form>
         </section>
@@ -352,6 +358,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private typingHandler?: (isTyping: boolean) => void;
   typingUsers$?: Observable<string[]>;
   isTyping = false;
+  isSending = false;
 
   // Unread counts
   requestsCount$?: Observable<number>;
@@ -485,14 +492,14 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Mirror to this.active for existing template usage
     this.roomsSub.add(this.active$!.subscribe(c => this.active = c));
 
-    // Messages stream based on active
+    // Messages stream based on active - optimized for instant loading
     this.messages$ = this.active$!.pipe(
       filter((c): c is Conversation => !!c),
       switchMap((c: Conversation) => {
-        // Check for cached messages first
+        // Check for cached messages first to show immediately
         const cachedMessages = this.chat.getCachedMessages(c.id);
         if (cachedMessages && cachedMessages.length > 0) {
-          // Use cached messages immediately while waiting for real-time updates
+          // Process cached messages immediately
           setTimeout(() => {
             this.processMessages(cachedMessages.map(m => {
               const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
@@ -503,12 +510,15 @@ export class ChatComponent implements OnInit, OnDestroy {
                 time: this.formatTime(m.timestamp),
               } as Message;
             }));
+            // Scroll to bottom immediately
+            setTimeout(() => this.scrollToBottom(), 10);
           }, 0);
         }
-
+        
+        // Return the real-time updates from Firestore
         return this.chat.observeMessages(c.id);
       }),
-      map((msgs): Message[] => msgs.map((m) => {
+      map((msgs: (ChatMessage & { id: string })[]) => msgs.map((m: ChatMessage & { id: string }) => {
         const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
         return {
           id: m.id!,
@@ -589,11 +599,37 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.typingSubscription.unsubscribe();
   }
 
-  // Stream-based open
+  // Stream-based open with instant loading
   open(c: Conversation) {
-    this.loading = true;
-    this.active = c; // keep for template
+    // Set active conversation immediately
+    this.active = c;
     this.activeRoomId$.next(c.id);
+    
+    // Check for cached messages first to show immediately
+    const cachedMessages = this.chat.getCachedMessages(c.id);
+    if (cachedMessages && cachedMessages.length > 0) {
+      // Use cached messages immediately
+      this.loading = false;
+      this.processMessages(cachedMessages.map(m => {
+        const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
+        return {
+          id: m.id!,
+          from,
+          text: m.text,
+          time: this.formatTime(m.timestamp),
+        } as Message;
+      }));
+      // Scroll to bottom immediately
+      setTimeout(() => this.scrollToBottom(), 10);
+    } else {
+      // Only show loading if we don't have cached messages
+      this.loading = true;
+      // Set a very short timeout to allow UI to update
+      setTimeout(() => {
+        this.loading = false;
+        setTimeout(() => this.scrollToBottom(), 10);
+      }, 100); // Reduced from 500ms to 100ms
+    }
 
     // Mark as read when opening
     if (this.meUid) {
@@ -602,12 +638,9 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Setup typing indicator for this room
     this.setupTypingIndicator(c.id);
-
-    // Simulate loading time and scroll to bottom when done
-    setTimeout(() => {
-      this.loading = false;
-      setTimeout(() => this.scrollToBottom(), 100);
-    }, 500);
+    
+    // Save last opened conversation
+    try { localStorage.setItem(this.LAST_ROOM_KEY, c.id); } catch {}
   }
 
   // Scroll to bottom of messages container
@@ -653,26 +686,60 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   async send() {
     const txt = this.draft.trim();
-    if (!txt || !this.active || !this.meUid) return;
+    if (!txt || !this.active || !this.meUid || this.isSending) return;
+    
     const roomId = this.active.id;
     const receiverId = this.counterpartByRoom.get(roomId) || '';
-    await this.chat.sendMessage({
-      roomId,
-      senderId: this.meUid,
-      receiverId,
-      text: txt,
-    });
-
-    // Reset typing indicator after sending
+    
+    // Clear draft immediately for better UX
+    const draftCopy = txt;
+    this.draft = '';
+    
+    // Add optimistic message to UI immediately
+    const optimisticId = `temp-${Date.now()}`;
+    const now = new Date();
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      from: 'me',
+      text: draftCopy,
+      time: this.formatTime({ toDate: () => now }),
+    };
+    
+    // Add to active conversation
+    if (this.active && this.active.messages) {
+      this.active.messages = [...this.active.messages, optimisticMessage];
+      // Scroll to bottom immediately
+      setTimeout(() => this.scrollToBottom(), 10);
+    }
+    
+    // Reset typing indicator
     if (this.typingHandler) {
       this.isTyping = false;
       this.typingHandler(false);
     }
-
-    this.draft = '';
-
-    // Scroll to bottom after sending
-    setTimeout(() => this.scrollToBottom(), 100);
+    
+    // Set sending state
+    this.isSending = true;
+    
+    try {
+      // Actually send the message
+      await this.chat.sendMessage({
+        roomId,
+        senderId: this.meUid,
+        receiverId,
+        text: draftCopy,
+      });
+      
+      // Message sent successfully, no need to do anything as Firestore will update the UI
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Handle error - could show a toast notification here
+      
+      // If sending fails, put the message back in the draft
+      this.draft = draftCopy;
+    } finally {
+      this.isSending = false;
+    }
   }
 
   private formatTime(ts: any): string {
