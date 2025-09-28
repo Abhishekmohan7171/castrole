@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { BrowserDetectionService } from '../utils/browser-detection';
 import {
   Auth,
   User,
@@ -29,6 +30,7 @@ export interface ProfileBase {
 export class AuthService {
   private auth = inject(Auth);
   private db = inject(Firestore);
+  private browserDetection = inject(BrowserDetectionService);
 
   // =========================
   // Email/Password, Google, Apple Auth
@@ -71,6 +73,12 @@ export class AuthService {
     const cred = await signInWithPopup(this.auth, provider);
     const ref = doc(this.db, 'users', cred.user.uid);
     const snap = await getDoc(ref);
+    
+    // Update login timestamp and device information if user exists
+    if (snap.exists()) {
+      await this.updateLoginTimestamp(cred.user.uid);
+    }
+    
     return { user: cred.user, exists: snap.exists() };
   }
 
@@ -92,6 +100,12 @@ export class AuthService {
     const cred = await signInWithPopup(this.auth, provider);
     const ref = doc(this.db, 'users', cred.user.uid);
     const snap = await getDoc(ref);
+    
+    // Update login timestamp and device information if user exists
+    if (snap.exists()) {
+      await this.updateLoginTimestamp(cred.user.uid);
+    }
+    
     return { user: cred.user, exists: snap.exists() };
   }
 
@@ -122,6 +136,8 @@ export class AuthService {
     try { await updateProfile(cred.user, { displayName: name }); } catch {}
     // upsert user profile with requested schema
     const ref = doc(this.db, 'users', cred.user.uid);
+    const currentDevice = this.browserDetection.detectBrowser();
+    
     await setDoc(ref, {
       uid: cred.user.uid,
       name: name || '',
@@ -130,7 +146,7 @@ export class AuthService {
       location: location || '',
       role: role || 'user',
       isLoggedIn: true,
-      device: 'web',
+      device: [currentDevice],
       LoggedInTime: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
@@ -148,11 +164,43 @@ export class AuthService {
   /** Update login timestamp for any authentication method */
   async updateLoginTimestamp(uid: string): Promise<void> {
     const ref = doc(this.db, 'users', uid);
-    await setDoc(ref, { 
-      updatedAt: serverTimestamp(),
-      isLoggedIn: true,
-      LoggedInTime: serverTimestamp() 
-    }, { merge: true } as any);
+    const userDoc = await getDoc(ref);
+    
+    // Get current device info
+    const currentDevice = this.browserDetection.detectBrowser();
+    
+    // Check if user document exists
+    if (userDoc.exists()) {
+      const userData = userDoc.data() as Record<string, any>;
+      let devices = Array.isArray(userData['device']) ? [...userData['device']] : [];
+      
+      // Check if this device already exists in the array
+      const deviceExists = devices.some((device: any) => 
+        device.platform === currentDevice.platform && 
+        device.version === currentDevice.version
+      );
+      
+      // Only add the device if it doesn't already exist
+      if (!deviceExists) {
+        devices.push(currentDevice);
+      }
+      
+      // Update login information with the updated device array
+      await setDoc(ref, { 
+        updatedAt: serverTimestamp(),
+        isLoggedIn: true,
+        LoggedInTime: serverTimestamp(),
+        device: devices
+      }, { merge: true } as any);
+    } else {
+      // If user doc doesn't exist, create it with the current device
+      await setDoc(ref, { 
+        updatedAt: serverTimestamp(),
+        isLoggedIn: true,
+        LoggedInTime: serverTimestamp(),
+        device: [currentDevice]
+      }, { merge: true } as any);
+    }
   }
 
   /** Returns the currently authenticated user (or null). */
@@ -164,12 +212,35 @@ export class AuthService {
   async logout(): Promise<void> {
     const user = this.auth.currentUser;
     if (user) {
-      // Update user status in Firestore
+      // Get the current browser info
+      const currentDevice = this.browserDetection.detectBrowser();
+      
+      // Get the user document to update the device array
       const ref = doc(this.db, 'users', user.uid);
-      await updateDoc(ref, { 
-        isLoggedIn: false,
-        LoggedOutTime: serverTimestamp() 
-      });
+      const userDoc = await getDoc(ref);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as Record<string, any>;
+        // Filter out the current device from the device array
+        const updatedDevices = Array.isArray(userData['device']) ? 
+          userData['device'].filter((device: any) => 
+            !(device.platform === currentDevice.platform && 
+              device.version === currentDevice.version)) : 
+          [];
+        
+        // Update user status in Firestore
+        await updateDoc(ref, { 
+          isLoggedIn: false,
+          device: updatedDevices,
+          LoggedOutTime: serverTimestamp() 
+        });
+      } else {
+        // If user doc doesn't exist, just update logout time
+        await updateDoc(ref, { 
+          isLoggedIn: false,
+          LoggedOutTime: serverTimestamp() 
+        });
+      }
     }
     // Sign out from Firebase Auth
     return signOut(this.auth);
@@ -207,6 +278,8 @@ export class AuthService {
 
     // Upsert profile document
     const ref = doc(this.db, 'users', user.uid);
+    const currentDevice = this.browserDetection.detectBrowser();
+    
     await setDoc(ref, {
       uid: user.uid,
       name: params.name || user.displayName || '',
@@ -215,7 +288,7 @@ export class AuthService {
       location: params.location || '',
       role: params.role || 'user',
       isLoggedIn: true,
-      device: 'web',
+      device: [currentDevice],
       LoggedInTime: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),

@@ -8,9 +8,25 @@ export interface UserDoc {
   createdAt: any;          // Firestore serverTimestamp
   updatedAt: any;          // Firestore serverTimestamp
   isLoggedIn: boolean;
-  device: string;          // e.g., 'web', 'ios', 'android'
+  device: deviceArray[];          // e.g., 'web', 'ios', 'android'
   LoggedInTime: any;       // Firestore serverTimestamp
   isPhoneVerified: boolean;
+  roles: string[];
+	//settings related
+	ghost: boolean;
+	blocked: blockedDetails[]
+}
+
+export interface deviceArray {
+  model: String;
+  platform: String;
+  version: String;
+}
+
+export interface blockedDetails {
+	blockedBy: string;
+	date: any;
+	reason?: string;
 }
 
 interface ChatPermissions {
