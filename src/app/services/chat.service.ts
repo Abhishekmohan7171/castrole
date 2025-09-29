@@ -32,6 +32,8 @@ export interface ChatRoom {
   updatedAt?: Timestamp;
   lastMessage?: ChatMessage;
   actorCanSee: boolean;               // only true after producer sends first message
+  actorAccepted?: boolean;            // true when actor accepts the chat request
+  actorRejected?: boolean;            // true when actor rejects the chat request
 
   // Unread counts - per user
   unreadCount?: Record<string, number>; // { userId: count }
@@ -95,10 +97,15 @@ export class ChatService {
     return roomId;
   }
 
-  // Producer initiates chat by sending first message
-  async producerStartChat(actorId: string, producerId: string, text: string): Promise<string> {
+  // Producer initiates chat by sending first message (optional)
+  async producerStartChat(actorId: string, producerId: string, text?: string): Promise<string> {
     const roomId = await this.ensureRoom(actorId, producerId);
-    await this.sendMessage({ roomId, senderId: producerId, receiverId: actorId, text });
+    
+    // Only send a message if text is provided
+    if (text) {
+      await this.sendMessage({ roomId, senderId: producerId, receiverId: actorId, text });
+    }
+    
     return roomId;
   }
 
@@ -148,8 +155,10 @@ export class ChatService {
     const roomsRef = collection(this.db, 'chatRooms');
     const baseQ = query(roomsRef, where('participants', 'array-contains', uid));
     const q$ = collectionData(baseQ, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
+    
+    // For actors, filter rooms based on actorCanSee and actorAccepted
     const filtered$ = role === 'actor'
-      ? q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee)))
+      ? q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee && r.actorAccepted === true)))
       : q$;
 
     const result$ = filtered$.pipe(
@@ -214,7 +223,16 @@ export class ChatService {
     const q$ = collectionData(q, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
 
     return q$.pipe(
-      map(rooms => rooms.filter(r => (r.lastMessage?.senderId ?? '') !== actorId)),
+      // Filter for rooms that:
+      // 1. Have messages not from the actor (producer initiated)
+      // 2. Are not yet accepted by the actor
+      // 3. Are not yet rejected by the actor
+      map(rooms => rooms.filter(r => {
+        return (r.lastMessage?.senderId ?? '') !== actorId && 
+               r.actorCanSee === true && 
+               r.actorAccepted !== true && 
+               r.actorRejected !== true;
+      })),
       map(rooms => [...rooms].sort((a, b) => {
         const at = (a.updatedAt as any)?.toMillis?.() ?? 0;
         const bt = (b.updatedAt as any)?.toMillis?.() ?? 0;
@@ -225,13 +243,23 @@ export class ChatService {
   }
 
   // Mark all messages in a room as read for a specific user
-  async markRoomAsRead(roomId: string, userId: string): Promise<void> {
+  async markAllAsRead(roomId: string, userId: string): Promise<void> {
+    // Get room reference
     const roomRef = doc(this.db, 'chatRooms', roomId);
 
     // Reset unread count for this user
     await updateDoc(roomRef, {
       [`unreadCount.${userId}`]: 0
     });
+  }
+  
+  // Mark messages as read when opening a conversation
+  async markMessagesAsRead(roomId: string, userId: string): Promise<void> {
+    try {
+      await this.markAllAsRead(roomId, userId);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
   }
 
   // Set typing state for a user in a room
@@ -288,17 +316,30 @@ export class ChatService {
   }
 
   // Get total unread count across all rooms for a user
-  getTotalUnreadCount(uid: string): Observable<number> {
+  getTotalUnreadCount(uid: string, role: UserRole = 'actor'): Observable<number> {
     const roomsRef = collection(this.db, 'chatRooms');
     const q = query(roomsRef, where('participants', 'array-contains', uid));
 
     return collectionData(q, { idField: 'id' }).pipe(
       map(rooms => {
-        return rooms.reduce((total, room: any) => {
+        // For actors, only count messages in accepted chats (not requests)
+        const filteredRooms = role === 'actor' 
+          ? rooms.filter((room: any) => room.actorAccepted === true)
+          : rooms;
+          
+        return filteredRooms.reduce((total, room: any) => {
           const unreadCount = room.unreadCount?.[uid] || 0;
           return total + unreadCount;
         }, 0);
       }),
+      shareReplay(1)
+    );
+  }
+  
+  // Get count of pending chat requests for an actor
+  getChatRequestsCount(actorId: string): Observable<number> {
+    return this.observeRequestsForActor(actorId).pipe(
+      map(requests => requests.length),
       shareReplay(1)
     );
   }
@@ -380,5 +421,33 @@ export class ChatService {
     } catch (e) {
       // Ignore storage errors
     }
+  }
+
+  // Accept a chat request (for actors)
+  async acceptChatRequest(roomId: string, actorId: string): Promise<void> {
+    const roomRef = doc(this.db, 'chatRooms', roomId);
+    
+    // Update the room to mark it as accepted
+    await updateDoc(roomRef, {
+      actorAccepted: true,
+      updatedAt: serverTimestamp()
+    });
+    
+    // Clear cache for this room
+    this.clearRoomCache(roomId);
+  }
+
+  // Reject a chat request (for actors)
+  async rejectChatRequest(roomId: string, actorId: string): Promise<void> {
+    const roomRef = doc(this.db, 'chatRooms', roomId);
+    
+    // Update the room to mark it as rejected
+    await updateDoc(roomRef, {
+      actorRejected: true,
+      updatedAt: serverTimestamp()
+    });
+    
+    // Clear cache for this room
+    this.clearRoomCache(roomId);
   }
 }
