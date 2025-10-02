@@ -304,7 +304,7 @@ type Conversation = {
               </div>
 
               <!-- Producer: No conversations yet -->
-              <div *ngIf="!initialLoading && myRole === 'producer' && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading && myRole === 'producer' && conversations && conversations.length === 0 && rejectedChats.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-4">
                   <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -313,6 +313,29 @@ type Conversation = {
                   </div>
                   <p>No conversations yet</p>
                   <p class="text-xs text-neutral-500">Search for actors to start a conversation</p>
+                </div>
+              </div>
+              
+              <!-- Producer: Rejected chats -->
+              <div *ngIf="!initialLoading && myRole === 'producer' && rejectedChats.length > 0 && !active" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <p>You can message these actors:</p>
+                  <div class="flex flex-col gap-2 w-full max-w-xs">
+                    <ng-container *ngFor="let rejectedChat of rejectedChats">
+                      <button 
+                        (click)="startChatWithActor(rejectedChat.actorId)"
+                        class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-neutral-200 transition flex items-center gap-2"
+                      >
+                        <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ getActorInitial(rejectedChat.actorId) }}</div>
+                        <span>{{ getActorName(rejectedChat.actorId) }}</span>
+                      </button>
+                    </ng-container>
+                  </div>
                 </div>
               </div>
 
@@ -362,10 +385,25 @@ type Conversation = {
           </div>
 
           <!-- Composer -->
+          <div 
+            *ngIf="active && myRole === 'producer' && isRejectedByActor()"
+            class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center justify-center shrink-0 bg-neutral-900/60"
+          >
+            <div class="text-red-400 text-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              <span>You cannot message this actor</span>
+            </div>
+          </div>
+          
+          <!-- Composer -->
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60"
-            *ngIf="active && (myRole !== 'actor' || active.actorAccepted)"
+            *ngIf="active && ((myRole !== 'actor' && !isRejectedByActor()) || active.actorAccepted)"
           >
             <input
               id="message-draft"
@@ -417,6 +455,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private msgsSub = new Subscription();
   private typingSubscription = new Subscription();
   private counterpartByRoom = new Map<string, string>();
+  private counterpartNames = new Map<string, string>();
 
   actors$?: Observable<UserDoc[]>;
   filteredActors$?: Observable<UserDoc[]>;
@@ -451,6 +490,10 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Unread counts
   requestsCount$?: Observable<number>;
   totalUnreadCount$?: Observable<number>;
+  
+  // Rejected chats (for producers)
+  rejectedChats$?: Observable<(ChatRoom & { id: string })[]>;
+  rejectedChats: (ChatRoom & { id: string })[] = [];
 
   // Actor message search
   messageSearch = new FormControl('');
@@ -497,6 +540,16 @@ export class ChatComponent implements OnInit, OnDestroy {
     
     // Subscribe to requestsCount$ to ensure it's initialized
     this.roomsSub.add(this.requestsCount$?.subscribe());
+    
+    // For producers: observe rejected chats
+    if (this.myRole === 'producer' && this.meUid) {
+      this.rejectedChats$ = this.chat.observeRejectedChatsForProducer(this.meUid);
+      this.roomsSub.add(
+        this.rejectedChats$.subscribe(rejectedChats => {
+          this.rejectedChats = rejectedChats;
+        })
+      );
+    }
 
     // Check for cached rooms to show immediately
     const cachedRooms = this.chat.getCachedRooms(this.meUid!, this.myRole as UserRole);
@@ -706,12 +759,28 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.active = c;
     this.activeRoomId$.next(c.id);
     
-    // Debug log to check actorAccepted flag
-    console.log(`Opening conversation ${c.id}, actorAccepted:`, c.actorAccepted);
+    // Debug log to check conversation flags
+    console.log(`Opening conversation ${c.id}, actorAccepted:`, c.actorAccepted, 'actorRejected:', c.actorRejected);
     
     // Mark messages as read when opening a conversation
     if (this.meUid) {
+      // Mark messages as read and update notification count
       this.chat.markMessagesAsRead(c.id, this.meUid);
+      
+      // Force refresh of unread counts to update UI immediately
+      if (this.totalUnreadCount$) {
+        this.totalUnreadCount$.pipe(take(1)).subscribe();
+      }
+      
+      // For actors, also refresh request counts
+      if (this.myRole === 'actor' && this.requestsCount$) {
+        this.requestsCount$.pipe(take(1)).subscribe();
+      }
+    }
+    
+    // Clear draft if this is a rejected conversation for a producer
+    if (this.myRole === 'producer' && c.actorRejected) {
+      this.draft = '';
     }
     
     // Check for cached messages first to show immediately
@@ -796,6 +865,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   async send() {
     const txt = this.draft.trim();
     if (!txt || !this.active || !this.meUid || this.isSending) return;
+    
+    // Prevent sending if the conversation has been rejected (for producers)
+    if (this.myRole === 'producer' && this.isRejectedByActor()) {
+      this.draft = '';
+      return;
+    }
     
     const roomId = this.active.id;
     const receiverId = this.counterpartByRoom.get(roomId) || '';
@@ -979,6 +1054,74 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
     if (this.myRole === 'producer') {
       this.openActorDropdown();
+    }
+  }
+  
+  // Helper method to get actor initial for display
+  getActorInitial(actorId: string): string {
+    // Try to get from cached names first
+    const cachedName = this.getActorName(actorId);
+    if (cachedName && cachedName !== 'Unknown') {
+      return cachedName[0].toUpperCase();
+    }
+    // Default initial if name not found
+    return 'A';
+  }
+  
+  // Helper method to get actor name
+  getActorName(actorId: string): string {
+    // Check if we have the actor name in our cache
+    const cachedName = this.counterpartNames.get(actorId);
+    if (cachedName) {
+      return cachedName;
+    }
+    
+    // If not in cache, fetch it and store for future use
+    this.user.observeUser(actorId).pipe(take(1)).subscribe(user => {
+      if (user) {
+        const name = user.name || user.email?.split('@')[0] || 'Unknown';
+        this.counterpartNames.set(actorId, name);
+      }
+    });
+    
+    // Return a placeholder until we get the real name
+    return 'Actor';
+  }
+  
+  // Check if the current conversation has been rejected by the actor
+  isRejectedByActor(): boolean {
+    if (!this.active) return false;
+    return this.active.actorRejected === true;
+  }
+  
+  // Start a new chat with an actor (for producers, after rejection)
+  async startChatWithActor(actorId: string) {
+    if (!this.meUid || this.myRole !== 'producer') return;
+    
+    // Create a chat room without sending an initial message
+    const roomId = await this.chat.producerStartChat(actorId, this.meUid);
+    
+    // Find the conversation and open it
+    const convo = this.conversations?.find(c => c.id === roomId);
+    if (convo) {
+      this.open(convo);
+      // Set focus on the draft input
+      setTimeout(() => {
+        const draftInput = document.getElementById('message-draft');
+        if (draftInput) {
+          draftInput.focus();
+        }
+      }, 100);
+    } else {
+      // If conversation not found in the list, refresh conversations
+      this.refreshConversations();
+      // Try to find it again after a short delay
+      setTimeout(() => {
+        const newConvo = this.conversations?.find(c => c.id === roomId);
+        if (newConvo) {
+          this.open(newConvo);
+        }
+      }, 500);
     }
   }
   

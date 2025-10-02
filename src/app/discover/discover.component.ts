@@ -1,14 +1,13 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { Observable, Subscription, map, of, shareReplay, switchMap, filter, take } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ChatService } from '../services/chat.service';
-import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
-import { LoaderComponent } from '../common-components/loader/loader.component';
-import { Observable, Subscription, of } from 'rxjs';
-import { switchMap, map, shareReplay } from 'rxjs/operators';
 import { Auth, onAuthStateChanged, User } from '@angular/fire/auth';
 import { Firestore, doc, getDoc, onSnapshot, DocumentData } from '@angular/fire/firestore';
+import { LoaderComponent } from '../common-components/loader/loader.component';
+import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
 
 @Component({
   selector: 'app-discover',
@@ -21,14 +20,14 @@ import { Firestore, doc, getDoc, onSnapshot, DocumentData } from '@angular/fire/
       <!-- Top bar -->
       <header class="sticky top-0 z-40 bg-black/70 backdrop-blur">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between">
-          <a routerLink="/" class="text-3xl font-black tracking-wider text-neutral-300 select-none">castrole</a>
+          <a routerLink="/discover" class="text-3xl font-black tracking-wider text-neutral-300 select-none">castrole</a>
           <nav class="flex items-center gap-8 text-sm">
             <a routerLink="/discover" routerLinkActive="text-fuchsia-300" [routerLinkActiveOptions]="{ exact: true }" class="text-neutral-500 hover:text-neutral-300 transition">discover</a>
             <a routerLink="/discover/upload" routerLinkActive="text-fuchsia-300" class="text-neutral-500 hover:text-neutral-300 transition">upload</a>
             <a routerLink="/discover/chat" routerLinkActive="text-fuchsia-300" class="text-neutral-500 hover:text-neutral-300 transition relative">
               chat
               <ng-container *ngIf="chatNotificationCount$ | async as notificationCount">
-                <span 
+                <span
                   *ngIf="notificationCount > 0"
                   class="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full bg-fuchsia-600 text-white text-xs animate-pulse"
                 >
@@ -72,7 +71,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   isLoggingOut = false;
   isProfileActive = false;
   userName = 'User';
-  
+
   // Chat notification count for the header
   chatNotificationCount$: Observable<number>;
   private subscriptions = new Subscription();
@@ -80,9 +79,9 @@ export class DiscoverComponent implements OnInit, OnDestroy {
 
   private firebaseAuth: Auth;
   private firestore: Firestore;
-  
+
   constructor(
-    private auth: AuthService, 
+    private auth: AuthService,
     private router: Router,
     private chatService: ChatService
   ) {
@@ -93,6 +92,18 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Subscribe to router events to clear notifications when navigating to chat
+    this.subscriptions.add(
+      this.router.events.pipe(
+        filter(event => event instanceof NavigationEnd)
+      ).subscribe((event: any) => {
+        // If navigating to chat page, refresh notification count
+        if (event.url.includes('/chat') && this.uid) {
+          this.refreshNotificationCount();
+        }
+      })
+    );
+
     // Get current user data
     this.subscriptions.add(
       onAuthStateChanged(this.firebaseAuth, (user) => {
@@ -103,14 +114,14 @@ export class DiscoverComponent implements OnInit, OnDestroy {
               if (userData) {
                 this.userName = userData['name'] || user.email?.split('@')[0] || 'User';
                 this.uid = user.uid;
-                
+
                 // Initialize chat notification count
                 if (userData['role'] === 'actor') {
                   // For actors, combine unread messages and requests
                   const chatUnread$ = this.chatService.getTotalUnreadCount(user.uid, userData['role']);
                   const requestsCount$ = this.chatService.getChatRequestsCount(user.uid);
                   this.chatNotificationCount$ = chatUnread$.pipe(
-                    switchMap(unreadCount => 
+                    switchMap(unreadCount =>
                       requestsCount$.pipe(
                         map(requestCount => unreadCount + requestCount)
                       )
@@ -131,7 +142,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     // Check if profile route is active
     this.isProfileActive = this.router.url.includes('/profile');
   }
-  
+
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
   }
@@ -147,9 +158,9 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   getUserDoc(uid: string): Observable<DocumentData | undefined> {
     return new Observable<DocumentData | undefined>(observer => {
       const userDocRef = doc(this.firestore, 'users', uid);
-      
+
       // Subscribe to document changes
-      const unsubscribe = onSnapshot(userDocRef, 
+      const unsubscribe = onSnapshot(userDocRef,
         (docSnap) => {
           if (docSnap.exists()) {
             observer.next(docSnap.data());
@@ -162,12 +173,12 @@ export class DiscoverComponent implements OnInit, OnDestroy {
           observer.error(error);
         }
       );
-      
+
       // Return unsubscribe function
       return () => unsubscribe();
     });
   }
-  
+
   logout(): void {
     this.isLoggingOut = true;
     this.auth.logout().then(() => {
@@ -178,5 +189,35 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     }).finally(() => {
       this.isLoggingOut = false;
     });
+  }
+
+  // Refresh notification count manually
+  refreshNotificationCount(): void {
+    if (this.uid) {
+      // Get the user document to determine role
+      this.getUserDoc(this.uid).pipe(take(1)).subscribe(userData => {
+        if (userData) {
+          if (userData['role'] === 'actor') {
+            // For actors, combine unread messages and requests
+            const chatUnread$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role']);
+            const requestsCount$ = this.chatService.getChatRequestsCount(this.uid!);
+            this.chatNotificationCount$ = chatUnread$.pipe(
+              switchMap(unreadCount =>
+                requestsCount$.pipe(
+                  map(requestCount => unreadCount + requestCount)
+                )
+              ),
+              shareReplay(1)
+            );
+          } else {
+            // For producers, just show unread messages
+            this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role'] || 'producer');
+          }
+
+          // Force a refresh by subscribing
+          this.chatNotificationCount$.pipe(take(1)).subscribe();
+        }
+      });
+    }
   }
 }

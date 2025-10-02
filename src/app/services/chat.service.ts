@@ -246,11 +246,59 @@ export class ChatService {
   async markAllAsRead(roomId: string, userId: string): Promise<void> {
     // Get room reference
     const roomRef = doc(this.db, 'chatRooms', roomId);
-
-    // Reset unread count for this user
-    await updateDoc(roomRef, {
-      [`unreadCount.${userId}`]: 0
-    });
+    
+    try {
+      // Reset unread count for this user
+      await updateDoc(roomRef, {
+        [`unreadCount.${userId}`]: 0
+      });
+      
+      // Update localStorage cache for both actor and producer roles
+      // This ensures the notification badge is updated immediately
+      this.updateLocalStorageCache(roomId, userId);
+      
+      // Clear in-memory cache to force a refresh
+      const actorCacheKey = `rooms_${userId}_actor`;
+      const producerCacheKey = `rooms_${userId}_producer`;
+      this.userRoomsCache.delete(actorCacheKey);
+      this.userRoomsCache.delete(producerCacheKey);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }
+  
+  // Update localStorage cache to reflect read messages
+  private updateLocalStorageCache(roomId: string, userId: string): void {
+    try {
+      // Update for both roles to ensure all caches are updated
+      ['actor', 'producer'].forEach(role => {
+        const cacheKey = `rooms_${userId}_${role}`;
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (cachedData) {
+          const rooms = JSON.parse(cachedData) as (ChatRoom & { id: string })[];
+          const updatedRooms = rooms.map(room => {
+            if (room.id === roomId && room.unreadCount) {
+              // Create a new object to ensure reactivity
+              return {
+                ...room,
+                unreadCount: {
+                  ...room.unreadCount,
+                  [userId]: 0
+                }
+              };
+            }
+            return room;
+          });
+          
+          // Update localStorage
+          localStorage.setItem(cacheKey, JSON.stringify(updatedRooms));
+        }
+      });
+    } catch (e) {
+      // Ignore storage errors
+      console.warn('Error updating localStorage cache:', e);
+    }
   }
   
   // Mark messages as read when opening a conversation
@@ -449,5 +497,21 @@ export class ChatService {
     
     // Clear cache for this room
     this.clearRoomCache(roomId);
+  }
+
+  // Observe rejected chats for producers
+  observeRejectedChatsForProducer(producerId: string): Observable<(ChatRoom & { id: string })[]> {
+    const roomsRef = collection(this.db, 'chatRooms');
+    const q = query(roomsRef, where('participants', 'array-contains', producerId));
+    
+    return collectionData(q, { idField: 'id' }).pipe(
+      map(rooms => {
+        // Filter for rooms that have been rejected by the actor
+        return (rooms as (ChatRoom & { id: string })[]).filter(r => {
+          return r.actorRejected === true;
+        });
+      }),
+      shareReplay(1)
+    );
   }
 }
