@@ -9,15 +9,15 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
-
 type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
 type Conversation = {
   id: string;
   name: string;
   last: string;
-  unread?: number;
+  messages?: Message[];
   unreadCount?: Record<string, number>;
-  messages: Message[];
+  actorAccepted?: boolean;
+  actorRejected?: boolean;
 };
 
 @Component({
@@ -91,18 +91,21 @@ type Conversation = {
             }
           </div>
           <ul class="divide-y divide-white/5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+            <!-- Regular chat conversation item -->
             <li
               *ngFor="let c of conversations"
-              (click)="open(c)"
-              class="px-4 py-3 cursor-pointer hover:bg-white/5 transition flex items-center gap-3"
-              [ngClass]="{ 'bg-white/10': c.id === active?.id }"
+              [ngClass]="{ 'bg-white/10': c.id === active?.id, 'cursor-pointer hover:bg-white/5': myRole !== 'actor' || viewMode !== 'requests' }"
+              class="px-4 py-3 transition flex items-center gap-3"
             >
+              <!-- Avatar -->
               <div
                 class="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-neutral-400"
               >
                 {{ c.name[0] | uppercase }}
               </div>
-              <div class="flex-1 min-w-0">
+              
+              <!-- Content -->
+              <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole !== 'actor' || viewMode !== 'requests'" (click)="handleDesktopItemClick(c)">
                 <div class="flex items-center gap-2">
                   <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
                   <ng-container *ngIf="c.unreadCount && meUid">
@@ -114,6 +117,29 @@ type Conversation = {
                   </ng-container>
                 </div>
                 <p class="truncate text-xs text-neutral-400">{{ c.last }}</p>
+              </div>
+              
+              <!-- Accept/Reject buttons for actor requests -->
+              <div *ngIf="myRole === 'actor' && viewMode === 'requests'" class="flex gap-2">
+                <button 
+                  (click)="acceptRequest(c)" 
+                  class="w-8 h-8 flex items-center justify-center rounded-full bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"
+                  title="Accept"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </button>
+                <button 
+                  (click)="rejectRequest(c)" 
+                  class="w-8 h-8 flex items-center justify-center rounded-full bg-red-600/20 text-red-400 hover:bg-red-600/30 transition"
+                  title="Reject"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
               </div>
             </li>
           </ul>
@@ -144,18 +170,47 @@ type Conversation = {
             <ul class="max-h-[40vh] overflow-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
               <li
                 *ngFor="let c of conversations"
-                (click)="open(c); mobileListOpen = false"
-                class="px-4 py-3 cursor-pointer hover:bg-white/5 transition flex items-center gap-3"
-                [ngClass]="{ 'bg-white/10': c.id === active?.id }"
+                [ngClass]="{ 'bg-white/10': c.id === active?.id, 'cursor-pointer hover:bg-white/5': myRole !== 'actor' || viewMode !== 'requests' }"
+                class="px-4 py-3 transition flex items-center gap-3"
               >
+                <!-- Avatar -->
                 <div
                   class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400"
                 >
                   {{ c.name[0] | uppercase }}
                 </div>
-                <div class="flex-1 min-w-0">
+                
+                <!-- Content -->
+                <div 
+                  class="flex-1 min-w-0" 
+                  [class.cursor-pointer]="myRole !== 'actor' || viewMode !== 'requests'" 
+                  (click)="handleMobileItemClick(c)"
+                >
                   <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
                   <p class="truncate text-xs text-neutral-400">{{ c.last }}</p>
+                </div>
+                
+                <!-- Accept/Reject buttons for actor requests -->
+                <div *ngIf="myRole === 'actor' && viewMode === 'requests'" class="flex gap-2">
+                  <button 
+                    (click)="acceptRequest(c); mobileListOpen = false" 
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"
+                    title="Accept"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </button>
+                  <button 
+                    (click)="rejectRequest(c); mobileListOpen = false" 
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-red-600/20 text-red-400 hover:bg-red-600/30 transition"
+                    title="Reject"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
                 </div>
               </li>
             </ul>
@@ -248,16 +303,70 @@ type Conversation = {
                 </div>
               </div>
 
-              <!-- When no conversations exist -->
-              <div *ngIf="!initialLoading && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
-                <div class="flex flex-col items-center gap-2">
-                  <div class="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+              <!-- Producer: No conversations yet -->
+              <div *ngIf="!initialLoading && myRole === 'producer' && conversations && conversations.length === 0 && rejectedChats.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
                   </div>
                   <p>No conversations yet</p>
-                  <p class="text-xs text-neutral-500">{{ myRole === 'producer' ? 'Search for actors to start a conversation' : 'Producers will reach out to you' }}</p>
+                  <p class="text-xs text-neutral-500">Search for actors to start a conversation</p>
+                </div>
+              </div>
+              
+              <!-- Producer: Rejected chats -->
+              <div *ngIf="!initialLoading && myRole === 'producer' && rejectedChats.length > 0 && !active" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <p>You can message these actors:</p>
+                  <div class="flex flex-col gap-2 w-full max-w-xs">
+                    <ng-container *ngFor="let rejectedChat of rejectedChats">
+                      <button 
+                        (click)="startChatWithActor(rejectedChat.actorId)"
+                        class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-neutral-200 transition flex items-center gap-2"
+                      >
+                        <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ getActorInitial(rejectedChat.actorId) }}</div>
+                        <span>{{ getActorName(rejectedChat.actorId) }}</span>
+                      </button>
+                    </ng-container>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actor: Chat tab with no conversations -->
+              <div *ngIf="!initialLoading && myRole === 'actor' && viewMode === 'chat' && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <p>No messages yet</p>
+                  <p class="text-xs text-neutral-500">Producers will reach out to you</p>
+                </div>
+              </div>
+
+              <!-- Actor: Requests loading state -->
+              <div *ngIf="requestsLoading && myRole === 'actor' && viewMode === 'requests'" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <app-loader [show]="true" [overlay]="false" message="Loading requests..."></app-loader>
+              </div>
+
+              <!-- Actor: Requests tab with no requests -->
+              <div *ngIf="!requestsLoading && myRole === 'actor' && viewMode === 'requests' && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <p>No requests yet</p>
+                  <p class="text-xs text-neutral-500">New chat requests will appear here</p>
                 </div>
               </div>
 
@@ -276,12 +385,28 @@ type Conversation = {
           </div>
 
           <!-- Composer -->
+          <div 
+            *ngIf="active && myRole === 'producer' && isRejectedByActor()"
+            class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center justify-center shrink-0 bg-neutral-900/60"
+          >
+            <div class="text-red-400 text-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              <span>You cannot message this actor</span>
+            </div>
+          </div>
+          
+          <!-- Composer -->
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60"
-            *ngIf="active"
+            *ngIf="active && ((myRole !== 'actor' && !isRejectedByActor()) || active.actorAccepted)"
           >
             <input
+              id="message-draft"
               [(ngModel)]="draft"
               name="draft"
               placeholder="type a message"
@@ -322,6 +447,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   mobileListOpen = false;
   loading = false;
   initialLoading = true;
+  requestsLoading = true;
 
   meUid: string | null = null;
   myRole: UserRole = 'user';
@@ -329,6 +455,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private msgsSub = new Subscription();
   private typingSubscription = new Subscription();
   private counterpartByRoom = new Map<string, string>();
+  private counterpartNames = new Map<string, string>();
 
   actors$?: Observable<UserDoc[]>;
   filteredActors$?: Observable<UserDoc[]>;
@@ -363,6 +490,10 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Unread counts
   requestsCount$?: Observable<number>;
   totalUnreadCount$?: Observable<number>;
+  
+  // Rejected chats (for producers)
+  rejectedChats$?: Observable<(ChatRoom & { id: string })[]>;
+  rejectedChats: (ChatRoom & { id: string })[] = [];
 
   // Actor message search
   messageSearch = new FormControl('');
@@ -390,16 +521,35 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Mirror role to existing field for template conditions that still use it
     this.roomsSub.add(this.myRole$.subscribe(r => this.myRole = r));
 
-    // Total unread count for badge in navigation
-    this.totalUnreadCount$ = this.chat.getTotalUnreadCount(this.meUid);
+    // Total unread count for accepted chats (for chat tab)
+    this.totalUnreadCount$ = this.myRole$.pipe(
+      switchMap(role => this.chat.getTotalUnreadCount(this.meUid!, role)),
+      shareReplay(1)
+    );
 
     // For actors: count of producer-initiated threads (requests)
     this.requestsCount$ = this.myRole$.pipe(
       filter(role => role === 'actor'),
-      switchMap(() => this.chat.observeRequestsForActor(this.meUid!)),
-      map(requests => requests.length),
+      switchMap(() => this.chat.getChatRequestsCount(this.meUid!)),
+      tap(() => {
+        // Set requestsLoading to false once we have requests data
+        this.requestsLoading = false;
+      }),
       shareReplay(1)
     );
+    
+    // Subscribe to requestsCount$ to ensure it's initialized
+    this.roomsSub.add(this.requestsCount$?.subscribe());
+    
+    // For producers: observe rejected chats
+    if (this.myRole === 'producer' && this.meUid) {
+      this.rejectedChats$ = this.chat.observeRejectedChatsForProducer(this.meUid);
+      this.roomsSub.add(
+        this.rejectedChats$.subscribe(rejectedChats => {
+          this.rejectedChats = rejectedChats;
+        })
+      );
+    }
 
     // Check for cached rooms to show immediately
     const cachedRooms = this.chat.getCachedRooms(this.meUid!, this.myRole as UserRole);
@@ -453,6 +603,8 @@ export class ChatComponent implements OnInit, OnDestroy {
               name: (u?.name as string) || counterpartId,
               last: r.lastMessage?.text || '',
               unreadCount: r.unreadCount,
+              actorAccepted: r.actorAccepted,
+              actorRejected: r.actorRejected,
               messages: [] as Message[]
             }))
           );
@@ -547,6 +699,8 @@ export class ChatComponent implements OnInit, OnDestroy {
         name: counterpartId, // Will be updated later with real name
         last: r.lastMessage?.text || '',
         unreadCount: r.unreadCount,
+        actorAccepted: r.actorAccepted,
+        actorRejected: r.actorRejected,
         messages: []
       };
     });
@@ -605,6 +759,30 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.active = c;
     this.activeRoomId$.next(c.id);
     
+    // Debug log to check conversation flags
+    console.log(`Opening conversation ${c.id}, actorAccepted:`, c.actorAccepted, 'actorRejected:', c.actorRejected);
+    
+    // Mark messages as read when opening a conversation
+    if (this.meUid) {
+      // Mark messages as read and update notification count
+      this.chat.markMessagesAsRead(c.id, this.meUid);
+      
+      // Force refresh of unread counts to update UI immediately
+      if (this.totalUnreadCount$) {
+        this.totalUnreadCount$.pipe(take(1)).subscribe();
+      }
+      
+      // For actors, also refresh request counts
+      if (this.myRole === 'actor' && this.requestsCount$) {
+        this.requestsCount$.pipe(take(1)).subscribe();
+      }
+    }
+    
+    // Clear draft if this is a rejected conversation for a producer
+    if (this.myRole === 'producer' && c.actorRejected) {
+      this.draft = '';
+    }
+    
     // Check for cached messages first to show immediately
     const cachedMessages = this.chat.getCachedMessages(c.id);
     if (cachedMessages && cachedMessages.length > 0) {
@@ -633,7 +811,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Mark as read when opening
     if (this.meUid) {
-      this.chat.markRoomAsRead(c.id, this.meUid);
+      this.chat.markMessagesAsRead(c.id, this.meUid);
     }
 
     // Setup typing indicator for this room
@@ -687,6 +865,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   async send() {
     const txt = this.draft.trim();
     if (!txt || !this.active || !this.meUid || this.isSending) return;
+    
+    // Prevent sending if the conversation has been rejected (for producers)
+    if (this.myRole === 'producer' && this.isRejectedByActor()) {
+      this.draft = '';
+      return;
+    }
     
     const roomId = this.active.id;
     const receiverId = this.counterpartByRoom.get(roomId) || '';
@@ -762,25 +946,105 @@ export class ChatComponent implements OnInit, OnDestroy {
   openActorDropdown() { this.showActorDropdown = true; }
   closeActorDropdownLater() { setTimeout(() => (this.showActorDropdown = false), 120); }
   onSearch(term: string) { this.search$.next(term); }
-
   async startChatWith(u: UserDoc) {
-    console.log('startChatWith', u);
     if (!this.meUid || this.myRole !== 'producer') return;
-    // Auto-start the conversation by sending the first message from producer
-    const greeting = 'Hi! Thanks for connecting.';
-    const roomId = await this.chat.producerStartChat(u.uid, this.meUid, greeting);
-    this.counterpartByRoom.set(roomId, u.uid);
-    let existing = this.conversations.find((c) => c.id === roomId);
-    if (!existing) {
-      const conv: Conversation = { id: roomId, name: u.name || u.uid, last: greeting, messages: [] };
-      this.conversations = [conv, ...this.conversations];
-      existing = conv;
-    } else {
-      existing.last = greeting;
+    
+    // Create a chat room without sending an initial message
+    const roomId = await this.chat.producerStartChat(u.uid, this.meUid);
+    
+    // Find the conversation and open it
+    const convo = this.conversations?.find(c => c.id === roomId);
+    if (convo) {
+      this.open(convo);
+      // Set focus on the draft input
+      setTimeout(() => {
+        const draftInput = document.getElementById('message-draft');
+        if (draftInput) {
+          draftInput.focus();
+        }
+      }, 100);
     }
-    this.open(existing);
+    
     this.showActorDropdown = false;
     this.mobileListOpen = false;
+  }
+
+  // Accept a chat request (for actors)
+  async acceptRequest(c: Conversation) {
+    if (!this.meUid) return;
+    try {
+      // Accept the chat request
+      await this.chat.acceptChatRequest(c.id, this.meUid);
+      
+      // Update the conversation object to reflect acceptance
+      c.actorAccepted = true;
+      
+      // Update the active conversation if it's the same one
+      if (this.active && this.active.id === c.id) {
+        this.active.actorAccepted = true;
+      }
+      
+      // Switch to chat view mode first
+      this.setViewMode('chat');
+      
+      // Open the conversation after accepting
+      this.open(c);
+      
+      // Force UI update by creating a new reference
+      if (this.conversations) {
+        const updatedConversations = this.conversations.map(conv => {
+          if (conv.id === c.id) {
+            return {...conv, actorAccepted: true};
+          }
+          return conv;
+        });
+        this.conversations = updatedConversations;
+      }
+      
+      // Refresh the conversations list to update UI
+      this.refreshConversations();
+    } catch (error) {
+      console.error('Error accepting chat request:', error);
+    }
+  }
+  
+  // Reject a chat request (for actors)
+  async rejectRequest(c: Conversation) {
+    if (!this.meUid) return;
+    try {
+      await this.chat.rejectChatRequest(c.id, this.meUid);
+      // Remove from the conversations list
+      this.conversations = this.conversations?.filter(conv => conv.id !== c.id) || [];
+      // If this was the active conversation, clear it
+      if (this.active?.id === c.id) {
+        this.active = null;
+      }
+    } catch (error) {
+      console.error('Error rejecting chat request:', error);
+    }
+  }
+  
+  // Handle click on mobile conversation item
+  handleMobileItemClick(c: Conversation) {
+    // If actor in requests view, do nothing (they need to use accept/reject buttons)
+    if (this.myRole === 'actor' && this.viewMode === 'requests') {
+      return;
+    }
+    
+    // Otherwise open the conversation and close the mobile list
+    this.open(c);
+    this.mobileListOpen = false;
+  }
+  
+  // Handle click on desktop conversation item
+  handleDesktopItemClick(c: Conversation) {
+    // If actor in requests view, do nothing (they need to use accept/reject buttons)
+    if (this.myRole === 'actor' && this.viewMode === 'requests') {
+      return;
+    }
+    
+    // Otherwise open the conversation
+    this.open(c);
   }
 
   openDefaultConversation() {
@@ -790,6 +1054,129 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
     if (this.myRole === 'producer') {
       this.openActorDropdown();
+    }
+  }
+  
+  // Helper method to get actor initial for display
+  getActorInitial(actorId: string): string {
+    // Try to get from cached names first
+    const cachedName = this.getActorName(actorId);
+    if (cachedName && cachedName !== 'Unknown') {
+      return cachedName[0].toUpperCase();
+    }
+    // Default initial if name not found
+    return 'A';
+  }
+  
+  // Helper method to get actor name
+  getActorName(actorId: string): string {
+    // Check if we have the actor name in our cache
+    const cachedName = this.counterpartNames.get(actorId);
+    if (cachedName) {
+      return cachedName;
+    }
+    
+    // If not in cache, fetch it and store for future use
+    this.user.observeUser(actorId).pipe(take(1)).subscribe(user => {
+      if (user) {
+        const name = user.name || user.email?.split('@')[0] || 'Unknown';
+        this.counterpartNames.set(actorId, name);
+      }
+    });
+    
+    // Return a placeholder until we get the real name
+    return 'Actor';
+  }
+  
+  // Check if the current conversation has been rejected by the actor
+  isRejectedByActor(): boolean {
+    if (!this.active) return false;
+    return this.active.actorRejected === true;
+  }
+  
+  // Start a new chat with an actor (for producers, after rejection)
+  async startChatWithActor(actorId: string) {
+    if (!this.meUid || this.myRole !== 'producer') return;
+    
+    // Create a chat room without sending an initial message
+    const roomId = await this.chat.producerStartChat(actorId, this.meUid);
+    
+    // Find the conversation and open it
+    const convo = this.conversations?.find(c => c.id === roomId);
+    if (convo) {
+      this.open(convo);
+      // Set focus on the draft input
+      setTimeout(() => {
+        const draftInput = document.getElementById('message-draft');
+        if (draftInput) {
+          draftInput.focus();
+        }
+      }, 100);
+    } else {
+      // If conversation not found in the list, refresh conversations
+      this.refreshConversations();
+      // Try to find it again after a short delay
+      setTimeout(() => {
+        const newConvo = this.conversations?.find(c => c.id === roomId);
+        if (newConvo) {
+          this.open(newConvo);
+        }
+      }, 500);
+    }
+  }
+  
+  // Refresh conversations list
+  refreshConversations() {
+    // Force a refresh of the conversations list
+    if (this.rooms$) {
+      // Take the latest value from rooms$ and process it
+      this.rooms$.pipe(take(1)).subscribe(rooms => {
+        // First, create basic conversations with IDs
+        const tempConversations: Conversation[] = rooms.map(r => {
+          const counterpartId = this.getCounterpartId(r);
+          this.counterpartByRoom.set(r.id!, counterpartId);
+          
+          return {
+            id: r.id!,
+            name: counterpartId, // Temporary name, will be updated
+            last: r.lastMessage?.text || '',
+            actorAccepted: r.actorAccepted,
+            actorRejected: r.actorRejected,
+            unreadCount: r.unreadCount
+          };
+        });
+        
+        // Now fetch user names for each counterpart
+        const lookups = tempConversations.map(c => {
+          const counterpartId = this.counterpartByRoom.get(c.id) || '';
+          return this.user.observeUser(counterpartId).pipe(
+            take(1),
+            map(u => ({
+              id: c.id,
+              name: u?.name || u?.email?.split('@')[0] || 'Unknown',
+            }))
+          );
+        });
+        
+        // Combine all lookups
+        if (lookups.length) {
+          combineLatest(lookups).pipe(take(1)).subscribe(nameUpdates => {
+            // Update names in conversations
+            nameUpdates.forEach(update => {
+              const convo = tempConversations.find(c => c.id === update.id);
+              if (convo) {
+                convo.name = update.name;
+              }
+            });
+            
+            // Update the conversations array
+            this.conversations = tempConversations;
+          });
+        } else {
+          // No lookups needed, just update the conversations array
+          this.conversations = tempConversations;
+        }
+      });
     }
   }
 }
