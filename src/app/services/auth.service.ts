@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BrowserDetectionService } from '../utils/browser-detection';
 import {
   Auth,
@@ -13,6 +14,15 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  PhoneAuthProvider,
+  PhoneAuthCredential,
+  linkWithPhoneNumber,
+  updatePhoneNumber,
+  ApplicationVerifier,
+  connectAuthEmulator,
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
 
@@ -31,6 +41,26 @@ export class AuthService {
   private auth = inject(Auth);
   private db = inject(Firestore);
   private browserDetection = inject(BrowserDetectionService);
+  private platformId = inject(PLATFORM_ID);
+  private recaptchaVerifier: RecaptchaVerifier | null = null;
+  private confirmationResult: ConfirmationResult | null = null;
+  private isLocalhost = false;
+
+  constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      // For localhost development, use Firebase Auth emulator if available
+      if (this.isLocalhost) {
+        try {
+          // Uncomment this line if you want to use Firebase Auth emulator
+          // connectAuthEmulator(this.auth, 'http://localhost:9099');
+        } catch (e) {
+          console.log('Auth emulator not available');
+        }
+      }
+    }
+  }
 
   // =========================
   // Email/Password, Google, Apple Auth
@@ -244,6 +274,239 @@ export class AuthService {
     }
     // Sign out from Firebase Auth
     return signOut(this.auth);
+  }
+
+  // =========================
+  // Phone Authentication
+  // =========================
+
+  /** Initialize recaptcha verifier for phone authentication */
+  async initRecaptchaVerifier(containerElementId: string = 'recaptcha-container'): Promise<RecaptchaVerifier> {
+    // Clean up existing verifier if any
+    if (this.recaptchaVerifier) {
+      try {
+        this.recaptchaVerifier.clear();
+      } catch (e) {
+        console.log('Error clearing existing verifier:', e);
+      }
+      this.recaptchaVerifier = null;
+    }
+    
+    // Wait for the container element to be available
+    const container = document.getElementById(containerElementId);
+    if (!container) {
+      // Create the container if it doesn't exist
+      const newContainer = document.createElement('div');
+      newContainer.id = containerElementId;
+      document.body.appendChild(newContainer);
+    }
+    
+    // Add a small delay to ensure DOM is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    try {
+      this.recaptchaVerifier = new RecaptchaVerifier(this.auth, containerElementId, {
+        size: 'invisible',
+        callback: (response: any) => {
+          // reCAPTCHA solved - will proceed with phone auth
+          console.log('reCAPTCHA verified successfully');
+        },
+        'expired-callback': () => {
+          // Reset reCAPTCHA
+          console.log('reCAPTCHA expired, resetting...');
+          this.cleanupPhoneAuth();
+        },
+        'error-callback': (error: any) => {
+          console.error('reCAPTCHA error:', error);
+          this.cleanupPhoneAuth();
+        }
+      });
+      
+      // Render the reCAPTCHA widget
+      const widgetId = await this.recaptchaVerifier.render();
+      console.log('reCAPTCHA rendered with widget ID:', widgetId);
+      
+    } catch (error: any) {
+      console.error('Error initializing reCAPTCHA:', error);
+      
+      // If it's already rendered, clear and retry
+      if (error?.message?.includes('already rendered')) {
+        console.log('reCAPTCHA already rendered, clearing and retrying...');
+        const existingContainer = document.getElementById(containerElementId);
+        if (existingContainer) {
+          existingContainer.innerHTML = '';
+        }
+        // Retry initialization
+        return this.initRecaptchaVerifier(containerElementId);
+      }
+      
+      throw error;
+    }
+    
+    return this.recaptchaVerifier;
+  }
+
+  /** Send OTP to phone number */
+  async sendOTP(phoneNumber: string, recaptchaContainerId?: string): Promise<void> {
+    // For localhost development, simulate OTP sending
+    if (this.isLocalhost) {
+      console.log('🚀 Development mode: Simulating OTP send to', phoneNumber);
+      
+      // Create a mock confirmation result for localhost
+      this.confirmationResult = {
+        confirm: async (code: string) => {
+          if (code === '123456' || code === '000000') {
+            // Return a mock user for successful verification
+            return {
+              user: this.auth.currentUser || {
+                uid: 'mock-phone-user-' + Date.now(),
+                phoneNumber: phoneNumber,
+                displayName: null,
+                email: null
+              } as any
+            };
+          } else {
+            throw { code: 'auth/invalid-verification-code', message: 'Invalid verification code' };
+          }
+        },
+        verificationId: 'mock-verification-id-' + Date.now()
+      } as any;
+      
+      console.log('✅ Mock OTP sent! Use code: 123456 or 000000');
+      return;
+    }
+
+    try {
+      // Production flow with reCAPTCHA
+      if (!this.recaptchaVerifier) {
+        await this.initRecaptchaVerifier(recaptchaContainerId || 'recaptcha-container');
+      }
+
+      // Validate phone number format
+      if (!phoneNumber.startsWith('+')) {
+        throw new Error('Phone number must include country code (e.g., +1234567890)');
+      }
+
+      console.log('Sending OTP to:', phoneNumber);
+      
+      // Send OTP
+      this.confirmationResult = await signInWithPhoneNumber(
+        this.auth,
+        phoneNumber,
+        this.recaptchaVerifier as ApplicationVerifier
+      );
+      
+      console.log('OTP sent successfully');
+    } catch (error: any) {
+      console.error('Error in sendOTP:', error);
+      
+      // Clean up on error
+      this.recaptchaVerifier?.clear();
+      this.recaptchaVerifier = null;
+      this.confirmationResult = null;
+      
+      // Provide more specific error messages
+      if (error?.code === 'auth/invalid-app-credential') {
+        throw new Error('Phone authentication not configured. Please check Firebase settings and add localhost to authorized domains.');
+      } else if (error?.code === 'auth/invalid-phone-number') {
+        throw new Error('Invalid phone number format. Please include country code.');
+      } else if (error?.code === 'auth/missing-phone-number') {
+        throw new Error('Phone number is required.');
+      } else if (error?.code === 'auth/quota-exceeded') {
+        throw new Error('SMS quota exceeded. Please try again later.');
+      } else if (error?.code === 'auth/user-disabled') {
+        throw new Error('This phone number has been disabled.');
+      } else if (error?.code === 'auth/captcha-check-failed') {
+        throw new Error('reCAPTCHA verification failed. Please try again.');
+      }
+      
+      throw error;
+    }
+  }
+
+  /** Verify OTP code */
+  async verifyOTP(code: string): Promise<User> {
+    if (!this.confirmationResult) {
+      throw new Error('No OTP verification in progress');
+    }
+
+    try {
+      const result = await this.confirmationResult.confirm(code);
+      
+      // For localhost mock verification
+      if (this.isLocalhost) {
+        console.log('✅ Mock OTP verification successful!');
+      }
+      
+      // Clean up after successful verification
+      this.cleanupPhoneAuth();
+      return result.user;
+    } catch (error: any) {
+      if (error?.code === 'auth/invalid-verification-code') {
+        throw new Error('Invalid OTP code');
+      }
+      throw error;
+    }
+  }
+
+  /** Link phone number to existing user account */
+  async linkPhoneNumber(phoneNumber: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+
+    // Initialize recaptcha if needed
+    if (!this.recaptchaVerifier) {
+      await this.initRecaptchaVerifier();
+    }
+
+    this.confirmationResult = await linkWithPhoneNumber(
+      user,
+      phoneNumber,
+      this.recaptchaVerifier as ApplicationVerifier
+    );
+  }
+
+  /** Verify OTP for phone linking */
+  async verifyPhoneLinking(code: string): Promise<void> {
+    if (!this.confirmationResult) {
+      throw new Error('No phone linking in progress');
+    }
+
+    try {
+      await this.confirmationResult.confirm(code);
+      
+      // For localhost mock verification
+      if (this.isLocalhost) {
+        console.log('✅ Mock phone linking successful!');
+      }
+      
+      // Clean up after successful verification
+      this.cleanupPhoneAuth();
+    } catch (error: any) {
+      if (error?.code === 'auth/invalid-verification-code') {
+        throw new Error('Invalid OTP code');
+      }
+      throw error;
+    }
+  }
+
+  /** Update phone number in user profile */
+  async updateUserPhoneVerified(uid: string, phone: string): Promise<void> {
+    const ref = doc(this.db, 'users', uid);
+    await updateDoc(ref, {
+      phone,
+      phoneVerified: true,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  /** Clean up phone auth resources */
+  cleanupPhoneAuth(): void {
+    if (this.recaptchaVerifier) {
+      this.recaptchaVerifier.clear();
+      this.recaptchaVerifier = null;
+    }
+    this.confirmationResult = null;
   }
 
   /**

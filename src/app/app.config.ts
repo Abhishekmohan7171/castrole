@@ -14,7 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       routes,
       withDisabledInitialNavigation() // Disable initial navigation until we're ready
-    ), 
+    ),
     provideClientHydration(),
     provideFirebaseApp(() => initializeApp({
       apiKey: "AIzaSyDBkKWzCv-8DRbizBG3YBkmaUncRIAPsL0",
@@ -22,8 +22,8 @@ export const appConfig: ApplicationConfig = {
       projectId: "yberhood-castrole",
       storageBucket: "yberhood-castrole.firebasestorage.app",
       messagingSenderId: "1033810945165",
-      appId: "1:1033810945165:web:ae5d8707a74a637ce02ec4",
-      measurementId: "G-84BB4QMRES"
+      appId: "1:1033810945165:web:02d014adb3d0cd7ee02ec4",
+      measurementId: "G-9PLL3MXMNX"
     })),
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),

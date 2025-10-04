@@ -123,25 +123,58 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
                   inputmode="numeric"
                   placeholder="mobile number"
                   aria-label="mobile number"
-                  class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 transition"
+                  [disabled]="phoneVerified"
+                  class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 transition disabled:opacity-75"
                 />
+                <!-- Verified tick -->
+                <span *ngIf="phoneVerified" class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </span>
               </div>
+              <!-- Verify button -->
+              <button
+                type="button"
+                *ngIf="!phoneVerified"
+                [disabled]="!isPhoneValid() || verifyingPhone"
+                (click)="onVerifyPhone()"
+                class="px-6 py-3 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-400 rounded-full font-medium ring-1 ring-emerald-600/30 transition">
+                <span *ngIf="!verifyingPhone">verify</span>
+                <span *ngIf="verifyingPhone">sending...</span>
+              </button>
+              <button
+                type="button"
+                *ngIf="phoneVerified"
+                (click)="onChangePhone()"
+                class="px-6 py-3 bg-neutral-700/50 hover:bg-neutral-700/70 text-neutral-300 rounded-full font-medium ring-1 ring-white/10 transition">
+                change
+              </button>
             </div>
           </div>
 
-          <button type="button" [disabled]="form.invalid" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <!-- Recaptcha container (invisible) -->
+          <div id="recaptcha-container"></div>
+
+          <button type="button" [disabled]="form.invalid || !phoneVerified" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             next
           </button>
         </form>
       </div>
-      <!-- OTP Modal -->
-      <app-otp [open]="otpOpen" (close)="otpOpen = false" (verify)="onOtpVerify($event)"></app-otp>
+      
+      <!-- OTP Component -->
+      <app-otp
+        [open]="showOtpDialog"
+        [phone]="getFullPhoneNumber()"
+        (verify)="onOtpVerify($event)"
+        (close)="onOtpClose()"
+        (resend)="onOtpResend()">
+      </app-otp>
     </div>
   `,
   styles: []
 })
 export class ProducerOnboardComponent {
-  otpOpen = false;
   loading = false;
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
@@ -149,6 +182,9 @@ export class ProducerOnboardComponent {
   private http = inject(HttpClient);
 
   errorMsg = '';
+  phoneVerified = false;
+  verifyingPhone = false;
+  showOtpDialog = false;
 
   countryCodes: Array<{ name: string; dialCode: string; flag: string }> = [];
   // Location data and suggestions
@@ -252,9 +288,106 @@ export class ProducerOnboardComponent {
     }
   }
 
-  onOtpVerify(code: string) {
-    this.otpOpen = false;
-    // TODO: implement navigation after verification
+  // Phone verification methods
+  isPhoneValid(): boolean {
+    const cc = this.form.get('countryCode')?.value;
+    const num = this.form.get('mobileNumber')?.value;
+    return !!cc && !!num && /^\d{6,12}$/.test(num);
+  }
+
+  getFullPhoneNumber(): string {
+    const cc = (this.form.get('countryCode')?.value || '').toString().trim().replace(/-/g, '');
+    const num = (this.form.get('mobileNumber')?.value || '').toString().trim();
+    return `${cc}${num}`;
+  }
+
+  async onVerifyPhone() {
+    if (!this.isPhoneValid()) return;
+    
+    this.verifyingPhone = true;
+    this.errorMsg = '';
+    const phoneNumber = this.getFullPhoneNumber();
+    
+    try {
+      // Add a small delay to ensure DOM is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await this.auth.sendOTP(phoneNumber, 'recaptcha-container');
+      this.showOtpDialog = true;
+    } catch (error: any) {
+      console.error('Error sending OTP:', error);
+      
+      // Display the actual error message to help debug
+      if (error?.message) {
+        this.errorMsg = error.message;
+      } else if (error?.code === 'auth/too-many-requests') {
+        this.errorMsg = 'Too many requests. Please try again later.';
+      } else if (error?.code === 'auth/invalid-phone-number') {
+        this.errorMsg = 'Invalid phone number format.';
+      } else {
+        this.errorMsg = 'Failed to send OTP. Please try again.';
+      }
+      
+      // Show alert for debugging (only if not localhost mock mode)
+      if (!window.location.hostname.includes('localhost')) {
+        alert(`Phone verification error: ${this.errorMsg}\n\nPlease ensure:\n1. Phone auth is enabled in Firebase\n2. localhost is in authorized domains\n3. You're using a valid phone number with country code (e.g., +919876543210)`);
+      }
+    } finally {
+      this.verifyingPhone = false;
+    }
+  }
+
+  async onOtpVerify(code: string) {
+    this.loading = true;
+    try {
+      // For new user registration flow (no current user)
+      const user = this.auth.getCurrentUser();
+      
+      if (!user) {
+        // Verify OTP for new phone auth user
+        await this.auth.verifyOTP(code);
+      } else {
+        // For provider users linking phone number
+        await this.auth.verifyPhoneLinking(code);
+      }
+      
+      this.phoneVerified = true;
+      this.showOtpDialog = false;
+      // Disable phone inputs after verification
+      this.form.get('countryCode')?.disable();
+      this.form.get('mobileNumber')?.disable();
+    } catch (error: any) {
+      console.error('Error verifying OTP:', error);
+      this.errorMsg = error?.message || 'Invalid OTP. Please try again.';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  onOtpClose() {
+    this.showOtpDialog = false;
+    this.auth.cleanupPhoneAuth();
+  }
+
+  async onOtpResend() {
+    this.verifyingPhone = true;
+    const phoneNumber = this.getFullPhoneNumber();
+    
+    try {
+      await this.auth.sendOTP(phoneNumber, 'recaptcha-container');
+    } catch (error: any) {
+      console.error('Error resending OTP:', error);
+      this.errorMsg = 'Failed to resend OTP. Please try again.';
+    } finally {
+      this.verifyingPhone = false;
+    }
+  }
+
+  onChangePhone() {
+    this.phoneVerified = false;
+    this.form.get('countryCode')?.enable();
+    this.form.get('mobileNumber')?.enable();
+    this.auth.cleanupPhoneAuth();
   }
 
   private updateLocationSuggestions(query: string) {
