@@ -199,6 +199,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
         if (userData) {
           if (userData['role'] === 'actor') {
             // For actors, combine unread messages and requests
+            // Force re-create observables to get fresh data
             const chatUnread$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role']);
             const requestsCount$ = this.chatService.getChatRequestsCount(this.uid!);
             this.chatNotificationCount$ = chatUnread$.pipe(
@@ -211,11 +212,14 @@ export class DiscoverComponent implements OnInit, OnDestroy {
             );
           } else {
             // For producers, just show unread messages
+            // Force re-create observable to get fresh data
             this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role'] || 'producer');
           }
 
           // Force a refresh by subscribing
-          this.chatNotificationCount$.pipe(take(1)).subscribe();
+          this.subscriptions.add(
+            this.chatNotificationCount$.subscribe()
+          );
         }
       });
     }

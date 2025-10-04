@@ -18,7 +18,7 @@ import {
   increment,
   limit as firestoreLimit
 } from '@angular/fire/firestore';
-import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay } from 'rxjs';
+import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay, distinctUntilChanged } from 'rxjs';
 
 export type UserRole = 'actor' | 'producer' | 'user';
 
@@ -380,7 +380,8 @@ export class ChatService {
           return total + unreadCount;
         }, 0);
       }),
-      shareReplay(1)
+      // Don't use shareReplay here to ensure fresh values on each subscription
+      distinctUntilChanged()
     );
   }
   

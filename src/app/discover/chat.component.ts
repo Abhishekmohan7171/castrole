@@ -764,13 +764,26 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Mark messages as read when opening a conversation
     if (this.meUid) {
-      // Mark messages as read and update notification count
+      // Clear unread count locally immediately for instant UI update
+      if (c.unreadCount && c.unreadCount[this.meUid]) {
+        c.unreadCount[this.meUid] = 0;
+        
+        // Also update in the conversations list
+        if (this.conversations) {
+          const convoIndex = this.conversations.findIndex(conv => conv.id === c.id);
+          if (convoIndex !== -1) {
+            this.conversations[convoIndex].unreadCount = {...c.unreadCount};
+          }
+        }
+      }
+      
+      // Mark messages as read in the database
       this.chat.markMessagesAsRead(c.id, this.meUid);
 
       // Force refresh of unread counts to update UI immediately
-      if (this.totalUnreadCount$) {
-        this.totalUnreadCount$.pipe(take(1)).subscribe();
-      }
+      // Re-initialize the observable to force a fresh query
+      this.totalUnreadCount$ = this.chat.getTotalUnreadCount(this.meUid, this.myRole);
+      this.totalUnreadCount$.pipe(take(1)).subscribe();
 
       // For actors, also refresh request counts
       if (this.myRole === 'actor' && this.requestsCount$) {
