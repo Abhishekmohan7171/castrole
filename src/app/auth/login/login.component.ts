@@ -211,7 +211,9 @@ export class LoginComponent {
     try {
       // Send password reset email
       await this.authService.sendPasswordResetEmail(email);
-      this.resetEmailSent = true;
+      
+      // Redirect to custom reset password page
+      await this.router.navigate(['/reset-password'], { queryParams: { email } });
     } catch (e: any) {
       console.error('[login] forgot password error', e);
       

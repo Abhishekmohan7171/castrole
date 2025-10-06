@@ -37,17 +37,29 @@ export class AppComponent implements OnInit {
         // Auth state has been determined, we can stop showing the loading screen
         this.loadingService.setLoading(false);
         
+        // Get the current URL from the window location (more reliable before navigation starts)
+        const currentPath = window.location.pathname;
+        
         // Now we can safely navigate based on auth state
         this.router.initialNavigation();
         
-        // Navigate to the appropriate route based on auth state
-        if (user) {
-          // User is logged in, navigate to discover
-          this.router.navigateByUrl('/discover');
-        } else {
-          // User is not logged in, navigate to login
-          this.router.navigateByUrl('/login');
+        // Only redirect if we're on the default route (/) or no specific route
+        // Don't redirect if user is on specific pages like reset-password, login, or onboarding
+        const protectedPaths = ['/reset-password', '/login', '/onboarding'];
+        const shouldRedirect = currentPath === '/' || currentPath === '' || 
+                              !protectedPaths.some(path => currentPath.startsWith(path));
+        
+        if (shouldRedirect) {
+          // Navigate to the appropriate route based on auth state
+          if (user) {
+            // User is logged in, navigate to discover
+            this.router.navigateByUrl('/discover');
+          } else {
+            // User is not logged in, navigate to login
+            this.router.navigateByUrl('/login');
+          }
         }
+        // Otherwise, let the route guards handle the navigation
         
         // Unsubscribe from auth state changes
         unsubscribe();

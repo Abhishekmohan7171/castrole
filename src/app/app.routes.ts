@@ -3,6 +3,7 @@ import { LoginComponent } from './auth/login/login.component';
 import { DiscoverComponent } from './discover/discover.component';
 import { authCanMatch, loggedOutOnlyGuard } from './guards/auth.guard';
 import { AuthLoadingComponent } from './auth/auth-loading.component';
+import { ResetPasswordComponent } from './auth/reset-password/reset-password.component';
 
 export const routes: Routes = [
   // Default -> loading component while auth initializes
@@ -10,6 +11,7 @@ export const routes: Routes = [
 
   // Auth
   { path: 'login', component: LoginComponent, canMatch: [loggedOutOnlyGuard] },
+  { path: 'reset-password', component: ResetPasswordComponent, canMatch: [loggedOutOnlyGuard] },
   { path: 'register', redirectTo: 'onboarding' },
 
   // Onboarding flow
