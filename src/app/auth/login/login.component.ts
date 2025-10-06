@@ -55,7 +55,12 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
           </div>
 
           <div class="flex justify-end -mt-1">
-            <a href="#" class="text-xs text-neutral-500 hover:text-neutral-300">forgot password?</a>
+            <button type="button" (click)="forgotPassword()" class="text-xs text-neutral-500 hover:text-neutral-300">forgot password?</button>
+          </div>
+          
+          <!-- Password Reset Success Message -->
+          <div *ngIf="resetEmailSent" class="text-sm text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+            Password reset email sent. Please check your inbox.
           </div>
 
           <!-- Error -->
@@ -104,6 +109,7 @@ export class LoginComponent {
 
   loading = false;
   error = '';
+  resetEmailSent = false;
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -176,6 +182,47 @@ export class LoginComponent {
     } catch (e: any) {
       console.error('[login] apple error', e);
       this.error = e?.message || 'Apple sign-in failed';
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  async forgotPassword() {
+    // Reset previous states
+    this.resetEmailSent = false;
+    this.error = '';
+    
+    // Get email from form
+    const email = this.form.get('email')?.value;
+    
+    // Validate email
+    if (!email) {
+      this.error = 'Please enter your email address';
+      return;
+    }
+    
+    if (!this.form.get('email')?.valid) {
+      this.error = 'Please enter a valid email address';
+      return;
+    }
+    
+    this.loading = true;
+    
+    try {
+      // Send password reset email
+      await this.authService.sendPasswordResetEmail(email);
+      
+      // Redirect to custom reset password page
+      await this.router.navigate(['/reset-password'], { queryParams: { email } });
+    } catch (e: any) {
+      console.error('[login] forgot password error', e);
+      
+      // Handle specific Firebase error codes
+      if (e?.code === 'auth/user-not-found') {
+        this.error = 'No account found with this email address';
+      } else {
+        this.error = e?.message || 'Failed to send password reset email';
+      }
     } finally {
       this.loading = false;
     }
