@@ -84,7 +84,14 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                   'text-neutral-100 font-semibold': isProfileActive && !isActor(),
                   'text-neutral-400 hover:text-neutral-200': !isProfileActive && !isActor()
                 }">
-                <span>{{ userName }}</span>
+                <ng-container *ngIf="userNameLoaded; else loadingName">
+                  <span>{{ userName }}</span>
+                </ng-container>
+                <ng-template #loadingName>
+                  <span class="inline-flex items-center">
+                    <span class="inline-block h-2.5 w-20 bg-neutral-700/50 rounded animate-pulse"></span>
+                  </span>
+                </ng-template>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -161,7 +168,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   showDropdown = false;
   isLoggingOut = false;
   isProfileActive = false;
-  userName = 'User';
+  userName = '';
+  userNameLoaded = false;
 
   // User role signals
   userRole = signal<string>('actor');
@@ -209,6 +217,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
             this.getUserDoc(user.uid).subscribe((userData: DocumentData | undefined) => {
               if (userData) {
                 this.userName = userData['name'] || user.email?.split('@')[0] || 'User';
+                this.userNameLoaded = true;
                 this.uid = user.uid;
                 // Set user role for theming
                 this.userRole.set(userData['role'] || 'actor');

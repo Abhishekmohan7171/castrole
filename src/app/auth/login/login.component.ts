@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, inject, OnInit } from '@angular/core';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
@@ -95,21 +95,25 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/80 text-base"></span>
             <span class="tracking-wide">continue with apple</span>
           </button>
-        </div>
       </div>
     </div>
   `,
   styles: []
 })
-export class LoginComponent {
-  private fb = inject(FormBuilder);
-  private auth = inject(Auth);
-  private router = inject(Router);
+export class LoginComponent implements OnInit {
   private authService = inject(AuthService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private fb = inject(FormBuilder);
 
+  returnUrl: string = '/discover';
   loading = false;
   error = '';
   resetEmailSent = false;
+  ngOnInit() {
+    // Get return url from route parameters or default to '/discover'
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/discover';
+  }
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -129,7 +133,7 @@ export class LoginComponent {
     this.error = '';
     try {
       await this.authService.loginWithEmail(email, password);
-      await this.router.navigateByUrl('/discover');
+      await this.router.navigateByUrl(this.returnUrl);
     } catch (e: any) {
       const msg = e?.message || 'Failed to sign in';
       this.error = msg;
@@ -146,11 +150,11 @@ export class LoginComponent {
     try {
       const { user, exists } = await this.authService.signInWithGoogle();
       
-      // If user exists in the database, update login timestamp and navigate to discover
+      // If user exists in the database, update login timestamp and navigate to return URL
       if (exists) {
         // Update login timestamp similar to email login
         await this.authService.updateLoginTimestamp(user.uid);
-        await this.router.navigateByUrl('/discover');
+        await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding
         await this.router.navigateByUrl('/onboarding');
@@ -170,11 +174,11 @@ export class LoginComponent {
     try {
       const { user, exists } = await this.authService.signInWithApple();
       
-      // If user exists in the database, update login timestamp and navigate to discover
+      // If user exists in the database, update login timestamp and navigate to return URL
       if (exists) {
         // Update login timestamp similar to email login
         await this.authService.updateLoginTimestamp(user.uid);
-        await this.router.navigateByUrl('/discover');
+        await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding
         await this.router.navigateByUrl('/onboarding');
