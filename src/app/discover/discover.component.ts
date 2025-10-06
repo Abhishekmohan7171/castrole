@@ -21,33 +21,42 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
       <header class="sticky top-0 z-40 backdrop-blur"
               [ngClass]="{'bg-black/70': !isActor(), 'bg-black/60': isActor()}">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between">
-          <a routerLink="/discover" 
+          <a routerLink="/discover"
              class="text-3xl font-black tracking-wider select-none transition-colors duration-300"
              [ngClass]="{'text-purple-200/80': isActor(), 'text-neutral-300': !isActor()}">
             castrole
           </a>
           <nav class="flex items-center gap-8 text-sm">
-            <a routerLink="/discover" 
-               [routerLinkActive]="isActor() ? 'text-purple-300' : 'text-fuchsia-300'" 
-               [routerLinkActiveOptions]="{ exact: true }" 
+            <a routerLink="/discover"
+               #discoverLink="routerLinkActive"
+               routerLinkActive
+               [routerLinkActiveOptions]="{ exact: true }"
                class="transition-colors duration-200"
                [ngClass]="{
-                 'text-purple-300/60 hover:text-purple-200': isActor(),
-                 'text-neutral-500 hover:text-neutral-300': !isActor()
+                 'text-purple-200 font-semibold': discoverLink.isActive && isActor(),
+                 'text-purple-300/60 hover:text-purple-200': !discoverLink.isActive && isActor(),
+                 'text-neutral-100 font-semibold': discoverLink.isActive && !isActor(),
+                 'text-neutral-500 hover:text-neutral-300': !discoverLink.isActive && !isActor()
                }">discover</a>
-            <a routerLink="/discover/upload" 
-               [routerLinkActive]="isActor() ? 'text-purple-300' : 'text-fuchsia-300'"
+            <a routerLink="/discover/upload"
+               #uploadLink="routerLinkActive"
+               routerLinkActive
                class="transition-colors duration-200"
                [ngClass]="{
-                 'text-purple-300/60 hover:text-purple-200': isActor(),
-                 'text-neutral-500 hover:text-neutral-300': !isActor()
+                 'text-purple-200 font-semibold': uploadLink.isActive && isActor(),
+                 'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive && isActor(),
+                 'text-neutral-100 font-semibold': uploadLink.isActive && !isActor(),
+                 'text-neutral-500 hover:text-neutral-300': !uploadLink.isActive && !isActor()
                }">upload</a>
-            <a routerLink="/discover/chat" 
-               [routerLinkActive]="isActor() ? 'text-purple-300' : 'text-fuchsia-300'"
+            <a routerLink="/discover/chat"
+               #chatLink="routerLinkActive"
+               routerLinkActive
                class="relative transition-colors duration-200"
                [ngClass]="{
-                 'text-purple-300/60 hover:text-purple-200': isActor(),
-                 'text-neutral-500 hover:text-neutral-300': !isActor()
+                 'text-purple-200 font-semibold': chatLink.isActive && isActor(),
+                 'text-purple-300/60 hover:text-purple-200': !chatLink.isActive && isActor(),
+                 'text-neutral-100 font-semibold': chatLink.isActive && !isActor(),
+                 'text-neutral-500 hover:text-neutral-300': !chatLink.isActive && !isActor()
                }">
               chat
               <ng-container *ngIf="chatNotificationCount$ | async as notificationCount">
@@ -72,8 +81,8 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                 [ngClass]="{
                   'text-purple-300 hover:text-purple-200': isProfileActive && isActor(),
                   'text-purple-300/60 hover:text-purple-200': !isProfileActive && isActor(),
-                  'text-fuchsia-300': isProfileActive && !isActor(),
-                  'text-neutral-500 hover:text-neutral-300': !isProfileActive && !isActor()
+                  'text-neutral-100 font-semibold': isProfileActive && !isActor(),
+                  'text-neutral-400 hover:text-neutral-200': !isProfileActive && !isActor()
                 }">
                 <span>{{ userName }}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,26 +91,26 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
               </button>
 
               <!-- Dropdown menu -->
-              <div *ngIf="showDropdown" 
+              <div *ngIf="showDropdown"
                    class="absolute right-0 mt-2 w-48 rounded-md shadow-lg ring-1 py-1 z-50 transition-all duration-200"
                    [ngClass]="{
-                     'bg-purple-950/90 ring-purple-900/20': isActor(),
-                     'bg-neutral-800 ring-black ring-opacity-5': !isActor()
+                     'bg-purple-950/40 ring-purple-900/10 backdrop-blur-xl': isActor(),
+                     'bg-neutral-800/95 ring-neutral-700/50 backdrop-blur-sm': !isActor()
                    }">
-                <a routerLink="/discover/profile" 
-                   [routerLinkActive]="isActor() ? 'bg-purple-900/30' : 'bg-neutral-700'"
+                <a routerLink="/discover/profile"
+                   [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
                    class="block px-4 py-2 text-sm transition-colors duration-200"
                    [ngClass]="{
-                     'text-purple-200/80 hover:bg-purple-900/30': isActor(),
-                     'text-neutral-300 hover:bg-neutral-700': !isActor()
+                     'text-purple-200/90 hover:bg-purple-900/15': isActor(),
+                     'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
                    }">
                   Profile
                 </a>
-                <button (click)="logout()" 
+                <button (click)="logout()"
                         class="w-full text-left block px-4 py-2 text-sm transition-colors duration-200"
                         [ngClass]="{
-                          'text-purple-200/80 hover:bg-purple-900/30': isActor(),
-                          'text-neutral-300 hover:bg-neutral-700': !isActor()
+                          'text-purple-200/90 hover:bg-purple-900/25': isActor(),
+                          'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
                         }">
                   Logout
                 </button>
@@ -153,7 +162,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   isLoggingOut = false;
   isProfileActive = false;
   userName = 'User';
-  
+
   // User role signals
   userRole = signal<string>('actor');
   isActor = computed(() => this.userRole() === 'actor');
