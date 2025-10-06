@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["http://localhost:4200", "http://localhost:4201", "https://yberhood-castrole.firebaseapp.com", "https://yberhood-castrole.web.app"],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]

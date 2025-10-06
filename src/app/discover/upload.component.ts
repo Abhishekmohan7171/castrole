@@ -1,6 +1,7 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { UploadService, UploadProgress } from '../services/upload.service';
 
 interface Tag {
   id: string;
@@ -155,13 +156,47 @@ interface Tag {
               </textarea>
             </div>
 
+            <!-- Upload Progress -->
+            @if (isUploading() && uploadProgress() > 0) {
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm text-neutral-300">
+                  <span>Uploading...</span>
+                  <span>{{ uploadProgress().toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
+                  <div 
+                    class="bg-purple-600 h-full transition-all duration-300"
+                    [style.width.%]="uploadProgress()">
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Error Message -->
+            @if (uploadError()) {
+              <div class="bg-red-500/10 border border-red-500 rounded-lg p-3">
+                <p class="text-red-400 text-sm">{{ uploadError() }}</p>
+              </div>
+            }
+
+            <!-- Success Message -->
+            @if (uploadSuccess()) {
+              <div class="bg-green-500/10 border border-green-500 rounded-lg p-3">
+                <p class="text-green-400 text-sm">✓ Video uploaded successfully!</p>
+              </div>
+            }
+
             <!-- Upload Button -->
             <button 
               (click)="uploadVideo()"
-              [disabled]="!canUploadVideo()"
-              [class]="canUploadVideo() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
+              [disabled]="!canUploadVideo() || isUploading()"
+              [class]="canUploadVideo() && !isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
               class="w-full text-white py-3 rounded-lg font-medium transition-colors">
-              Upload Video
+              @if (isUploading()) {
+                <span>Uploading...</span>
+              } @else {
+                <span>Upload Video</span>
+              }
             </button>
           </div>
         </div>
@@ -223,11 +258,57 @@ interface Tag {
           </div>
 
           @if (selectedImages().length > 0) {
+            <!-- Image Upload Progress -->
+            @if (isUploading() && imageUploadProgress().length > 0) {
+              <div class="mt-6 space-y-3">
+                <p class="text-sm font-medium text-neutral-300">Upload Progress</p>
+                @for (progress of imageUploadProgress(); track $index) {
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-xs text-neutral-400">
+                      <span>Image {{ $index + 1 }}</span>
+                      @if (progress.error) {
+                        <span class="text-red-400">Failed</span>
+                      } @else {
+                        <span>{{ progress.progress.toFixed(0) }}%</span>
+                      }
+                    </div>
+                    <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        [class]="progress.error ? 'bg-red-500' : 'bg-purple-600'"
+                        class="h-full transition-all duration-300"
+                        [style.width.%]="progress.progress">
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Error Message -->
+            @if (uploadError()) {
+              <div class="mt-4 bg-red-500/10 border border-red-500 rounded-lg p-3">
+                <p class="text-red-400 text-sm">{{ uploadError() }}</p>
+              </div>
+            }
+
+            <!-- Success Message -->
+            @if (uploadSuccess()) {
+              <div class="mt-4 bg-green-500/10 border border-green-500 rounded-lg p-3">
+                <p class="text-green-400 text-sm">✓ All images uploaded successfully!</p>
+              </div>
+            }
+
             <!-- Upload Button -->
             <button 
               (click)="uploadImages()"
-              class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium mt-6 transition-colors">
-              Upload {{ selectedImages().length }} Image(s)
+              [disabled]="isUploading()"
+              [class]="!isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
+              class="w-full text-white py-3 rounded-lg font-medium mt-6 transition-colors">
+              @if (isUploading()) {
+                <span>Uploading...</span>
+              } @else {
+                <span>Upload {{ selectedImages().length }} Image(s)</span>
+              }
             </button>
           }
         </div>
@@ -252,6 +333,14 @@ export class UploadComponent {
   selectedImages = signal<File[]>([]);
   isDragOver = signal(false);
   imagePreviewUrls = new Map<string, string>();
+  
+  // Upload state
+  uploadService = inject(UploadService);
+  isUploading = signal(false);
+  uploadProgress = signal<number>(0);
+  uploadError = signal<string>('');
+  uploadSuccess = signal(false);
+  imageUploadProgress = signal<UploadProgress[]>([]);
 
   canUploadVideo = computed(() => {
     return this.selectedVideoFile() !== null && this.description.trim().length > 0;
@@ -355,25 +444,129 @@ export class UploadComponent {
 
   editCover(): void {
     // TODO: Implement cover editing functionality
-    console.log('Edit cover clicked');
+    // Will allow users to select a custom thumbnail from the video
   }
 
   uploadVideo(): void {
     if (!this.canUploadVideo()) return;
     
-    // TODO: Implement video upload logic
-    console.log('Uploading video:', {
-      file: this.selectedVideoFile(),
-      tags: this.tags(),
+    const file = this.selectedVideoFile();
+    if (!file) return;
+
+    // Validate file size (100MB max for videos)
+    if (!this.uploadService.validateFileSize(file, 100)) {
+      this.uploadError.set('Video file size must be less than 100MB');
+      return;
+    }
+
+    // Validate file type
+    if (!this.uploadService.validateFileType(file, ['video/'])) {
+      this.uploadError.set('Invalid file type. Please upload a video file.');
+      return;
+    }
+
+    this.isUploading.set(true);
+    this.uploadError.set('');
+    this.uploadSuccess.set(false);
+    this.uploadProgress.set(0);
+
+    const metadata = {
+      tags: this.tags().map(tag => tag.name),
       mediaType: this.mediaType,
       description: this.description
+    };
+
+    this.uploadService.uploadVideo(file, metadata).subscribe({
+      next: (progress: UploadProgress) => {
+        this.uploadProgress.set(progress.progress);
+        if (progress.url) {
+          this.uploadSuccess.set(true);
+          this.resetVideoForm();
+        }
+      },
+      error: (error: any) => {
+        this.uploadError.set(error.error || 'Upload failed. Please try again.');
+        this.isUploading.set(false);
+      },
+      complete: () => {
+        this.isUploading.set(false);
+      }
     });
   }
 
   uploadImages(): void {
-    if (this.selectedImages().length === 0) return;
+    const images = this.selectedImages();
+    if (images.length === 0) return;
+
+    // Validate all images
+    for (const file of images) {
+      // Validate file size (10MB max per image)
+      if (!this.uploadService.validateFileSize(file, 10)) {
+        this.uploadError.set(`Image ${file.name} exceeds 10MB limit`);
+        return;
+      }
+
+      // Validate file type
+      if (!this.uploadService.validateFileType(file, ['image/'])) {
+        this.uploadError.set(`${file.name} is not a valid image file`);
+        return;
+      }
+    }
+
+    this.isUploading.set(true);
+    this.uploadError.set('');
+    this.uploadSuccess.set(false);
+    this.imageUploadProgress.set([]);
+
+    this.uploadService.uploadImages(images).subscribe({
+      next: (progress: UploadProgress[]) => {
+        this.imageUploadProgress.set(progress);
+        
+        // Check if all uploads completed
+        const allComplete = progress.every(p => p.progress === 100 || p.error);
+        if (allComplete) {
+          const hasErrors = progress.some(p => p.error);
+          if (!hasErrors) {
+            this.uploadSuccess.set(true);
+            this.resetImageForm();
+          }
+        }
+      },
+      error: () => {
+        this.uploadError.set('Upload failed. Please try again.');
+        this.isUploading.set(false);
+      },
+      complete: () => {
+        this.isUploading.set(false);
+      }
+    });
+  }
+
+  resetVideoForm(): void {
+    this.selectedVideoFile.set(null);
+    this.videoPreviewUrl.set('');
+    this.tags.set([]);
+    this.mediaType = 'reel';
+    this.description = '';
     
-    // TODO: Implement image upload logic
-    console.log('Uploading images:', this.selectedImages());
+    // Clean up preview URL
+    const url = this.videoPreviewUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  resetImageForm(): void {
+    // Clean up preview URLs
+    this.selectedImages().forEach(file => {
+      const url = this.imagePreviewUrls.get(file.name);
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    
+    this.selectedImages.set([]);
+    this.imagePreviewUrls.clear();
+    this.imageUploadProgress.set([]);
   }
 }
