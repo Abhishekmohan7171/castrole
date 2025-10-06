@@ -25,13 +25,19 @@ type Conversation = {
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent],
   template: `
-    <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col">
+    <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col"
+         [ngClass]="{'actor-theme': myRole === 'actor'}">
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-full flex-1 overflow-hidden pb-6">
         <!-- Conversations (sidebar) -->
         <aside
-          class="rounded-2xl bg-neutral-900/60 ring-1 ring-white/10 border border-white/5 overflow-hidden hidden lg:flex lg:flex-col h-full"
+          class="rounded-2xl ring-1 border overflow-hidden hidden lg:flex lg:flex-col h-full transition-all duration-300"
+          [ngClass]="{
+            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole === 'actor',
+            'bg-neutral-900/60 ring-white/10 border-white/5': myRole !== 'actor'
+          }"
         >
-          <div class="p-4 border-b border-white/5 relative">
+          <div class="p-4 border-b relative transition-colors duration-300"
+               [ngClass]="{'border-purple-900/10': myRole === 'actor', 'border-white/5': myRole !== 'actor'}">
             @if (myRole === 'producer') {
               <input
                 type="search"
@@ -61,45 +67,66 @@ type Conversation = {
               }
             } @else if (myRole === 'actor') {
               <div class="flex items-center gap-3">
-                <button type="button"
-                        (click)="setViewMode('chat')"
-                        [ngClass]="{ 'bg-fuchsia-600/20': viewMode === 'chat' }"
-                        class="px-4 py-1.5 rounded-full text-sm ring-1 ring-white/10 text-neutral-200 hover:bg-white/10 transition relative">
+                <button 
+                  type="button" 
+                  (click)="setViewMode('chat')" 
+                  class="px-4 py-1.5 rounded-full text-sm ring-1 transition relative"
+                  [ngClass]="{
+                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode === 'chat',
+                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode !== 'chat'
+                  }">
                   chat
-                  <ng-container *ngIf="totalUnreadCount$ | async as unreadCount">
-                    <span
-                      *ngIf="unreadCount > 0"
-                      class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white text-xs animate-pulse">
-                      {{ unreadCount }}
-                    </span>
-                  </ng-container>
+                  @if (totalUnreadCount$ | async; as unreadCount) {
+                    @if (unreadCount > 0) {
+                      <span class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-purple-500 text-white text-xs animate-pulse">
+                        {{ unreadCount }}
+                      </span>
+                    }
+                  }
                 </button>
-                <button type="button"
-                        (click)="setViewMode('requests')"
-                        [ngClass]="{ 'bg-fuchsia-600/20': viewMode === 'requests' }"
-                        class="px-4 py-1.5 rounded-full text-sm ring-1 ring-white/10 text-neutral-200 hover:bg-white/10 transition relative">
+                <button 
+                  type="button" 
+                  (click)="setViewMode('requests')" 
+                  class="px-4 py-1.5 rounded-full text-sm ring-1 transition relative"
+                  [ngClass]="{
+                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode === 'requests',
+                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode !== 'requests'
+                  }">
                   requests
-                  <ng-container *ngIf="requestsCount$ | async as reqCount">
-                    <span
-                      *ngIf="reqCount > 0"
-                      class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white text-xs animate-pulse">
-                      {{ reqCount }}
-                    </span>
-                  </ng-container>
+                  @if (requestsCount$ | async; as reqCount) {
+                    @if (reqCount > 0) {
+                      <span class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-purple-500 text-white text-xs animate-pulse">
+                        {{ reqCount }}
+                      </span>
+                    }
+                  }
                 </button>
               </div>
             }
           </div>
-          <ul class="divide-y divide-white/5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+          <ul class="divide-y overflow-y-auto flex-1 scrollbar-thin scrollbar-track-transparent transition-colors duration-300"
+              [ngClass]="{
+                'divide-purple-900/10 scrollbar-thumb-purple-900/20': myRole === 'actor',
+                'divide-white/5 scrollbar-thumb-neutral-700': myRole !== 'actor'
+              }">
             <!-- Regular chat conversation item -->
             <li
               *ngFor="let c of conversations"
-              [ngClass]="{ 'bg-white/10': c.id === active?.id, 'cursor-pointer hover:bg-white/5': myRole !== 'actor' || viewMode !== 'requests' }"
+              [ngClass]="{
+                'bg-purple-900/20': c.id === active?.id && myRole === 'actor',
+                'bg-white/10': c.id === active?.id && myRole !== 'actor',
+                'cursor-pointer hover:bg-purple-950/10': (myRole === 'actor' && viewMode !== 'requests'),
+                'cursor-pointer hover:bg-white/5': (myRole !== 'actor' || viewMode !== 'requests')
+              }"
               class="px-4 py-3 transition flex items-center gap-3"
             >
               <!-- Avatar -->
               <div
-                class="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-neutral-400"
+                class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
+                [ngClass]="{
+                  'bg-purple-950/10 text-purple-300/50': myRole === 'actor',
+                  'bg-white/10 text-neutral-400': myRole !== 'actor'
+                }"
               >
                 {{ c.name[0] | uppercase }}
               </div>
@@ -107,16 +134,24 @@ type Conversation = {
               <!-- Content -->
               <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole !== 'actor' || viewMode !== 'requests'" (click)="handleDesktopItemClick(c)">
                 <div class="flex items-center gap-2">
-                  <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
+                  <p class="truncate text-sm"
+                     [ngClass]="{'text-purple-100/80': myRole === 'actor', 'text-neutral-100': myRole !== 'actor'}">
+                    {{ c.name }}</p>
                   <ng-container *ngIf="c.unreadCount && meUid">
                     <span
                       *ngIf="c.unreadCount[meUid] > 0"
-                      class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white animate-pulse"
+                      class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full text-white animate-pulse"
+                      [ngClass]="{
+                        'bg-purple-500': myRole === 'actor',
+                        'bg-fuchsia-600': myRole !== 'actor'
+                      }"
                       >{{ c.unreadCount[meUid] }}</span
                     >
                   </ng-container>
                 </div>
-                <p class="truncate text-xs text-neutral-400">{{ c.last }}</p>
+                <p class="truncate text-xs"
+                   [ngClass]="{'text-purple-200/60': myRole === 'actor', 'text-neutral-400': myRole !== 'actor'}">
+                  {{ c.last }}</p>
               </div>
 
               <!-- Accept/Reject buttons for actor requests -->
@@ -147,7 +182,11 @@ type Conversation = {
 
         <!-- Messages panel -->
         <section
-          class="rounded-2xl bg-neutral-900/60 ring-1 ring-white/10 border border-white/5 flex flex-col h-full overflow-hidden"
+          class="rounded-2xl ring-1 border flex flex-col h-full overflow-hidden transition-all duration-300"
+          [ngClass]="{
+            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole === 'actor',
+            'bg-neutral-900/60 ring-white/10 border-white/5': myRole !== 'actor'
+          }"
         >
           <!-- Mobile conversations header -->
           <div
@@ -218,18 +257,24 @@ type Conversation = {
 
           <!-- Chat header -->
           <header
-            class="hidden lg:flex items-center gap-3 px-5 py-4 border-b border-white/5"
+            class="hidden lg:flex items-center gap-3 px-5 py-4 border-b transition-colors duration-300"
+            [ngClass]="{'border-purple-900/10': myRole === 'actor', 'border-white/5': myRole !== 'actor'}"
           >
             <div
-              class="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-neutral-400"
+              class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
+              [ngClass]="{
+                'bg-purple-950/10 text-purple-300/50': myRole === 'actor',
+                'bg-white/10 text-neutral-400': myRole !== 'actor'
+              }"
             >
               {{ active?.name?.[0] | uppercase }}
             </div>
             <div class="text-sm">
-              <div class="text-neutral-100">
+              <div [ngClass]="{'text-purple-100/80': myRole === 'actor', 'text-neutral-100': myRole !== 'actor'}">
                 {{ active?.name || 'select a chat' }}
               </div>
-              <div class="text-neutral-500 flex items-center">
+              <div class="flex items-center"
+                   [ngClass]="{'text-purple-300/50': myRole === 'actor', 'text-neutral-500': myRole !== 'actor'}">
                 <span *ngIf="active">online</span>
                 <!-- Typing indicator -->
                 <span *ngIf="typingUsers$ | async as typingUsers" [class.hidden]="!typingUsers.length" class="ml-2 flex items-center text-fuchsia-300">
@@ -433,7 +478,27 @@ type Conversation = {
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    :host {
+      display: block;
+    }
+    /* Subtle purple gradient background for actors */
+    .actor-theme::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at top left, rgba(147, 51, 234, 0.02) 0%, transparent 35%),
+                  radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.015) 0%, transparent 35%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .actor-theme {
+      position: relative;
+    }
+  `],
 })
 export class ChatComponent implements OnInit, OnDestroy {
   private chat = inject(ChatService);

@@ -43,23 +43,33 @@ export class AppComponent implements OnInit {
         // Now we can safely navigate based on auth state
         this.router.initialNavigation();
         
-        // Only redirect if we're on the default route (/) or no specific route
-        // Don't redirect if user is on specific pages like reset-password, login, or onboarding
-        const protectedPaths = ['/reset-password', '/login', '/onboarding'];
-        const shouldRedirect = currentPath === '/' || currentPath === '' || 
-                              !protectedPaths.some(path => currentPath.startsWith(path));
+        // Define paths that should not be accessed when logged in
+        const authOnlyPaths = ['/login', '/reset-password'];
+        // Define paths that require authentication
+        const protectedPaths = ['/discover'];
         
-        if (shouldRedirect) {
-          // Navigate to the appropriate route based on auth state
-          if (user) {
-            // User is logged in, navigate to discover
+        // Check if we need to redirect
+        if (user) {
+          // User is logged in
+          if (authOnlyPaths.some(path => currentPath.startsWith(path))) {
+            // Redirect away from auth-only pages to discover
             this.router.navigateByUrl('/discover');
-          } else {
-            // User is not logged in, navigate to login
+          } else if (currentPath === '/' || currentPath === '') {
+            // Only redirect from root to discover
+            this.router.navigateByUrl('/discover');
+          }
+          // Otherwise preserve the current route (e.g., /discover/chat)
+        } else {
+          // User is not logged in
+          if (protectedPaths.some(path => currentPath.startsWith(path))) {
+            // Redirect away from protected pages to login
+            this.router.navigateByUrl('/login');
+          } else if (currentPath === '/' || currentPath === '') {
+            // Redirect from root to login
             this.router.navigateByUrl('/login');
           }
+          // Otherwise preserve the current route (e.g., /onboarding)
         }
-        // Otherwise, let the route guards handle the navigation
         
         // Unsubscribe from auth state changes
         unsubscribe();
