@@ -1,6 +1,6 @@
-import { Component, OnInit, ApplicationRef, NgZone } from '@angular/core';
+import { Component, OnInit, ApplicationRef, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { RouterOutlet, Router, NavigationStart } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Auth } from '@angular/fire/auth';
 import { inject } from '@angular/core';
 import { LoadingService } from './services/loading.service';
@@ -20,6 +20,7 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private appRef = inject(ApplicationRef);
   private ngZone = inject(NgZone);
+  private platformId = inject(PLATFORM_ID);
   
   isLoading$ = this.loadingService.isLoading$;
   authInitialized = false;
@@ -37,8 +38,10 @@ export class AppComponent implements OnInit {
         // Auth state has been determined, we can stop showing the loading screen
         this.loadingService.setLoading(false);
         
-        // Get the current URL from the window location (more reliable before navigation starts)
-        const currentPath = window.location.pathname;
+        // Get the current URL (SSR-safe)
+        const currentPath = isPlatformBrowser(this.platformId) 
+          ? window.location.pathname 
+          : this.router.url || '/';
         
         // Now we can safely navigate based on auth state
         this.router.initialNavigation();
