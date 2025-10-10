@@ -41,7 +41,17 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
     take(1),
     map(() => {
       const user = auth.currentUser;
-      return user ? true : router.createUrlTree(['/login']);
+      if (user) {
+        // User is authenticated, allow access
+        return true;
+      } else {
+        // Store the attempted URL for redirecting after login
+        const url = '/' + segments.map(segment => segment.path).join('/');
+        // Navigate to login
+        return router.createUrlTree(['/login'], { 
+          queryParams: { returnUrl: url }
+        });
+      }
     })
   );
 };
@@ -50,7 +60,7 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
  * Guard for the login route: if user is already logged in, redirect to /discover.
  * Prevents momentary navigation to /login on reload when session is valid.
  */
-export const loggedOutOnlyGuard: CanMatchFn = () => {
+export const loggedOutOnlyGuard: CanMatchFn = (route, segments) => {
   const router = inject(Router);
   const auth = inject(Auth);
   const loadingService = inject(LoadingService);
@@ -61,7 +71,12 @@ export const loggedOutOnlyGuard: CanMatchFn = () => {
     take(1),
     map(() => {
       const user = auth.currentUser;
-      return user ? router.createUrlTree(['/discover']) : true;
+      if (user) {
+        // User is logged in, redirect to their intended destination or discover
+        const returnUrl = router.getCurrentNavigation()?.extractedUrl.queryParams['returnUrl'] || '/discover';
+        return router.createUrlTree([returnUrl]);
+      }
+      return true;
     })
   );
 };

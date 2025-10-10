@@ -13,6 +13,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
 
@@ -206,6 +209,21 @@ export class AuthService {
   /** Returns the currently authenticated user (or null). */
   getCurrentUser(): User | null {
     return this.auth.currentUser;
+  }
+  
+  /** Sends a password reset email to the specified email address */
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    return sendPasswordResetEmail(this.auth, email);
+  }
+  
+  /** Verifies a password reset code from the reset URL */
+  async verifyPasswordResetCode(code: string): Promise<string> {
+    return verifyPasswordResetCode(this.auth, code);
+  }
+  
+  /** Confirms a password reset with the given code and new password */
+  async confirmPasswordReset(code: string, newPassword: string): Promise<void> {
+    return confirmPasswordReset(this.auth, code, newPassword);
   }
   
   /** Logs out the current user and updates their status in Firestore */

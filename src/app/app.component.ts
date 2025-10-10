@@ -1,6 +1,6 @@
-import { Component, OnInit, ApplicationRef, NgZone } from '@angular/core';
+import { Component, OnInit, ApplicationRef, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { RouterOutlet, Router, NavigationStart } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Auth } from '@angular/fire/auth';
 import { inject } from '@angular/core';
 import { LoadingService } from './services/loading.service';
@@ -20,6 +20,7 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private appRef = inject(ApplicationRef);
   private ngZone = inject(NgZone);
+  private platformId = inject(PLATFORM_ID);
   
   isLoading$ = this.loadingService.isLoading$;
   authInitialized = false;
@@ -37,16 +38,40 @@ export class AppComponent implements OnInit {
         // Auth state has been determined, we can stop showing the loading screen
         this.loadingService.setLoading(false);
         
+        // Get the current URL (SSR-safe)
+        const currentPath = isPlatformBrowser(this.platformId) 
+          ? window.location.pathname 
+          : this.router.url || '/';
+        
         // Now we can safely navigate based on auth state
         this.router.initialNavigation();
         
-        // Navigate to the appropriate route based on auth state
+        // Define paths that should not be accessed when logged in
+        const authOnlyPaths = ['/login', '/reset-password'];
+        // Define paths that require authentication
+        const protectedPaths = ['/discover'];
+        
+        // Check if we need to redirect
         if (user) {
-          // User is logged in, navigate to discover
-          this.router.navigateByUrl('/discover');
+          // User is logged in
+          if (authOnlyPaths.some(path => currentPath.startsWith(path))) {
+            // Redirect away from auth-only pages to discover
+            this.router.navigateByUrl('/discover');
+          } else if (currentPath === '/' || currentPath === '') {
+            // Only redirect from root to discover
+            this.router.navigateByUrl('/discover');
+          }
+          // Otherwise preserve the current route (e.g., /discover/chat)
         } else {
-          // User is not logged in, navigate to login
-          this.router.navigateByUrl('/login');
+          // User is not logged in
+          if (protectedPaths.some(path => currentPath.startsWith(path))) {
+            // Redirect away from protected pages to login
+            this.router.navigateByUrl('/login');
+          } else if (currentPath === '/' || currentPath === '') {
+            // Redirect from root to login
+            this.router.navigateByUrl('/login');
+          }
+          // Otherwise preserve the current route (e.g., /onboarding)
         }
         
         // Unsubscribe from auth state changes
