@@ -1,7 +1,8 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
@@ -26,19 +27,19 @@ type Conversation = {
   imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent],
   template: `
     <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col"
-         [ngClass]="{'actor-theme': myRole === 'actor'}">
+         [ngClass]="{'actor-theme': myRole() === 'actor'}">
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-full flex-1 overflow-hidden pb-6">
         <!-- Conversations (sidebar) -->
         <aside
           class="rounded-2xl ring-1 border overflow-hidden hidden lg:flex lg:flex-col h-full transition-all duration-300"
           [ngClass]="{
-            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole === 'actor',
-            'bg-neutral-900/60 ring-white/10 border-white/5': myRole !== 'actor'
+            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole() === 'actor',
+            'bg-neutral-900/60 ring-white/10 border-white/5': myRole() !== 'actor'
           }"
         >
           <div class="p-4 border-b relative transition-colors duration-300"
-               [ngClass]="{'border-purple-900/10': myRole === 'actor', 'border-white/5': myRole !== 'actor'}">
-            @if (myRole === 'producer') {
+               [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}">
+            @if (myRole() === 'producer') {
               <input
                 type="search"
                 [formControl]="searchControl"
@@ -50,7 +51,7 @@ type Conversation = {
               />
               @if (showActorDropdown) {
                 <div class="absolute left-4 right-4 mt-2 z-10 max-h-72 overflow-auto rounded-xl bg-neutral-900 ring-1 ring-white/10 border border-white/5 shadow-xl">
-                  @for (actor of (filteredActors$ | async) ?? []; track actor.uid) {
+                  @for (actor of filteredActors(); track actor.uid) {
                     <button type="button" (mousedown)="$event.preventDefault()" (click)="startChatWith(actor)"
                             class="w-full text-left px-3 py-2 hover:bg-white/5 transition flex items-center gap-3">
                       <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ actor.name[0] | uppercase }}</div>
@@ -60,23 +61,23 @@ type Conversation = {
                       </div>
                     </button>
                   }
-                  @if (((filteredActors$ | async) ?? []).length === 0) {
+                  @if (filteredActors().length === 0) {
                     <div class="px-3 py-3 text-sm text-neutral-400">No actors found</div>
                   }
                 </div>
               }
-            } @else if (myRole === 'actor') {
+            } @else if (myRole() === 'actor') {
               <div class="flex items-center gap-3">
                 <button 
                   type="button" 
                   (click)="setViewMode('chat')" 
                   class="px-4 py-1.5 rounded-full text-sm ring-1 transition relative"
                   [ngClass]="{
-                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode === 'chat',
-                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode !== 'chat'
+                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode() === 'chat',
+                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode() !== 'chat'
                   }">
                   chat
-                  @if (totalUnreadCount$ | async; as unreadCount) {
+                  @if (totalUnreadCount(); as unreadCount) {
                     @if (unreadCount > 0) {
                       <span class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-purple-500 text-white text-xs animate-pulse">
                         {{ unreadCount }}
@@ -89,11 +90,11 @@ type Conversation = {
                   (click)="setViewMode('requests')" 
                   class="px-4 py-1.5 rounded-full text-sm ring-1 transition relative"
                   [ngClass]="{
-                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode === 'requests',
-                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode !== 'requests'
+                    'bg-purple-900/20 ring-purple-900/15 hover:bg-purple-950/10 text-purple-200': viewMode() === 'requests',
+                    'ring-purple-900/15 hover:bg-purple-950/10 text-purple-300/60': viewMode() !== 'requests'
                   }">
                   requests
-                  @if (requestsCount$ | async; as reqCount) {
+                  @if (requestsCount(); as reqCount) {
                     @if (reqCount > 0) {
                       <span class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-purple-500 text-white text-xs animate-pulse">
                         {{ reqCount }}
@@ -106,17 +107,17 @@ type Conversation = {
           </div>
           <ul class="divide-y overflow-y-auto flex-1 scrollbar-thin scrollbar-track-transparent transition-colors duration-300"
               [ngClass]="{
-                'divide-purple-900/10 scrollbar-thumb-purple-900/20': myRole === 'actor',
-                'divide-white/5 scrollbar-thumb-neutral-700': myRole !== 'actor'
+                'divide-purple-900/10 scrollbar-thumb-purple-900/20': myRole() === 'actor',
+                'divide-white/5 scrollbar-thumb-neutral-700': myRole() !== 'actor'
               }">
             <!-- Regular chat conversation item -->
             <li
-              *ngFor="let c of conversations"
+              *ngFor="let c of conversations()"
               [ngClass]="{
-                'bg-purple-900/20': c.id === active?.id && myRole === 'actor',
-                'bg-white/10': c.id === active?.id && myRole !== 'actor',
-                'cursor-pointer hover:bg-purple-950/10': (myRole === 'actor' && viewMode !== 'requests'),
-                'cursor-pointer hover:bg-white/5': (myRole !== 'actor' || viewMode !== 'requests')
+                'bg-purple-900/20': c.id === active()?.id && myRole() === 'actor',
+                'bg-white/10': c.id === active()?.id && myRole() !== 'actor',
+                'cursor-pointer hover:bg-purple-950/10': (myRole() === 'actor' && viewMode() !== 'requests'),
+                'cursor-pointer hover:bg-white/5': (myRole() !== 'actor' || viewMode() !== 'requests')
               }"
               class="px-4 py-3 transition flex items-center gap-3"
             >
@@ -124,38 +125,38 @@ type Conversation = {
               <div
                 class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50': myRole === 'actor',
-                  'bg-white/10 text-neutral-400': myRole !== 'actor'
+                  'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
+                  'bg-white/10 text-neutral-400': myRole() !== 'actor'
                 }"
               >
                 {{ c.name[0] | uppercase }}
               </div>
 
               <!-- Content -->
-              <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole !== 'actor' || viewMode !== 'requests'" (click)="handleDesktopItemClick(c)">
+              <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'" (click)="handleDesktopItemClick(c)">
                 <div class="flex items-center gap-2">
                   <p class="truncate text-sm"
-                     [ngClass]="{'text-purple-100/80': myRole === 'actor', 'text-neutral-100': myRole !== 'actor'}">
+                     [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
                     {{ c.name }}</p>
                   <ng-container *ngIf="c.unreadCount && meUid">
                     <span
                       *ngIf="c.unreadCount[meUid] > 0"
                       class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full text-white animate-pulse"
                       [ngClass]="{
-                        'bg-purple-500': myRole === 'actor',
-                        'bg-fuchsia-600': myRole !== 'actor'
+                        'bg-purple-500': myRole() === 'actor',
+                        'bg-fuchsia-600': myRole() !== 'actor'
                       }"
                       >{{ c.unreadCount[meUid] }}</span
                     >
                   </ng-container>
                 </div>
                 <p class="truncate text-xs"
-                   [ngClass]="{'text-purple-200/60': myRole === 'actor', 'text-neutral-400': myRole !== 'actor'}">
+                   [ngClass]="{'text-purple-200/60': myRole() === 'actor', 'text-neutral-400': myRole() !== 'actor'}">
                   {{ c.last }}</p>
               </div>
 
               <!-- Accept/Reject buttons for actor requests -->
-              <div *ngIf="myRole === 'actor' && viewMode === 'requests'" class="flex gap-2">
+              <div *ngIf="myRole() === 'actor' && viewMode() === 'requests'" class="flex gap-2">
                 <button
                   (click)="acceptRequest(c)"
                   class="w-8 h-8 flex items-center justify-center rounded-full bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"
@@ -184,8 +185,8 @@ type Conversation = {
         <section
           class="rounded-2xl ring-1 border flex flex-col h-full overflow-hidden transition-all duration-300"
           [ngClass]="{
-            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole === 'actor',
-            'bg-neutral-900/60 ring-white/10 border-white/5': myRole !== 'actor'
+            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole() === 'actor',
+            'bg-neutral-900/60 ring-white/10 border-white/5': myRole() !== 'actor'
           }"
         >
           <!-- Mobile conversations header -->
@@ -200,7 +201,7 @@ type Conversation = {
               conversations
             </button>
             <div class="text-sm text-neutral-400">
-              {{ active?.name || 'select a chat' }}
+              {{ active()?.name || 'select a chat' }}
             </div>
           </div>
 
@@ -208,8 +209,8 @@ type Conversation = {
           <div *ngIf="mobileListOpen" class="lg:hidden border-b border-white/5">
             <ul class="max-h-[40vh] overflow-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
               <li
-                *ngFor="let c of conversations"
-                [ngClass]="{ 'bg-white/10': c.id === active?.id, 'cursor-pointer hover:bg-white/5': myRole !== 'actor' || viewMode !== 'requests' }"
+                *ngFor="let c of conversations()"
+                [ngClass]="{ 'bg-white/10': c.id === active()?.id, 'cursor-pointer hover:bg-white/5': myRole() !== 'actor' || viewMode() !== 'requests' }"
                 class="px-4 py-3 transition flex items-center gap-3"
               >
                 <!-- Avatar -->
@@ -222,7 +223,7 @@ type Conversation = {
                 <!-- Content -->
                 <div
                   class="flex-1 min-w-0"
-                  [class.cursor-pointer]="myRole !== 'actor' || viewMode !== 'requests'"
+                  [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'"
                   (click)="handleMobileItemClick(c)"
                 >
                   <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
@@ -230,7 +231,7 @@ type Conversation = {
                 </div>
 
                 <!-- Accept/Reject buttons for actor requests -->
-                <div *ngIf="myRole === 'actor' && viewMode === 'requests'" class="flex gap-2">
+                <div *ngIf="myRole() === 'actor' && viewMode() === 'requests'" class="flex gap-2">
                   <button
                     (click)="acceptRequest(c); mobileListOpen = false"
                     class="w-8 h-8 flex items-center justify-center rounded-full bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"
@@ -258,26 +259,26 @@ type Conversation = {
           <!-- Chat header -->
           <header
             class="hidden lg:flex items-center gap-3 px-5 py-4 border-b transition-colors duration-300"
-            [ngClass]="{'border-purple-900/10': myRole === 'actor', 'border-white/5': myRole !== 'actor'}"
+            [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}"
           >
             <div
               class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
               [ngClass]="{
-                'bg-purple-950/10 text-purple-300/50': myRole === 'actor',
-                'bg-white/10 text-neutral-400': myRole !== 'actor'
+                'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
+                'bg-white/10 text-neutral-400': myRole() !== 'actor'
               }"
             >
-              {{ active?.name?.[0] | uppercase }}
+              {{ active()?.name?.[0] | uppercase }}
             </div>
             <div class="text-sm">
-              <div [ngClass]="{'text-purple-100/80': myRole === 'actor', 'text-neutral-100': myRole !== 'actor'}">
-                {{ active?.name || 'select a chat' }}
+              <div [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
+                {{ active()?.name || 'select a chat' }}
               </div>
               <div class="flex items-center"
-                   [ngClass]="{'text-purple-300/50': myRole === 'actor', 'text-neutral-500': myRole !== 'actor'}">
-                <span *ngIf="active">online</span>
+                   [ngClass]="{'text-purple-300/50': myRole() === 'actor', 'text-neutral-500': myRole() !== 'actor'}">
+                <span *ngIf="active()">online</span>
                 <!-- Typing indicator -->
-                <span *ngIf="typingUsers$ | async as typingUsers" [class.hidden]="!typingUsers.length" class="ml-2 flex items-center text-fuchsia-300">
+                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="ml-2 flex items-center text-fuchsia-300">
                   <span class="inline-flex space-x-1 mr-1">
                     <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
                     <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
@@ -292,9 +293,9 @@ type Conversation = {
           <!-- Messages -->
           <div id="messagesContainer" class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 pb-12 space-y-4 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
             <!-- Loading state -->
-            <app-loader [show]="loading" [overlay]="false" message="Loading messages..."></app-loader>
+            <app-loader [show]="loading()" [overlay]="false" message="Loading messages..."></app-loader>
 
-            <ng-container *ngIf="active && !loading; else emptyStateTemplate">
+            <ng-container *ngIf="active() && !loading(); else emptyStateTemplate">
               <div
                 *ngFor="let m of filteredActiveMessages"
                 class="flex"
@@ -317,7 +318,7 @@ type Conversation = {
               </div>
 
               <!-- Typing indicator in messages area -->
-              <div *ngIf="typingUsers$ | async as typingUsers" [class.hidden]="!typingUsers.length" class="flex">
+              <div *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex">
                 <div class="bg-white/5 text-neutral-300 rounded-2xl px-4 py-2 text-sm">
                   <div class="flex items-center">
                     <span class="inline-flex space-x-1 mr-2">
@@ -332,12 +333,12 @@ type Conversation = {
 
             <ng-template #emptyStateTemplate>
               <!-- Initial loading state -->
-              <div *ngIf="initialLoading" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="initialLoading()" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <app-loader [show]="true" [overlay]="false" message="Loading chat..."></app-loader>
               </div>
 
               <!-- When conversations exist but none selected -->
-              <div *ngIf="!initialLoading && conversations && conversations.length > 0 && !active" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading() && conversations() && conversations().length > 0 && !active()" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -349,7 +350,7 @@ type Conversation = {
               </div>
 
               <!-- Producer: No conversations yet -->
-              <div *ngIf="!initialLoading && myRole === 'producer' && conversations && conversations.length === 0 && rejectedChats.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading() && myRole() === 'producer' && conversations() && conversations().length === 0 && rejectedChats().length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-4">
                   <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -362,7 +363,7 @@ type Conversation = {
               </div>
 
               <!-- Producer: Rejected chats -->
-              <div *ngIf="!initialLoading && myRole === 'producer' && rejectedChats.length > 0 && !active" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading() && myRole() === 'producer' && rejectedChats().length > 0 && !active()" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-4">
                   <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -371,7 +372,7 @@ type Conversation = {
                   </div>
                   <p>You can message these actors:</p>
                   <div class="flex flex-col gap-2 w-full max-w-xs">
-                    <ng-container *ngFor="let rejectedChat of rejectedChats">
+                    <ng-container *ngFor="let rejectedChat of rejectedChats()">
                       <button
                         (click)="startChatWithActor(rejectedChat.actorId)"
                         class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-neutral-200 transition flex items-center gap-2"
@@ -385,7 +386,7 @@ type Conversation = {
               </div>
 
               <!-- Actor: Chat tab with no conversations -->
-              <div *ngIf="!initialLoading && myRole === 'actor' && viewMode === 'chat' && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading() && myRole() === 'actor' && viewMode() === 'chat' && conversations() && conversations().length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-4">
                   <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -398,12 +399,12 @@ type Conversation = {
               </div>
 
               <!-- Actor: Requests loading state -->
-              <div *ngIf="requestsLoading && myRole === 'actor' && viewMode === 'requests'" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="requestsLoading() && myRole() === 'actor' && viewMode() === 'requests'" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <app-loader [show]="true" [overlay]="false" message="Loading requests..."></app-loader>
               </div>
 
               <!-- Actor: Requests tab with no requests -->
-              <div *ngIf="!requestsLoading && myRole === 'actor' && viewMode === 'requests' && conversations && conversations.length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!requestsLoading() && myRole() === 'actor' && viewMode() === 'requests' && conversations() && conversations().length === 0" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-4">
                   <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -416,7 +417,7 @@ type Conversation = {
               </div>
 
               <!-- When conversations is undefined but not in initial loading -->
-              <div *ngIf="!initialLoading && !conversations" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
+              <div *ngIf="!initialLoading() && !conversations()" class="h-full flex flex-col items-center justify-center text-neutral-400 text-sm">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
@@ -431,7 +432,7 @@ type Conversation = {
 
           <!-- Composer -->
           <div
-            *ngIf="active && myRole === 'producer' && isRejectedByActor()"
+            *ngIf="active() && myRole() === 'producer' && isRejectedByActor()"
             class="p-3 sm:p-4 pt-6 mb-4 border-t border-white/5 flex items-center justify-center shrink-0 bg-neutral-900/60 rounded-b-2xl"
           >
             <div class="text-red-400 text-sm flex items-center gap-2">
@@ -448,7 +449,7 @@ type Conversation = {
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60 rounded-b-2xl"
-            *ngIf="active && ((myRole !== 'actor' && !isRejectedByActor()) || active.actorAccepted)"
+            *ngIf="active() && ((myRole() !== 'actor' && !isRejectedByActor()) || active()!.actorAccepted)"
           >
             <input
               id="message-draft"
@@ -506,16 +507,17 @@ export class ChatComponent implements OnInit, OnDestroy {
   private actor = inject(ActorService);
   private user = inject(UserService);
 
-  conversations: Conversation[] = [];
-  active: Conversation | null = null;
+  // Signals for reactive state
+  conversations = signal<Conversation[]>([]);
+  active = signal<Conversation | null>(null);
   draft = '';
   mobileListOpen = false;
-  loading = false;
-  initialLoading = true;
-  requestsLoading = true;
+  loading = signal(false);
+  initialLoading = signal(true);
+  requestsLoading = signal(true);
 
   meUid: string | null = null;
-  myRole: UserRole = 'user';
+  myRole = signal<UserRole>('user');
   private roomsSub = new Subscription();
   private msgsSub = new Subscription();
   private typingSubscription = new Subscription();
@@ -524,6 +526,8 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   actors$?: Observable<UserDoc[]>;
   filteredActors$?: Observable<UserDoc[]>;
+  // Signal for filtered actors
+  filteredActors = signal<UserDoc[]>([]);
   private search$ = new BehaviorSubject<string>('');
   showActorDropdown = false;
 
@@ -531,11 +535,11 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   user$ = this.user
 
-  // Actor: controls which list to show
-  viewMode: 'chat' | 'requests' = 'chat';
+  // Actor: controls which list to show - using signal
+  viewMode = signal<'chat' | 'requests'>('chat');
 
   // Stream-driven state
-  private viewMode$ = new BehaviorSubject<'chat' | 'requests'>(this.viewMode);
+  private viewMode$ = new BehaviorSubject<'chat' | 'requests'>('chat');
   private readonly LAST_ROOM_KEY = 'chat:lastRoomId';
   private activeRoomId$ = new BehaviorSubject<string | null>(typeof localStorage !== 'undefined' ? localStorage.getItem('chat:lastRoomId') : null);
 
@@ -549,22 +553,25 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Typing indicators
   private typingHandler?: (isTyping: boolean) => void;
   typingUsers$?: Observable<string[]>;
+  typingUsers = signal<string[]>([]);
   isTyping = false;
   isSending = false;
 
-  // Unread counts
+  // Unread counts - signals
   requestsCount$?: Observable<number>;
   totalUnreadCount$?: Observable<number>;
+  requestsCount = signal<number>(0);
+  totalUnreadCount = signal<number>(0);
 
-  // Rejected chats (for producers)
+  // Rejected chats (for producers) - signal
   rejectedChats$?: Observable<(ChatRoom & { id: string })[]>;
-  rejectedChats: (ChatRoom & { id: string })[] = [];
+  rejectedChats = signal<(ChatRoom & { id: string })[]>([]);
 
   // Actor message search
   messageSearch = new FormControl('');
   get filteredActiveMessages(): Message[] {
     const q = (this.messageSearch.value || '').toString().trim().toLowerCase();
-    const list = this.active?.messages ?? [];
+    const list = this.active()?.messages ?? [];
     if (!q) return list;
     return list.filter(m => (m.text || '').toLowerCase().includes(q));
   }
@@ -583,22 +590,25 @@ export class ChatComponent implements OnInit, OnDestroy {
       shareReplay(1)
     );
 
-    // Mirror role to existing field for template conditions that still use it
-    this.roomsSub.add(this.myRole$.subscribe(r => this.myRole = r));
+    // Mirror role to signal
+    this.roomsSub.add(this.myRole$.subscribe(r => this.myRole.set(r)));
 
     // Total unread count for accepted chats (for chat tab)
     this.totalUnreadCount$ = this.myRole$.pipe(
       switchMap(role => this.chat.getTotalUnreadCount(this.meUid!, role)),
+      tap(count => this.totalUnreadCount.set(count)),
       shareReplay(1)
     );
+    this.roomsSub.add(this.totalUnreadCount$.subscribe());
 
     // For actors: count of producer-initiated threads (requests)
     this.requestsCount$ = this.myRole$.pipe(
       filter(role => role === 'actor'),
       switchMap(() => this.chat.getChatRequestsCount(this.meUid!)),
-      tap(() => {
+      tap(count => {
+        this.requestsCount.set(count);
         // Set requestsLoading to false once we have requests data
-        this.requestsLoading = false;
+        this.requestsLoading.set(false);
       }),
       shareReplay(1)
     );
@@ -606,30 +616,35 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Subscribe to requestsCount$ to ensure it's initialized
     this.roomsSub.add(this.requestsCount$?.subscribe());
 
-    // For producers: observe rejected chats
-    if (this.myRole === 'producer' && this.meUid) {
-      this.rejectedChats$ = this.chat.observeRejectedChatsForProducer(this.meUid);
-      this.roomsSub.add(
-        this.rejectedChats$.subscribe(rejectedChats => {
-          this.rejectedChats = rejectedChats;
-        })
-      );
-    }
+    // For producers: observe rejected chats - will be set up after role is determined
+    this.roomsSub.add(this.myRole$.subscribe(role => {
+      if (role === 'producer' && this.meUid) {
+        this.rejectedChats$ = this.chat.observeRejectedChatsForProducer(this.meUid);
+        this.roomsSub.add(
+          this.rejectedChats$.subscribe(rejectedChats => {
+            this.rejectedChats.set(rejectedChats);
+          })
+        );
+      }
+    }));
 
-    // Check for cached rooms to show immediately
-    const cachedRooms = this.chat.getCachedRooms(this.meUid!, this.myRole as UserRole);
-    if (cachedRooms && cachedRooms.length > 0) {
-      // Process cached rooms to show immediately
-      this.processCachedRooms(cachedRooms);
-    }
+    // Check for cached rooms to show immediately - wait for role
+    this.roomsSub.add(this.myRole$.pipe(take(1)).subscribe(role => {
+      const cachedRooms = this.chat.getCachedRooms(this.meUid!, role);
+      if (cachedRooms && cachedRooms.length > 0) {
+        // Process cached rooms to show immediately
+        this.processCachedRooms(cachedRooms);
+      }
+    }));
 
-    // Producer: actor search streams
+    // Producer: actor search streams - LOAD ACTORS ON INIT
     this.roomsSub.add(this.myRole$.subscribe((role) => {
       if (role === 'producer') {
-        this.actors$ = this.actor.getAllActors();
+        // Load all actors immediately when component loads
+        this.actors$ = this.actor.getAllActors().pipe(shareReplay(1));
         this.filteredActors$ = combineLatest([
           this.actors$!,
-          this.search$.pipe(debounceTime(150), distinctUntilChanged()),
+          this.search$.pipe(debounceTime(150), distinctUntilChanged(), startWith('')),
         ]).pipe(
           map(([actors, term]) => {
             const t = (term || '').toLowerCase().trim();
@@ -638,8 +653,11 @@ export class ChatComponent implements OnInit, OnDestroy {
               (a.name || '').toLowerCase().includes(t) ||
               (a.location || '').toLowerCase().includes(t)
             );
-          })
+          }),
+          tap(filtered => this.filteredActors.set(filtered))
         );
+        // Subscribe to populate the signal immediately
+        this.roomsSub.add(this.filteredActors$.subscribe());
       }
     }));
 
@@ -679,11 +697,11 @@ export class ChatComponent implements OnInit, OnDestroy {
       shareReplay(1)
     );
 
-    // Mirror to existing conversations array for template
+    // Mirror to conversations signal
     this.roomsSub.add(this.conversations$!.subscribe(cs => {
-      this.conversations = cs;
+      this.conversations.set(cs);
       // Set initialLoading to false once we have conversations data
-      this.initialLoading = false;
+      this.initialLoading.set(false);
     }));
 
     // Active conversation stream: restore last or pick first
@@ -706,8 +724,8 @@ export class ChatComponent implements OnInit, OnDestroy {
       shareReplay(1)
     );
 
-    // Mirror to this.active for existing template usage
-    this.roomsSub.add(this.active$!.subscribe(c => this.active = c));
+    // Mirror to active signal
+    this.roomsSub.add(this.active$!.subscribe(c => this.active.set(c)));
 
     // Messages stream based on active - optimized for instant loading
     this.messages$ = this.active$!.pipe(
@@ -747,10 +765,20 @@ export class ChatComponent implements OnInit, OnDestroy {
       shareReplay(1)
     );
 
-    // Mirror to active.messages so the existing template works without async pipe rewrites
+    // Process messages and update active conversation
     this.msgsSub.add(this.messages$!.subscribe(ms => {
       this.processMessages(ms);
     }));
+
+    // Setup typing users signal
+    this.typingUsers$ = this.active$.pipe(
+      switchMap(activeConv => {
+        if (!activeConv) return of([]);
+        return this.chat.observeTypingUsers(activeConv.id, this.meUid!);
+      }),
+      tap(users => this.typingUsers.set(users))
+    );
+    this.roomsSub.add(this.typingUsers$.subscribe());
   }
 
   // Process cached rooms to show immediately
@@ -770,8 +798,8 @@ export class ChatComponent implements OnInit, OnDestroy {
       };
     });
 
-    // Update the conversations array
-    this.conversations = conversations;
+    // Update the conversations signal
+    this.conversations.set(conversations);
 
     // Set active conversation if we have a stored ID
     const lastRoomId = typeof localStorage !== 'undefined' ?
@@ -780,7 +808,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (lastRoomId) {
       const found = conversations.find(c => c.id === lastRoomId);
       if (found) {
-        this.active = found;
+        this.active.set(found);
         // Load messages for this conversation
         const cachedMessages = this.chat.getCachedMessages(found.id);
         if (cachedMessages) {
@@ -801,9 +829,12 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // Process messages and update active conversation
   private processMessages(ms: Message[]) {
-    if (this.active) {
-      const prevLength = this.active.messages?.length || 0;
-      this.active.messages = ms;
+    const activeConv = this.active();
+    if (activeConv) {
+      const prevLength = activeConv.messages?.length || 0;
+      activeConv.messages = ms;
+      // Update the signal with the modified conversation
+      this.active.set({...activeConv});
 
       // If we received new messages, scroll to bottom
       if (ms.length > prevLength) {
@@ -821,11 +852,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Stream-based open with instant loading
   open(c: Conversation) {
     // Set active conversation immediately
-    this.active = c;
+    this.active.set(c);
     this.activeRoomId$.next(c.id);
-
-    // Debug log to check conversation flags
-    console.log(`Opening conversation ${c.id}, actorAccepted:`, c.actorAccepted, 'actorRejected:', c.actorRejected);
 
     // Mark messages as read when opening a conversation
     if (this.meUid) {
@@ -834,10 +862,13 @@ export class ChatComponent implements OnInit, OnDestroy {
         c.unreadCount[this.meUid] = 0;
         
         // Also update in the conversations list
-        if (this.conversations) {
-          const convoIndex = this.conversations.findIndex(conv => conv.id === c.id);
+        const convos = this.conversations();
+        if (convos) {
+          const convoIndex = convos.findIndex(conv => conv.id === c.id);
           if (convoIndex !== -1) {
-            this.conversations[convoIndex].unreadCount = {...c.unreadCount};
+            const updatedConvos = [...convos];
+            updatedConvos[convoIndex] = {...updatedConvos[convoIndex], unreadCount: {...c.unreadCount}};
+            this.conversations.set(updatedConvos);
           }
         }
       }
@@ -847,17 +878,17 @@ export class ChatComponent implements OnInit, OnDestroy {
 
       // Force refresh of unread counts to update UI immediately
       // Re-initialize the observable to force a fresh query
-      this.totalUnreadCount$ = this.chat.getTotalUnreadCount(this.meUid, this.myRole);
+      this.totalUnreadCount$ = this.chat.getTotalUnreadCount(this.meUid, this.myRole());
       this.totalUnreadCount$.pipe(take(1)).subscribe();
 
       // For actors, also refresh request counts
-      if (this.myRole === 'actor' && this.requestsCount$) {
+      if (this.myRole() === 'actor' && this.requestsCount$) {
         this.requestsCount$.pipe(take(1)).subscribe();
       }
     }
 
     // Clear draft if this is a rejected conversation for a producer
-    if (this.myRole === 'producer' && c.actorRejected) {
+    if (this.myRole() === 'producer' && c.actorRejected) {
       this.draft = '';
     }
 
@@ -865,7 +896,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     const cachedMessages = this.chat.getCachedMessages(c.id);
     if (cachedMessages && cachedMessages.length > 0) {
       // Use cached messages immediately
-      this.loading = false;
+      this.loading.set(false);
       this.processMessages(cachedMessages.map(m => {
         const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
         return {
@@ -879,10 +910,10 @@ export class ChatComponent implements OnInit, OnDestroy {
       setTimeout(() => this.scrollToBottom(), 10);
     } else {
       // Only show loading if we don't have cached messages
-      this.loading = true;
+      this.loading.set(true);
       // Set a very short timeout to allow UI to update
       setTimeout(() => {
-        this.loading = false;
+        this.loading.set(false);
         setTimeout(() => this.scrollToBottom(), 10);
       }, 100); // Reduced from 500ms to 100ms
     }
@@ -927,7 +958,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // Handle input for typing indicator
   onInputChange() {
-    if (!this.typingHandler || !this.active) return;
+    if (!this.typingHandler || !this.active()) return;
 
     // Set typing state to true
     this.isTyping = true;
@@ -935,22 +966,24 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   setViewMode(mode: 'chat' | 'requests') {
-    if (this.viewMode === mode) return;
-    this.viewMode = mode;
+    if (this.viewMode() === mode) return;
+    this.viewMode.set(mode);
     this.viewMode$.next(mode);
   }
 
   async send() {
     const txt = this.draft.trim();
-    if (!txt || !this.active || !this.meUid || this.isSending) return;
+    if (!txt || !this.active() || !this.meUid || this.isSending) return;
 
     // Prevent sending if the conversation has been rejected (for producers)
-    if (this.myRole === 'producer' && this.isRejectedByActor()) {
+    if (this.myRole() === 'producer' && this.isRejectedByActor()) {
       this.draft = '';
       return;
     }
 
-    const roomId = this.active.id;
+    const activeConv = this.active();
+    if (!activeConv) return;
+    const roomId = activeConv.id;
     const receiverId = this.counterpartByRoom.get(roomId) || '';
 
     // Clear draft immediately for better UX
@@ -968,8 +1001,10 @@ export class ChatComponent implements OnInit, OnDestroy {
     };
 
     // Add to active conversation
-    if (this.active && this.active.messages) {
-      this.active.messages = [...this.active.messages, optimisticMessage];
+    const currentActive = this.active();
+    if (currentActive && currentActive.messages) {
+      currentActive.messages = [...currentActive.messages, optimisticMessage];
+      this.active.set({...currentActive});
       // Scroll to bottom immediately
       setTimeout(() => this.scrollToBottom(), 10);
     }
@@ -1025,26 +1060,34 @@ export class ChatComponent implements OnInit, OnDestroy {
   closeActorDropdownLater() { setTimeout(() => (this.showActorDropdown = false), 120); }
   onSearch(term: string) { this.search$.next(term); }
   async startChatWith(u: UserDoc) {
-    if (!this.meUid || this.myRole !== 'producer') return;
-
-    // Create a chat room without sending an initial message
-    const roomId = await this.chat.producerStartChat(u.uid, this.meUid);
-
-    // Find the conversation and open it
-    const convo = this.conversations?.find(c => c.id === roomId);
-    if (convo) {
-      this.open(convo);
-      // Set focus on the draft input
-      setTimeout(() => {
-        const draftInput = document.getElementById('message-draft');
-        if (draftInput) {
-          draftInput.focus();
-        }
-      }, 100);
-    }
+    if (!this.meUid || this.myRole() !== 'producer') return;
 
     this.showActorDropdown = false;
-    this.mobileListOpen = false;
+    this.loading.set(true);
+
+    try {
+      // Create a chat room without sending an initial message
+      const roomId = await this.chat.producerStartChat(u.uid, this.meUid);
+
+      // Wait a moment for the room to propagate through observables
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Find the conversation and open it
+      const convo = this.conversations().find(c => c.id === roomId);
+      if (convo) {
+        this.open(convo);
+        // Set focus on the draft input
+        setTimeout(() => {
+          const draftInput = document.getElementById('message-draft');
+          if (draftInput) {
+            draftInput.focus();
+          }
+        }, 100);
+      }
+    } finally {
+      this.loading.set(false);
+      this.mobileListOpen = false;
+    }
   }
 
   // Accept a chat request (for actors)
@@ -1058,8 +1101,9 @@ export class ChatComponent implements OnInit, OnDestroy {
       c.actorAccepted = true;
 
       // Update the active conversation if it's the same one
-      if (this.active && this.active.id === c.id) {
-        this.active.actorAccepted = true;
+      const activeConv = this.active();
+      if (activeConv && activeConv.id === c.id) {
+        this.active.set({...activeConv, actorAccepted: true});
       }
 
       // Switch to chat view mode first
@@ -1069,14 +1113,15 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.open(c);
 
       // Force UI update by creating a new reference
-      if (this.conversations) {
-        const updatedConversations = this.conversations.map(conv => {
+      const convos = this.conversations();
+      if (convos) {
+        const updatedConversations = convos.map(conv => {
           if (conv.id === c.id) {
             return {...conv, actorAccepted: true};
           }
           return conv;
         });
-        this.conversations = updatedConversations;
+        this.conversations.set(updatedConversations);
       }
 
       // Refresh the conversations list to update UI
@@ -1092,10 +1137,12 @@ export class ChatComponent implements OnInit, OnDestroy {
     try {
       await this.chat.rejectChatRequest(c.id, this.meUid);
       // Remove from the conversations list
-      this.conversations = this.conversations?.filter(conv => conv.id !== c.id) || [];
+      const convos = this.conversations();
+      this.conversations.set(convos.filter(conv => conv.id !== c.id));
       // If this was the active conversation, clear it
-      if (this.active?.id === c.id) {
-        this.active = null;
+      const activeConv = this.active();
+      if (activeConv?.id === c.id) {
+        this.active.set(null);
       }
     } catch (error) {
       console.error('Error rejecting chat request:', error);
@@ -1105,7 +1152,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Handle click on mobile conversation item
   handleMobileItemClick(c: Conversation) {
     // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole === 'actor' && this.viewMode === 'requests') {
+    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
       return;
     }
 
@@ -1117,7 +1164,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Handle click on desktop conversation item
   handleDesktopItemClick(c: Conversation) {
     // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole === 'actor' && this.viewMode === 'requests') {
+    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
       return;
     }
 
@@ -1126,11 +1173,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   openDefaultConversation() {
-    if (this.conversations?.length) {
-      this.open(this.conversations[0]);
+    const convos = this.conversations();
+    if (convos.length) {
+      this.open(convos[0]);
       return;
     }
-    if (this.myRole === 'producer') {
+    if (this.myRole() === 'producer') {
       this.openActorDropdown();
     }
   }
@@ -1168,19 +1216,23 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // Check if the current conversation has been rejected by the actor
   isRejectedByActor(): boolean {
-    if (!this.active) return false;
-    return this.active.actorRejected === true;
+    const activeConv = this.active();
+    if (!activeConv) return false;
+    return activeConv.actorRejected === true;
   }
 
   // Start a new chat with an actor (for producers, after rejection)
   async startChatWithActor(actorId: string) {
-    if (!this.meUid || this.myRole !== 'producer') return;
+    if (!this.meUid || this.myRole() !== 'producer') return;
 
     // Create a chat room without sending an initial message
     const roomId = await this.chat.producerStartChat(actorId, this.meUid);
 
+    // Wait a moment for the room to propagate
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     // Find the conversation and open it
-    const convo = this.conversations?.find(c => c.id === roomId);
+    const convo = this.conversations().find(c => c.id === roomId);
     if (convo) {
       this.open(convo);
       // Set focus on the draft input
@@ -1195,7 +1247,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.refreshConversations();
       // Try to find it again after a short delay
       setTimeout(() => {
-        const newConvo = this.conversations?.find(c => c.id === roomId);
+        const newConvo = this.conversations().find(c => c.id === roomId);
         if (newConvo) {
           this.open(newConvo);
         }
@@ -1247,12 +1299,12 @@ export class ChatComponent implements OnInit, OnDestroy {
               }
             });
 
-            // Update the conversations array
-            this.conversations = tempConversations;
+            // Update the conversations signal
+            this.conversations.set(tempConversations);
           });
         } else {
-          // No lookups needed, just update the conversations array
-          this.conversations = tempConversations;
+          // No lookups needed, just update the conversations signal
+          this.conversations.set(tempConversations);
         }
       });
     }
