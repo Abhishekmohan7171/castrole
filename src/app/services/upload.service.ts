@@ -219,7 +219,16 @@ export class UploadService {
    * @param data Media upload data
    */
   private async saveMediaMetadata(data: MediaUpload): Promise<void> {
-    await addDoc(collection(this.db, 'uploads'), data);
+    const { metadata, ...rest } = data;
+    const payload: Record<string, unknown> = { ...rest };
+
+    if (metadata !== undefined) {
+      payload['metadata'] = Object.fromEntries(
+        Object.entries(metadata).filter(([, value]) => value !== undefined)
+      );
+    }
+
+    await addDoc(collection(this.db, 'uploads'), payload);
   }
 
   /**
