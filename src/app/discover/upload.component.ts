@@ -157,15 +157,16 @@ interface Tag {
             </div>
 
             <!-- Upload Progress -->
-            @if (isUploading() && uploadProgress() > 0) {
+            @if (isUploading() && uploadProgress() > 0 && !uploadSuccess()) {
               <div class="space-y-2">
                 <div class="flex justify-between text-sm text-neutral-300">
-                  <span>Uploading...</span>
+                  <span>{{ uploadStatusText() }}</span>
                   <span>{{ uploadProgress().toFixed(0) }}%</span>
                 </div>
                 <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
                   <div 
-                    class="bg-purple-600 h-full transition-all duration-300"
+                    [class]="uploadProgress() === 100 ? 'bg-green-500' : 'bg-purple-600'"
+                    class="h-full transition-all duration-500"
                     [style.width.%]="uploadProgress()">
                   </div>
                 </div>
@@ -181,23 +182,35 @@ interface Tag {
 
             <!-- Success Message -->
             @if (uploadSuccess()) {
-              <div class="bg-green-500/10 border border-green-500 rounded-lg p-3">
+              <div class="bg-green-500/10 border border-green-500 rounded-lg p-3 space-y-3">
                 <p class="text-green-400 text-sm">✓ Video uploaded successfully!</p>
+                <button 
+                  (click)="resetVideoForm()"
+                  class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                  Upload Another Video
+                </button>
               </div>
             }
 
             <!-- Upload Button -->
-            <button 
-              (click)="uploadVideo()"
-              [disabled]="!canUploadVideo() || isUploading()"
-              [class]="canUploadVideo() && !isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
-              class="w-full text-white py-3 rounded-lg font-medium transition-colors">
-              @if (isUploading()) {
-                <span>Uploading...</span>
-              } @else {
+            @if (!uploadSuccess() && !isUploading()) {
+              <button 
+                (click)="uploadVideo()"
+                [disabled]="!canUploadVideo()"
+                [class]="canUploadVideo() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
+                class="w-full text-white py-3 rounded-lg font-medium transition-colors">
                 <span>Upload Video</span>
-              }
-            </button>
+              </button>
+            }
+            
+            <!-- Upload Progress Button (Disabled) -->
+            @if (!uploadSuccess() && isUploading()) {
+              <button 
+                disabled
+                class="w-full text-white py-3 rounded-lg font-medium transition-colors bg-neutral-700 cursor-not-allowed">
+                <span>{{ uploadStatusText() }}</span>
+              </button>
+            }
           </div>
         </div>
       }
@@ -259,9 +272,25 @@ interface Tag {
 
           @if (selectedImages().length > 0) {
             <!-- Image Upload Progress -->
-            @if (isUploading() && imageUploadProgress().length > 0) {
-              <div class="mt-6 space-y-3">
-                <p class="text-sm font-medium text-neutral-300">Upload Progress</p>
+            @if (isUploading() && imageUploadProgress().length > 0 && !uploadSuccess()) {
+              <div class="mt-6 space-y-4">
+                <!-- Overall Progress -->
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm text-neutral-300">
+                    <span>{{ uploadStatusText() }}</span>
+                    <span>{{ overallImageProgress().toFixed(0) }}%</span>
+                  </div>
+                  <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
+                    <div 
+                      [class]="allImagesCompleted() && !hasImageErrors() ? 'bg-green-500' : hasImageErrors() ? 'bg-red-500' : 'bg-purple-600'"
+                      class="h-full transition-all duration-500"
+                      [style.width.%]="overallImageProgress()">
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Individual Progress -->
+                <p class="text-xs font-medium text-neutral-400">Individual Progress</p>
                 @for (progress of imageUploadProgress(); track $index) {
                   <div class="space-y-1">
                     <div class="flex justify-between text-xs text-neutral-400">
@@ -293,23 +322,30 @@ interface Tag {
 
             <!-- Success Message -->
             @if (uploadSuccess()) {
-              <div class="mt-4 bg-green-500/10 border border-green-500 rounded-lg p-3">
+              <div class="mt-4 bg-green-500/10 border border-green-500 rounded-lg p-3 space-y-3">
                 <p class="text-green-400 text-sm">✓ All images uploaded successfully!</p>
+                <button 
+                  (click)="resetImageForm()"
+                  class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                  Upload More Images
+                </button>
               </div>
             }
 
             <!-- Upload Button -->
-            <button 
-              (click)="uploadImages()"
-              [disabled]="isUploading()"
-              [class]="!isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
-              class="w-full text-white py-3 rounded-lg font-medium mt-6 transition-colors">
-              @if (isUploading()) {
-                <span>Uploading...</span>
-              } @else {
-                <span>Upload {{ selectedImages().length }} Image(s)</span>
-              }
-            </button>
+            @if (!uploadSuccess()) {
+              <button 
+                (click)="uploadImages()"
+                [disabled]="!canUploadImages() || isUploading()"
+                [class]="canUploadImages() && !isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
+                class="w-full text-white py-3 rounded-lg font-medium mt-6 transition-colors">
+                @if (isUploading()) {
+                  <span>{{ uploadStatusText() }}</span>
+                } @else {
+                  <span>Upload {{ selectedImages().length }} Image(s)</span>
+                }
+              </button>
+            }
           }
         </div>
       }
@@ -325,9 +361,9 @@ export class UploadComponent {
   videoPreviewUrl = signal<string>('');
   tags = signal<Tag[]>([]);
   showTagInput = signal(false);
-  newTagName = '';
-  mediaType = 'reel';
-  description = '';
+  newTagName = signal('');
+  mediaType = signal('reel');
+  description = signal('');
   
   // Image upload state
   selectedImages = signal<File[]>([]);
@@ -343,7 +379,48 @@ export class UploadComponent {
   imageUploadProgress = signal<UploadProgress[]>([]);
 
   canUploadVideo = computed(() => {
-    return this.selectedVideoFile() !== null && this.description.trim().length > 0;
+    return this.selectedVideoFile() !== null && this.description().trim().length > 0;
+  });
+
+  canUploadImages = computed(() => {
+    return this.selectedImages().length > 0;
+  });
+
+  // Computed for overall upload progress
+  overallImageProgress = computed(() => {
+    const progress = this.imageUploadProgress();
+    if (progress.length === 0) return 0;
+    
+    const totalProgress = progress.reduce((sum, p) => sum + p.progress, 0);
+    return totalProgress / progress.length;
+  });
+
+  // Computed for upload completion status
+  allImagesCompleted = computed(() => {
+    const progress = this.imageUploadProgress();
+    return progress.length > 0 && progress.every(p => p.progress === 100 || p.error);
+  });
+
+  hasImageErrors = computed(() => {
+    return this.imageUploadProgress().some(p => p.error);
+  });
+
+  uploadStatusText = computed(() => {
+    if (!this.isUploading()) return '';
+    
+    if (this.uploadType() === 'video') {
+      const progress = this.uploadProgress();
+      if (progress >= 99.5) return 'Upload complete!'; // Show complete at 100%
+      if (progress > 90) return 'Finalizing upload...';
+      return `Uploading video... ${progress.toFixed(0)}%`;
+    } else {
+      const progress = this.overallImageProgress();
+      if (this.allImagesCompleted()) {
+        return this.hasImageErrors() ? 'Some uploads failed' : 'Upload complete!';
+      }
+      if (progress > 90) return 'Finalizing upload...';
+      return `Uploading images... ${progress.toFixed(0)}%`;
+    }
   });
 
   onVideoFileSelected(event: Event): void {
@@ -418,15 +495,15 @@ export class UploadComponent {
   }
 
   addTag(): void {
-    if (this.newTagName.trim()) {
+    if (this.newTagName().trim()) {
       const newTag: Tag = {
         id: Date.now().toString(),
-        name: this.newTagName.trim()
+        name: this.newTagName().trim()
       };
       
       const currentTags = this.tags();
       this.tags.set([...currentTags, newTag]);
-      this.newTagName = '';
+      this.newTagName.set('');
       this.showTagInput.set(false);
     }
   }
@@ -438,7 +515,7 @@ export class UploadComponent {
   }
 
   cancelTagInput(): void {
-    this.newTagName = '';
+    this.newTagName.set('');
     this.showTagInput.set(false);
   }
 
@@ -472,16 +549,32 @@ export class UploadComponent {
 
     const metadata = {
       tags: this.tags().map(tag => tag.name),
-      mediaType: this.mediaType,
-      description: this.description
+      mediaType: this.mediaType(),
+      description: this.description()
     };
 
     this.uploadService.uploadVideo(file, metadata).subscribe({
       next: (progress: UploadProgress) => {
-        this.uploadProgress.set(progress.progress);
+        // Animate progress smoothly
+        const currentProgress = this.uploadProgress();
+        if (progress.progress > currentProgress) {
+          this.animateProgress(currentProgress, progress.progress);
+        }
+        
         if (progress.url) {
-          this.uploadSuccess.set(true);
-          this.resetVideoForm();
+          // Ensure progress is at 100%
+          this.uploadProgress.set(100);
+          
+          // Small delay to show "Upload complete!" before success state
+          setTimeout(() => {
+            this.isUploading.set(false); // Stop uploading state FIRST
+            this.uploadSuccess.set(true); // Then set success
+            
+            // Auto-reset form after 3 seconds to allow new uploads
+            setTimeout(() => {
+              this.resetVideoForm();
+            }, 3000);
+          }, 500);
         }
       },
       error: (error: any) => {
@@ -489,7 +582,7 @@ export class UploadComponent {
         this.isUploading.set(false);
       },
       complete: () => {
-        this.isUploading.set(false);
+        // Observable completed
       }
     });
   }
@@ -522,14 +615,14 @@ export class UploadComponent {
       next: (progress: UploadProgress[]) => {
         this.imageUploadProgress.set(progress);
         
-        // Check if all uploads completed
-        const allComplete = progress.every(p => p.progress === 100 || p.error);
-        if (allComplete) {
-          const hasErrors = progress.some(p => p.error);
-          if (!hasErrors) {
-            this.uploadSuccess.set(true);
+        // Check if all uploads completed successfully
+        if (this.allImagesCompleted() && !this.hasImageErrors()) {
+          this.uploadSuccess.set(true);
+          this.isUploading.set(false); // Stop uploading state immediately
+          // Auto-reset form after 3 seconds
+          setTimeout(() => {
             this.resetImageForm();
-          }
+          }, 3000);
         }
       },
       error: () => {
@@ -542,12 +635,41 @@ export class UploadComponent {
     });
   }
 
+  /**
+   * Animate progress from start to end value smoothly
+   */
+  animateProgress(start: number, end: number): void {
+    const duration = 300; // 300ms animation
+    const steps = 20;
+    const increment = (end - start) / steps;
+    const stepDuration = duration / steps;
+    
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep++;
+      const newProgress = start + (increment * currentStep);
+      
+      if (currentStep >= steps || newProgress >= end) {
+        this.uploadProgress.set(end);
+        clearInterval(interval);
+      } else {
+        this.uploadProgress.set(newProgress);
+      }
+    }, stepDuration);
+  }
+
   resetVideoForm(): void {
     this.selectedVideoFile.set(null);
     this.videoPreviewUrl.set('');
     this.tags.set([]);
-    this.mediaType = 'reel';
-    this.description = '';
+    this.mediaType.set('reel');
+    this.description.set('');
+    this.newTagName.set('');
+    
+    // Reset upload states
+    this.uploadProgress.set(0);
+    this.uploadSuccess.set(false);
+    this.uploadError.set('');
     
     // Clean up preview URL
     const url = this.videoPreviewUrl();
