@@ -1,26 +1,18 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { Observable, Subscription, map, of, shareReplay, switchMap, filter, take } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ChatService } from '../services/chat.service';
 import { Auth, onAuthStateChanged, User } from '@angular/fire/auth';
-import { Firestore, doc, getDoc, onSnapshot, DocumentData, collection, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, onSnapshot, DocumentData } from '@angular/fire/firestore';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
-
-interface Actor {
-  uid: string;
-  name: string;
-  email: string;
-  role: string;
-}
 
 @Component({
   selector: 'app-discover',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, RouterOutlet, ClickOutsideDirective, LoaderComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ClickOutsideDirective, LoaderComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-200" [ngClass]="navTheme()">
       <!-- Loader -->
@@ -57,65 +49,16 @@ interface Actor {
                  'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive
                }">upload</a>
             
-            <!-- Search dropdown for producers -->
-            <div *ngIf="!isActor()" class="relative" clickOutside (clickOutside)="closeActorsDropdown()">
-              <button
-                (click)="toggleActorsDropdown()"
-                class="transition-colors duration-200 focus:outline-none flex items-center gap-1"
-                [ngClass]="{
-                  'text-neutral-100 font-semibold': showActorsDropdown,
-                  'text-neutral-500 hover:text-neutral-300': !showActorsDropdown
-                }">
-                search
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              <!-- Actors dropdown menu -->
-              <div *ngIf="showActorsDropdown"
-                   class="absolute left-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-lg shadow-lg ring-1 py-2 z-50 bg-neutral-800/95 ring-neutral-700/50 backdrop-blur-sm">
-                
-                <!-- Search input -->
-                <div class="px-3 pb-2 sticky top-0 bg-neutral-800/95 backdrop-blur-sm">
-                  <input 
-                    type="text"
-                    [(ngModel)]="actorSearchQuery"
-                    placeholder="Search actors..."
-                    class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-fuchsia-500 text-sm">
-                </div>
-
-                <!-- Loading state -->
-                <div *ngIf="loadingActors" class="px-4 py-8 text-center text-neutral-400 text-sm">
-                  <div class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-fuchsia-500 border-r-transparent"></div>
-                  <p class="mt-2">Loading actors...</p>
-                </div>
-
-                <!-- Actors list -->
-                <div *ngIf="!loadingActors && filteredActors().length > 0" class="space-y-1">
-                  <button
-                    *ngFor="let actor of filteredActors()"
-                    (click)="selectActor(actor)"
-                    class="w-full text-left px-4 py-3 hover:bg-fuchsia-500/10 transition-colors duration-200 flex items-center gap-3">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold">
-                      {{ actor.name.charAt(0).toUpperCase() }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-neutral-200 font-medium truncate">{{ actor.name }}</p>
-                      <p class="text-neutral-400 text-xs truncate">{{ actor.email }}</p>
-                    </div>
-                  </button>
-                </div>
-
-                <!-- Empty state -->
-                <div *ngIf="!loadingActors && filteredActors().length === 0" class="px-4 py-8 text-center text-neutral-400 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <p>No actors found</p>
-                </div>
-              </div>
-            </div>
+            <!-- Search link for producers -->
+            <a *ngIf="!isActor()"
+               routerLink="/discover/search"
+               #searchLink="routerLinkActive"
+               routerLinkActive
+               class="transition-colors duration-200"
+               [ngClass]="{
+                 'text-neutral-100 font-semibold': searchLink.isActive,
+                 'text-neutral-500 hover:text-neutral-300': !searchLink.isActive
+               }">search</a>
             <a routerLink="/discover/chat"
                #chatLink="routerLinkActive"
                routerLinkActive
@@ -244,22 +187,6 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   isActor = computed(() => this.userRole() === 'actor');
   navTheme = computed(() => this.isActor() ? 'actor-theme' : '');
 
-  // Actors search dropdown
-  showActorsDropdown = false;
-  actorSearchQuery = '';
-  loadingActors = false;
-  allActors = signal<Actor[]>([]);
-  filteredActors = computed(() => {
-    const query = this.actorSearchQuery.toLowerCase().trim();
-    if (!query) {
-      return this.allActors();
-    }
-    return this.allActors().filter(actor => 
-      actor.name.toLowerCase().includes(query) || 
-      actor.email.toLowerCase().includes(query)
-    );
-  });
-
   // Chat notification count for the header
   chatNotificationCount$: Observable<number>;
   private subscriptions = new Subscription();
@@ -343,55 +270,6 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   }
   closeDropdown(): void {
     this.showDropdown = false;
-  }
-
-  // Actors dropdown methods
-  toggleActorsDropdown(): void {
-    this.showActorsDropdown = !this.showActorsDropdown;
-    if (this.showActorsDropdown && this.allActors().length === 0) {
-      this.loadActors();
-    }
-  }
-
-  closeActorsDropdown(): void {
-    this.showActorsDropdown = false;
-    this.actorSearchQuery = '';
-  }
-
-  // Load all actors from Firestore
-  async loadActors(): Promise<void> {
-    this.loadingActors = true;
-    try {
-      const usersRef = collection(this.firestore, 'users');
-      const q = query(usersRef, where('role', '==', 'actor'));
-      const querySnapshot = await getDocs(q);
-      
-      const actors: Actor[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        actors.push({
-          uid: doc.id,
-          name: data['name'] || 'Unknown',
-          email: data['email'] || '',
-          role: data['role'] || 'actor'
-        });
-      });
-      
-      this.allActors.set(actors);
-    } catch (error) {
-      console.error('Error loading actors:', error);
-    } finally {
-      this.loadingActors = false;
-    }
-  }
-
-  // Select an actor (navigate to chat or profile)
-  selectActor(actor: Actor): void {
-    this.closeActorsDropdown();
-    // Navigate to chat with this actor
-    this.router.navigate(['/discover/chat'], { 
-      queryParams: { userId: actor.uid }
-    });
   }
 
   // Get user document from Firestore
