@@ -14,5 +14,27 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Global Tailwind scrollbar (applied app-wide) */
+@layer base {
+  /* Apply thin scrollbar to the page */
+  html, body {
+    @apply scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-950;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #0a0a0a #171717; /* Firefox: thumb track */
+  }
+  /* Ensure generic scrollable containers also get the same styling */
+  .scrollable, .use-app-scrollbar, *:where(.overflow-auto, .overflow-y-auto, .overflow-y-scroll) {
+    @apply scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-950;
+    scrollbar-color: #0a0a0a #171717; /* Firefox */
+    background-color: transparent;
+  }
+}
+
+/* Optional: WebKit hover state for better affordance */
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #000000; /* pure black on hover */
 }

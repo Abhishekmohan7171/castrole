@@ -38,16 +38,27 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                  'text-neutral-100 font-semibold': discoverLink.isActive && !isActor(),
                  'text-neutral-500 hover:text-neutral-300': !discoverLink.isActive && !isActor()
                }">discover</a>
-            <a routerLink="/discover/upload"
+            <!-- Upload link for actors -->
+            <a *ngIf="isActor()"
+               routerLink="/discover/upload"
                #uploadLink="routerLinkActive"
                routerLinkActive
                class="transition-colors duration-200"
                [ngClass]="{
-                 'text-purple-200 font-semibold': uploadLink.isActive && isActor(),
-                 'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive && isActor(),
-                 'text-neutral-100 font-semibold': uploadLink.isActive && !isActor(),
-                 'text-neutral-500 hover:text-neutral-300': !uploadLink.isActive && !isActor()
+                 'text-purple-200 font-semibold': uploadLink.isActive,
+                 'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive
                }">upload</a>
+            
+            <!-- Search link for producers -->
+            <a *ngIf="!isActor()"
+               routerLink="/discover/search"
+               #searchLink="routerLinkActive"
+               routerLinkActive
+               class="transition-colors duration-200"
+               [ngClass]="{
+                 'text-neutral-100 font-semibold': searchLink.isActive,
+                 'text-neutral-500 hover:text-neutral-300': !searchLink.isActive
+               }">search</a>
             <a routerLink="/discover/chat"
                #chatLink="routerLinkActive"
                routerLinkActive
