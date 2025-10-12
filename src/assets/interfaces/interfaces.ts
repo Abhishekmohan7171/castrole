@@ -6,7 +6,7 @@ export interface UserDoc {
   name: string;
   email: string;
   phone: string;           // e.g., +91-9xxxxxxxxx
-  location: string;
+  // location: string;
   currentRole: string;            // e.g., 'user' | 'actor' | 'producer' | 'admin'
   createdAt: any;          // Firestore serverTimestamp
   updatedAt: any;          // Firestore serverTimestamp

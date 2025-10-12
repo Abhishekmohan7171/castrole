@@ -49,7 +49,7 @@ import { Message, Conversation } from '../../assets/interfaces/interfaces';
                       <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ actor.name[0] | uppercase }}</div>
                       <div class="flex-1 min-w-0">
                         <p class="truncate text-sm text-neutral-100">{{ actor.name || actor.uid }}</p>
-                        <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p>
+                        <!-- <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p> -->
                       </div>
                     </button>
                   }
@@ -642,8 +642,7 @@ export class ChatComponent implements OnInit, OnDestroy {
             const t = (term || '').toLowerCase().trim();
             if (!t) return actors;
             return (actors || []).filter((a) =>
-              (a.name || '').toLowerCase().includes(t) ||
-              (a.location || '').toLowerCase().includes(t)
+              (a.name || '').toLowerCase().includes(t) 
             );
           }),
           tap(filtered => this.filteredActors.set(filtered))

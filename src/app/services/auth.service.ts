@@ -135,7 +135,7 @@ export class AuthService {
       name: name || '',
       email: email || '',
       phone: phone || '',
-      location: location || '',
+      // location: location || '',
       currentRole: role || 'user',
       roles: [role || 'user'], // Push the role to roles array during signup
       isLoggedIn: true,
@@ -298,7 +298,7 @@ export class AuthService {
       name: params.name || user.displayName || '',
       email: params.email || user.email || '',
       phone: params.phone || user.phoneNumber || '',
-      location: params.location || '',
+      // location: params.location || '',
       currentRole: params.role,
       roles: [params.role || 'user'], // Push the role to roles array during signup
       isLoggedIn: true,
