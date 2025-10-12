@@ -9,15 +9,16 @@ Complete technical documentation for Authentication, Upload, and Chat services i
 1. [Authentication Service](#authentication-service)
 2. [Upload Service](#upload-service)
 3. [Chat Service](#chat-service)
-4. [Firestore Data Structure](#firestore-data-structure)
-5. [Best Practices](#best-practices)
+4. [Presence Service](#presence-service)
+5. [Firestore Data Structure](#firestore-data-structure)
+6. [Best Practices](#best-practices)
 
 ---
 
 ## Authentication Service
 
 ### Overview
-The `AuthService` manages user authentication, profile management, and session tracking. It supports email/password, Google, and Apple authentication methods.
+The `AuthService` manages user authentication, profile management, session tracking, and **real-time presence tracking**. It supports email/password, Google, and Apple authentication methods. The service automatically integrates with `PresenceService` to track user online/offline status.
 
 ### Firestore Collection
 ```
@@ -39,6 +40,11 @@ The `AuthService` manages user authentication, profile management, and session t
   - ghost: boolean (optional)
   - deleteAccount: boolean (optional)
   - deleteAccountDate: Timestamp (optional)
+  
+  // Presence tracking fields
+  - lastSeen: Timestamp (optional) - Last activity timestamp
+  - isOnline: boolean (optional) - Real-time online status
+  - presenceUpdatedAt: Timestamp (optional) - Last presence update
 ```
 
 ### Key Methods
@@ -66,10 +72,12 @@ await authService.registerWithEmail({
 **`loginWithEmail(email, password)`**
 - Authenticates user with email and password
 - Updates login timestamp and device tracking
+- **Automatically starts presence tracking**
 - Returns: `Promise<User>`
 
 ```typescript
 const user = await authService.loginWithEmail('john@example.com', 'SecurePass123');
+// Presence tracking starts automatically
 ```
 
 #### **Social Authentication**
@@ -117,8 +125,10 @@ const user = await authService.onboardProviderUser({
 - Called automatically on login
 
 **`logout()`**
+- **Stops presence tracking before logout**
 - Removes current device from device array
 - Sets `isLoggedIn` to false
+- Sets user status to offline
 - Signs out from Firebase Auth
 - Updates `updatedAt` timestamp
 
@@ -162,6 +172,44 @@ interface devices {
 - Devices are added on login
 - Devices are removed on logout
 - Prevents duplicate device entries
+
+### Presence Tracking Integration
+
+The `AuthService` automatically integrates with `PresenceService` for real-time user status tracking:
+
+**Automatic Tracking:**
+- Presence tracking starts automatically on login (via `onAuthStateChanged`)
+- Stops automatically on logout
+- No manual intervention required
+
+**Constructor Implementation:**
+```typescript
+constructor() {
+  // Auto-track presence based on auth state
+  this.auth.onAuthStateChanged((user) => {
+    if (user) {
+      this.presence.startTracking(user.uid);
+    } else {
+      this.presence.stopTracking();
+    }
+  });
+}
+```
+
+**What Gets Tracked:**
+- User activity (mouse, keyboard, touch, scroll)
+- Tab visibility (active/inactive)
+- Last seen timestamp
+- Online/offline status
+- Updates every 2 minutes when active
+
+**Status Levels:**
+- **Online**: Active within last 1 minute (green dot)
+- **Last seen now**: Active 1-2 minutes ago
+- **Last seen few moments ago**: Active 2-5 minutes ago
+- **Last seen [time] ago**: Shows relative time (5m, 2h, etc.)
+- **Last seen yesterday**: Last active yesterday
+- **Last seen long time ago**: Inactive for > 7 days
 
 ---
 
@@ -712,6 +760,180 @@ try {
 
 ---
 
+## Presence Service
+
+### Overview
+The `PresenceService` provides real-time user online/offline status tracking with activity detection and automatic status updates. It integrates seamlessly with `AuthService` for automatic lifecycle management.
+
+### Features
+- **Real-time presence tracking** with Firestore
+- **Activity detection** (mouse, keyboard, touch, scroll, tab visibility)
+- **Automatic updates** every 2 minutes when user is active
+- **Granular status levels** (online, last seen now, few moments ago, etc.)
+- **Browser close detection** (sets offline on tab/window close)
+
+### Key Methods
+
+#### **Lifecycle Management**
+
+**`startTracking(userId)`**
+- Starts presence tracking for a user
+- Sets user as online immediately
+- Begins periodic updates (every 2 minutes)
+- Attaches activity listeners
+- Sets up beforeunload handler
+- **Called automatically by AuthService on login**
+
+```typescript
+// Usually called automatically, but can be manual:
+presenceService.startTracking('userId123');
+```
+
+**`stopTracking()`**
+- Stops presence tracking
+- Sets user as offline
+- Clears intervals and listeners
+- **Called automatically by AuthService on logout**
+
+```typescript
+// Usually called automatically, but can be manual:
+presenceService.stopTracking();
+```
+
+#### **Status Observation**
+
+**`observeUserOnlineStatus(userId)`**
+- Returns Observable that emits true/false for online status
+- User is considered online if active within last 1 minute
+- Updates in real-time as status changes
+- Returns: `Observable<boolean>`
+
+```typescript
+presenceService.observeUserOnlineStatus('userId123').subscribe(isOnline => {
+  console.log('User is online:', isOnline);
+});
+```
+
+**`getLastSeenTime(userId)`**
+- Returns Observable of user's last activity timestamp
+- Updates in real-time
+- Returns: `Observable<Date | null>`
+
+```typescript
+presenceService.getLastSeenTime('userId123').subscribe(lastSeen => {
+  console.log('Last seen:', lastSeen);
+});
+```
+
+**`formatLastSeen(lastSeenDate)`**
+- Formats last seen date into human-readable status
+- Returns granular status strings
+- Returns: `string`
+
+```typescript
+const status = presenceService.formatLastSeen(new Date());
+// Returns: "online", "last seen now", "last seen 5m ago", etc.
+```
+
+### Status Levels
+
+| Time Since Activity | Status Text | Green Dot |
+|---------------------|-------------|-----------|
+| < 1 minute | "online" | ✅ Yes |
+| 1-2 minutes | "last seen now" | ❌ No |
+| 2-5 minutes | "last seen few moments ago" | ❌ No |
+| 5-60 minutes | "last seen 15m ago" | ❌ No |
+| 1-24 hours | "last seen 3h ago" | ❌ No |
+| Yesterday | "last seen yesterday" | ❌ No |
+| 2-7 days | "last seen 3d ago" | ❌ No |
+| > 7 days | "last seen long time ago" | ❌ No |
+
+### Activity Detection
+
+The service tracks these user activities:
+- **Mouse movement**
+- **Keyboard input**
+- **Touch events**
+- **Click events**
+- **Scroll events**
+- **Tab visibility** (active/hidden)
+
+Activities are debounced by 1 second to prevent excessive updates.
+
+### Firestore Updates
+
+**Update Frequency:**
+- Initial: Immediately on `startTracking()`
+- Periodic: Every 2 minutes while user is active
+- On activity: When user becomes active after being idle
+- On close: Immediately when browser/tab closes
+
+**Fields Updated:**
+```typescript
+{
+  isOnline: boolean,
+  lastSeen: Timestamp,
+  presenceUpdatedAt: Timestamp
+}
+```
+
+### Integration Example
+
+**In Chat Component:**
+```typescript
+export class ChatComponent {
+  private presence = inject(PresenceService);
+  
+  counterpartOnline = signal<boolean>(false);
+  counterpartLastSeen = signal<string>('');
+
+  ngOnInit() {
+    // Observe counterpart's online status
+    combineLatest([
+      this.presence.observeUserOnlineStatus(counterpartId),
+      this.presence.getLastSeenTime(counterpartId)
+    ]).subscribe(([isOnline, lastSeen]) => {
+      this.counterpartOnline.set(isOnline);
+      this.counterpartLastSeen.set(
+        this.presence.formatLastSeen(lastSeen)
+      );
+    });
+  }
+}
+```
+
+**In Template:**
+```html
+<span class="flex items-center gap-1.5">
+  <span 
+    class="w-2 h-2 rounded-full"
+    [ngClass]="{
+      'bg-green-500 animate-pulse': counterpartOnline(),
+      'bg-gray-500': !counterpartOnline()
+    }"
+  ></span>
+  <span>{{ counterpartLastSeen() }}</span>
+</span>
+```
+
+### Best Practices
+
+1. **Don't call manually** - Let AuthService handle lifecycle
+2. **Use signals** - For reactive UI updates
+3. **Combine observables** - Track both online status and last seen
+4. **Handle null values** - Last seen can be null for new users
+5. **Debounce UI updates** - Use `distinctUntilChanged()` to prevent flicker
+
+### Performance Considerations
+
+- Updates are throttled to every 2 minutes
+- Activity detection is debounced by 1 second
+- Only tracks when user is active (not when idle)
+- Minimal Firestore writes (efficient)
+- Uses Firestore real-time listeners (no polling)
+
+---
+
 ## Performance Optimization Tips
 
 ### Authentication
@@ -731,6 +953,13 @@ try {
 - Debounce typing indicators (300-500ms)
 - Clear cache aggressively to prevent memory leaks
 - Use `shareReplay(1)` to prevent duplicate subscriptions
+
+### Presence
+- Let AuthService handle lifecycle (don't call manually)
+- Use `combineLatest` to track both online status and last seen
+- Use `distinctUntilChanged()` to prevent unnecessary UI updates
+- Handle null values for new users without presence data
+- Consider caching status locally for frequently viewed users
 
 ---
 
@@ -761,8 +990,11 @@ const mockMessage = {
 - [ ] Migrate existing upload data to new structure
 - [ ] Test all authentication methods
 - [ ] Verify chat request/accept flow
+- [ ] Test presence tracking (login/logout/activity)
+- [ ] Verify online status indicators in chat
 - [ ] Check upload permissions and quotas
 - [ ] Monitor Firestore usage and costs
+- [ ] Test presence tracking across multiple devices/tabs
 
 ---
 
