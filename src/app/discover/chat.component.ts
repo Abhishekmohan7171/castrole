@@ -3,23 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
+import { ChatService } from '../services/chat.service';
+import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
-type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
-type Conversation = {
-  id: string;
-  name: string;
-  last: string;
-  messages?: Message[];
-  unreadCount?: Record<string, number>;
-  actorAccepted?: boolean;
-  actorRejected?: boolean;
-};
+import { Message, Conversation } from '../../assets/interfaces/interfaces';
 
 @Component({
   selector: 'app-discover-chat',
@@ -57,7 +49,7 @@ type Conversation = {
                       <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ actor.name[0] | uppercase }}</div>
                       <div class="flex-1 min-w-0">
                         <p class="truncate text-sm text-neutral-100">{{ actor.name || actor.uid }}</p>
-                        <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p>
+                        <!-- <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p> -->
                       </div>
                     </button>
                   }
@@ -586,7 +578,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Role stream`
     this.myRole$ = this.user.observeUser(me.uid).pipe(
-      map(u => (u?.role as UserRole) || 'user'),
+      map(u => (u?.currentRole as UserRole) || 'user'),
       shareReplay(1)
     );
 
@@ -650,8 +642,7 @@ export class ChatComponent implements OnInit, OnDestroy {
             const t = (term || '').toLowerCase().trim();
             if (!t) return actors;
             return (actors || []).filter((a) =>
-              (a.name || '').toLowerCase().includes(t) ||
-              (a.location || '').toLowerCase().includes(t)
+              (a.name || '').toLowerCase().includes(t) 
             );
           }),
           tap(filtered => this.filteredActors.set(filtered))

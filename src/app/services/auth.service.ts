@@ -18,16 +18,8 @@ import {
   verifyPasswordResetCode,
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, serverTimestamp, getDoc } from '@angular/fire/firestore';
-
+import { UserDoc } from '../../assets/interfaces/interfaces';
 export type UserRole = 'actor' | 'producer';
-
-export interface ProfileBase {
-  role: UserRole;
-  name: string;       // stage name (actor) or production name (producer)
-  location: string;
-  email: string;
-  mobile: string;     // E.164 format recommended: +15551234567
-}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -44,7 +36,7 @@ export class AuthService {
   // =========================
 
   /** Writes/overwrites the user's profile document. */
-  async saveUserProfile(uid: string, data: Partial<ProfileBase> & Record<string, any>): Promise<void> {
+  async saveUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
     await setDoc(doc(this.db, 'users', uid), { ...data, updatedAt: serverTimestamp() }, { merge: true } as any);
   }
 
@@ -58,11 +50,8 @@ export class AuthService {
     const base = {
       name: user.displayName || '',
       email: user.email || '',
-      mobile: user.phoneNumber || '',
-      location: '',
-      role: ('' as any) as UserRole, // role can be assigned later in onboarding
-      emailVerified: user.emailVerified || false,
-      phoneVerified: !!user.phoneNumber,
+      phone: user.phoneNumber || '',
+      isPhoneVerified: !!user.phoneNumber,
       updatedAt: serverTimestamp(),
     };
     await setDoc(ref, { ...base }, { merge: true } as any);
@@ -141,19 +130,25 @@ export class AuthService {
     const ref = doc(this.db, 'users', cred.user.uid);
     const currentDevice = this.browserDetection.detectBrowser();
     
-    await setDoc(ref, {
+    const userDoc: UserDoc = {
       uid: cred.user.uid,
       name: name || '',
       email: email || '',
       phone: phone || '',
-      location: location || '',
-      role: role || 'user',
+      // location: location || '',
+      currentRole: role || 'user',
+      roles: [role || 'user'], // Push the role to roles array during signup
       isLoggedIn: true,
       device: [currentDevice],
-      LoggedInTime: serverTimestamp(),
+      loggedInTime: serverTimestamp(),
+      isPhoneVerified: false,
+      blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
-    }, { merge: true } as any);
+      // ghost and deleteAccount will be set during those specific operations
+    };
+    
+    await setDoc(ref, userDoc, { merge: true } as any);
     return cred.user;
   }
 
@@ -192,7 +187,7 @@ export class AuthService {
       await setDoc(ref, { 
         updatedAt: serverTimestamp(),
         isLoggedIn: true,
-        LoggedInTime: serverTimestamp(),
+        loggedInTime: serverTimestamp(),
         device: devices
       }, { merge: true } as any);
     } else {
@@ -200,7 +195,7 @@ export class AuthService {
       await setDoc(ref, { 
         updatedAt: serverTimestamp(),
         isLoggedIn: true,
-        LoggedInTime: serverTimestamp(),
+        loggedInTime: serverTimestamp(),
         device: [currentDevice]
       }, { merge: true } as any);
     }
@@ -250,13 +245,13 @@ export class AuthService {
         await updateDoc(ref, { 
           isLoggedIn: false,
           device: updatedDevices,
-          LoggedOutTime: serverTimestamp() 
+          updatedAt: serverTimestamp() 
         });
       } else {
-        // If user doc doesn't exist, just update logout time
+        // If user doc doesn't exist, just update logout status
         await updateDoc(ref, { 
           isLoggedIn: false,
-          LoggedOutTime: serverTimestamp() 
+          updatedAt: serverTimestamp() 
         });
       }
     }
@@ -298,19 +293,25 @@ export class AuthService {
     const ref = doc(this.db, 'users', user.uid);
     const currentDevice = this.browserDetection.detectBrowser();
     
-    await setDoc(ref, {
+    const userDoc: UserDoc = {
       uid: user.uid,
       name: params.name || user.displayName || '',
       email: params.email || user.email || '',
       phone: params.phone || user.phoneNumber || '',
-      location: params.location || '',
-      role: params.role || 'user',
+      // location: params.location || '',
+      currentRole: params.role,
+      roles: [params.role || 'user'], // Push the role to roles array during signup
       isLoggedIn: true,
       device: [currentDevice],
-      LoggedInTime: serverTimestamp(),
+      loggedInTime: serverTimestamp(),
+      isPhoneVerified: !!user.phoneNumber,
+      blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
-    }, { merge: true } as any);
+      // ghost and deleteAccount will be set during those specific operations
+    };
+    
+    await setDoc(ref, userDoc, { merge: true } as any);
 
     return user;
   }

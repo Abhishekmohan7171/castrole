@@ -4,44 +4,21 @@ import {
   Firestore, 
   collection, 
   addDoc, 
+  doc,
+  setDoc,
   serverTimestamp, 
   query, 
   where, 
   orderBy, 
   limit,
   getDocs,
+  collectionGroup,
   QueryConstraint 
 } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
+import { UploadProgress, MediaUpload, VideoMetadata, ImageMetadata } from '../../assets/interfaces/interfaces';
 
-export interface UploadProgress {
-  progress: number;
-  url?: string;
-  error?: string;
-}
-
-export interface MediaUpload {
-  userId: string;
-  fileName: string;
-  fileUrl: string;
-  fileType: 'video' | 'image';
-  fileSize: number;
-  uploadedAt: any;
-  metadata?: VideoMetadata | ImageMetadata;
-}
-
-export interface VideoMetadata {
-  tags: string[];
-  mediaType: string;
-  description: string;
-  thumbnailUrl?: string;
-}
-
-export interface ImageMetadata {
-  caption?: string;
-  tags?: string[];
-}
 
 @Injectable({
   providedIn: 'root'
@@ -215,11 +192,12 @@ export class UploadService {
   }
 
   /**
-   * Save media metadata to Firestore
-   * @param data Media upload data
+   * Save media metadata to Firestore using hierarchical structure
+   * Path: /uploads/{userId}/userUploads/{uploadId}
+   * @param data Media upload data (userId must be provided)
    */
-  private async saveMediaMetadata(data: MediaUpload): Promise<void> {
-    const { metadata, ...rest } = data;
+  private async saveMediaMetadata(data: MediaUpload & { userId: string }): Promise<void> {
+    const { metadata, userId, ...rest } = data;
     const payload: Record<string, unknown> = { ...rest };
 
     if (metadata !== undefined) {
@@ -228,7 +206,9 @@ export class UploadService {
       );
     }
 
-    await addDoc(collection(this.db, 'uploads'), payload);
+    // Use hierarchical structure: /uploads/{userId}/userUploads/{auto-generated-id}
+    const uploadsRef = collection(this.db, 'uploads', userId, 'userUploads');
+    await addDoc(uploadsRef, payload);
   }
 
   /**
@@ -238,6 +218,21 @@ export class UploadService {
    */
   private sanitizeFileName(fileName: string): string {
     return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  /**
+   * Extract userId from document path
+   * Path format: uploads/{userId}/userUploads/{uploadId}
+   * @param docPath Document reference path
+   * @returns userId or undefined
+   */
+  private extractUserIdFromPath(docPath: string): string | undefined {
+    const pathParts = docPath.split('/');
+    // Path format: uploads/{userId}/userUploads/{uploadId}
+    if (pathParts.length >= 2 && pathParts[0] === 'uploads') {
+      return pathParts[1];
+    }
+    return undefined;
   }
 
   /**
@@ -262,7 +257,8 @@ export class UploadService {
   }
 
   /**
-   * Get uploads by user ID
+   * Get uploads by user ID using hierarchical structure
+   * Path: /uploads/{userId}/userUploads
    * @param userId User ID to filter by
    * @param fileType Optional file type filter ('video' | 'image')
    * @param limitCount Optional limit for number of results
@@ -274,22 +270,23 @@ export class UploadService {
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
     const constraints: QueryConstraint[] = [
-      where('userId', '==', userId),
       orderBy('uploadedAt', 'desc'),
       limit(limitCount)
     ];
 
     if (fileType) {
-      constraints.splice(1, 0, where('fileType', '==', fileType));
+      constraints.unshift(where('fileType', '==', fileType));
     }
 
-    const q = query(collection(this.db, 'uploads'), ...constraints);
+    // Query the user's specific subcollection
+    const uploadsRef = collection(this.db, 'uploads', userId, 'userUploads');
+    const q = query(uploadsRef, ...constraints);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({ id: doc.id, userId, ...doc.data() } as any));
   }
 
   /**
-   * Get uploads by media type (for videos only)
+   * Get uploads by media type across all users using collectionGroup
    * @param mediaType Media type to filter by (reel, short, scene, etc.)
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -298,8 +295,9 @@ export class UploadService {
     mediaType: string,
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
+    // Use collectionGroup to query across all user subcollections
     const q = query(
-      collection(this.db, 'uploads'),
+      collectionGroup(this.db, 'userUploads'),
       where('fileType', '==', 'video'),
       where('metadata.mediaType', '==', mediaType),
       orderBy('uploadedAt', 'desc'),
@@ -307,11 +305,15 @@ export class UploadService {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 
   /**
-   * Get uploads by tag
+   * Get uploads by tag across all users using collectionGroup
    * @param tag Tag to search for
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -320,8 +322,9 @@ export class UploadService {
     tag: string,
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
+    // Use collectionGroup to query across all user subcollections
     const q = query(
-      collection(this.db, 'uploads'),
+      collectionGroup(this.db, 'userUploads'),
       where('fileType', '==', 'video'),
       where('metadata.tags', 'array-contains', tag),
       orderBy('uploadedAt', 'desc'),
@@ -329,11 +332,15 @@ export class UploadService {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 
   /**
-   * Get recent uploads across all users
+   * Get recent uploads across all users using collectionGroup
    * @param fileType Optional file type filter
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -351,8 +358,13 @@ export class UploadService {
       constraints.unshift(where('fileType', '==', fileType));
     }
 
-    const q = query(collection(this.db, 'uploads'), ...constraints);
+    // Use collectionGroup to query across all user subcollections
+    const q = query(collectionGroup(this.db, 'userUploads'), ...constraints);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 }

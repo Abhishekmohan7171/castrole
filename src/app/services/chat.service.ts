@@ -19,39 +19,8 @@ import {
   limit as firestoreLimit
 } from '@angular/fire/firestore';
 import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay, distinctUntilChanged } from 'rxjs';
+import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
 
-export type UserRole = 'actor' | 'producer' | 'user';
-
-export interface ChatRoom {
-  id?: string;
-  participants: string[];             // [actorId, producerId]
-  actorId: string;
-  producerId: string;
-  createdBy: string;                  // producerId
-  createdAt: Timestamp;
-  updatedAt?: Timestamp;
-  lastMessage?: ChatMessage;
-  actorCanSee: boolean;               // only true after producer sends first message
-  actorAccepted?: boolean;            // true when actor accepts the chat request
-  actorRejected?: boolean;            // true when actor rejects the chat request
-
-  // Unread counts - per user
-  unreadCount?: Record<string, number>; // { userId: count }
-
-  // Typing indicators
-  typingUsers?: Record<string, Timestamp | null>; // { userId: timestamp or null }
-}
-
-export interface ChatMessage {
-  id?: string;
-  chatRoomId: string;
-  senderId: string;
-  receiverId: string;
-  text: string;
-  timestamp: Timestamp;
-  read: boolean;
-  messageType: 'text' | 'image' | 'file';
-}
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {

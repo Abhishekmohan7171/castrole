@@ -349,7 +349,7 @@ export class ProfileComponent implements OnInit {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const userData = userDoc.data() as UserDoc;
-          this.userRole.set(userData.role || 'actor');
+          this.userRole.set(userData.currentRole || 'actor');
         }
       } catch (error) {
         // Default to actor if there's an error
