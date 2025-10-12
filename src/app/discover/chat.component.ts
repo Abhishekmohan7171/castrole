@@ -125,7 +125,7 @@ import { Message, Conversation } from '../../assets/interfaces/interfaces';
               </div>
 
               <!-- Content -->
-              <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'" (click)="handleDesktopItemClick(c)">
+              <div class="flex-1 min-w-0 cursor-pointer" (click)="handleDesktopItemClick(c)">
                 <div class="flex items-center gap-2">
                   <p class="truncate text-sm"
                      [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
@@ -214,8 +214,7 @@ import { Message, Conversation } from '../../assets/interfaces/interfaces';
 
                 <!-- Content -->
                 <div
-                  class="flex-1 min-w-0"
-                  [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'"
+                  class="flex-1 min-w-0 cursor-pointer"
                   (click)="handleMobileItemClick(c)"
                 >
                   <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
@@ -1142,24 +1141,16 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // Handle click on mobile conversation item
   handleMobileItemClick(c: Conversation) {
-    // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
-      return;
-    }
-
-    // Otherwise open the conversation and close the mobile list
+    // Always allow opening conversations to view them
+    // The accept/reject buttons have their own click handlers
     this.open(c);
     this.mobileListOpen = false;
   }
 
   // Handle click on desktop conversation item
   handleDesktopItemClick(c: Conversation) {
-    // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
-      return;
-    }
-
-    // Otherwise open the conversation
+    // Always allow opening conversations to view them
+    // The accept/reject buttons have their own click handlers
     this.open(c);
   }
 
