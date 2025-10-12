@@ -4,23 +4,25 @@ export interface UserDoc {
   email: string;
   phone: string;           // e.g., +91-9xxxxxxxxx
   location: string;
-  role: string;            // e.g., 'user' | 'actor' | 'producer' | 'admin'
+  currentRole: string;            // e.g., 'user' | 'actor' | 'producer' | 'admin'
   createdAt: any;          // Firestore serverTimestamp
   updatedAt: any;          // Firestore serverTimestamp
   isLoggedIn: boolean;
-  device: deviceArray[];          // e.g., 'web', 'ios', 'android'
-  LoggedInTime: any;       // Firestore serverTimestamp
+  device: devices[];          // e.g., 'web', 'ios', 'android'
+  loggedInTime: any;       // Firestore serverTimestamp
   isPhoneVerified: boolean;
   roles: string[];
 	//settings related
-	ghost: boolean;
-	blocked: blockedDetails[]
+	ghost?: boolean;
+	blocked?: blockedDetails[];
+  deleteAccount?: boolean;
+	deleteAccountDate?: any;
 }
 
-export interface deviceArray {
-  model: String;
-  platform: String;
-  version: String;
+export interface devices {
+  model?: string;
+  platform: string;
+  version?: string;
 }
 
 export interface blockedDetails {
