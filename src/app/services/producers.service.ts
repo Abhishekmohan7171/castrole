@@ -14,7 +14,7 @@ export class ProducersService {
 
   getAllProducers(): Observable<UserDoc[]> {
       const ref = collection(this.db, 'users');
-      const queryAll = query(ref, where('role', '==', 'producer'));
+      const queryAll = query(ref, where('currentRole', '==', 'producer'));
       return collectionData(queryAll, { idField: 'uid' }) as Observable<UserDoc[]>;
     }
 }

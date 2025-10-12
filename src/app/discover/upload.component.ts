@@ -1,7 +1,8 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UploadService, UploadProgress } from '../services/upload.service';
+import { UploadService } from '../services/upload.service';
+import { UploadProgress } from '../../assets/interfaces/interfaces';
 
 interface Tag {
   id: string;

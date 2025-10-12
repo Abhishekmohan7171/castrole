@@ -3,23 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
+import { ChatService } from '../services/chat.service';
+import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
-type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
-type Conversation = {
-  id: string;
-  name: string;
-  last: string;
-  messages?: Message[];
-  unreadCount?: Record<string, number>;
-  actorAccepted?: boolean;
-  actorRejected?: boolean;
-};
+import { Message, Conversation } from '../../assets/interfaces/interfaces';
 
 @Component({
   selector: 'app-discover-chat',
@@ -586,7 +578,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Role stream`
     this.myRole$ = this.user.observeUser(me.uid).pipe(
-      map(u => (u?.role as UserRole) || 'user'),
+      map(u => (u?.currentRole as UserRole) || 'user'),
       shareReplay(1)
     );
 

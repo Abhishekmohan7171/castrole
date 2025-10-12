@@ -404,7 +404,7 @@ export class SearchComponent implements OnInit {
     this.loading.set(true);
     try {
       const usersRef = collection(this.firestore, 'users');
-      const q = query(usersRef, where('role', '==', 'actor'));
+      const q = query(usersRef, where('currentRole', '==', 'actor'));
       const querySnapshot = await getDocs(q);
       
       const actors: Actor[] = [];

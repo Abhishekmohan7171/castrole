@@ -17,34 +17,8 @@ import {
 } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
+import { UploadProgress, MediaUpload, VideoMetadata, ImageMetadata } from '../../assets/interfaces/interfaces';
 
-export interface UploadProgress {
-  progress: number;
-  url?: string;
-  error?: string;
-}
-
-export interface MediaUpload {
-  userId?: string; // Optional - included when querying, but not stored in document
-  fileName: string;
-  fileUrl: string;
-  fileType: 'video' | 'image';
-  fileSize: number;
-  uploadedAt: any;
-  metadata?: VideoMetadata | ImageMetadata;
-}
-
-export interface VideoMetadata {
-  tags: string[];
-  mediaType: string;
-  description: string;
-  thumbnailUrl?: string;
-}
-
-export interface ImageMetadata {
-  caption?: string;
-  tags?: string[];
-}
 
 @Injectable({
   providedIn: 'root'

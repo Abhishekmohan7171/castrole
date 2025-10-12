@@ -13,7 +13,7 @@ export class ActorService {
 
   getAllActors(): Observable<UserDoc[]> {
     const ref = collection(this.db, 'users');
-    const queryAll = query(ref, where('role', '==', 'actor'));
+    const queryAll = query(ref, where('currentRole', '==', 'actor'));
     return collectionData(queryAll, { idField: 'uid' }) as Observable<UserDoc[]>;
   }
 }
