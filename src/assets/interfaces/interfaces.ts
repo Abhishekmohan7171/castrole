@@ -14,6 +14,10 @@ export interface UserDoc {
   device: devices[];          // e.g., 'web', 'ios', 'android'
   loggedInTime: any;       // Firestore serverTimestamp
   isPhoneVerified: boolean;
+  // Presence tracking
+  lastSeen?: any;          // Firestore serverTimestamp - last activity
+  isOnline?: boolean;      // Real-time online status
+  presenceUpdatedAt?: any; // Last presence update timestamp
   roles: string[];
 	//settings related
 	ghost?: boolean;

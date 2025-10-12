@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BrowserDetectionService } from '../utils/browser-detection';
+import { PresenceService } from './presence.service';
 import {
   Auth,
   User,
@@ -26,6 +27,18 @@ export class AuthService {
   private auth = inject(Auth);
   private db = inject(Firestore);
   private browserDetection = inject(BrowserDetectionService);
+  private presence = inject(PresenceService);
+
+  constructor() {
+    // Auto-track presence based on auth state
+    this.auth.onAuthStateChanged((user) => {
+      if (user) {
+        this.presence.startTracking(user.uid);
+      } else {
+        this.presence.stopTracking();
+      }
+    });
+  }
 
   // =========================
   // Email/Password, Google, Apple Auth
@@ -156,6 +169,8 @@ export class AuthService {
   async loginWithEmail(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
     await this.updateLoginTimestamp(cred.user.uid);
+    // Start presence tracking
+    this.presence.startTracking(cred.user.uid);
     return cred.user;
   }
 
@@ -224,6 +239,9 @@ export class AuthService {
   /** Logs out the current user and updates their status in Firestore */
   async logout(): Promise<void> {
     const user = this.auth.currentUser;
+    // Stop presence tracking before logout
+    this.presence.stopTracking();
+    
     if (user) {
       // Get the current browser info
       const currentDevice = this.browserDetection.detectBrowser();
