@@ -1,0 +1,31 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "userUploads",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "fileType", "order": "ASCENDING" },
+        { "fieldPath": "metadata.mediaType", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userUploads",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "fileType", "order": "ASCENDING" },
+        { "fieldPath": "metadata.tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userUploads",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "fileType", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
