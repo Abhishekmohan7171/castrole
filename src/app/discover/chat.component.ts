@@ -707,14 +707,25 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.active$ = combineLatest([
       this.conversations$!,
       this.activeRoomId$,
+      this.viewMode$
     ]).pipe(
-      map(([cs, id]) => {
+      map(([cs, id, mode]) => {
         if (!cs.length) return null;
-        if (id) {
-          const found = cs.find(c => c.id === id);
-          return found ?? cs[0];
-        }
-        return cs[0];
+        // When no active ID, pick first conversation
+        if (!id) return cs[0];
+        // Try to find the requested conversation
+        const found = cs.find(c => c.id === id);
+        // If not found, pick first (likely switched modes)
+        return found ?? cs[0];
+      }),
+      // Only prevent duplicate emissions of the exact same conversation
+      distinctUntilChanged((prev, curr) => {
+        // If both null, skip
+        if (!prev && !curr) return true;
+        // If one is null, don't skip
+        if (!prev || !curr) return false;
+        // Only skip if same ID
+        return prev.id === curr.id;
       }),
       tap((c: Conversation | null) => {
         if (!c) return;
@@ -958,6 +969,11 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   setViewMode(mode: 'chat' | 'requests') {
     if (this.viewMode() === mode) return;
+    
+    // Clear the active room ID so the stream picks the first conversation from new mode
+    this.activeRoomId$.next(null);
+    
+    // Update view mode - the active$ stream will handle selecting first conversation
     this.viewMode.set(mode);
     this.viewMode$.next(mode);
   }
