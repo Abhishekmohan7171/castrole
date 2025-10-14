@@ -55,50 +55,79 @@ export class UploadService {
       // Create storage reference
       const storageRef = ref(this.storage, filePath);
       
-      // Start upload
+      // Start upload with resumable upload for heavy files
       const uploadTask = uploadBytesResumable(storageRef, file, {
         contentType: file.type,
         customMetadata: {
           uploadedBy: user.uid,
-          originalName: file.name
+          originalName: file.name,
+          uploadTimestamp: timestamp.toString()
         }
       });
 
       // Monitor upload progress
-      uploadTask.on(
+      const unsubscribe = uploadTask.on(
         'state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           observer.next({ progress });
         },
         (error) => {
-          observer.error({ error: error.message });
+          // Enhanced error handling
+          let errorMessage = error.message || 'Upload failed';
+          if (error.code === 'storage/canceled') {
+            errorMessage = 'Upload was cancelled';
+          } else if (error.code === 'storage/quota-exceeded') {
+            errorMessage = 'Storage quota exceeded';
+          } else if (error.code === 'storage/unauthenticated') {
+            errorMessage = 'Authentication required';
+          }
+          observer.error({ error: errorMessage });
           observer.complete();
         },
         async () => {
           try {
-            // Get download URL
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            // Get download URL with retry logic for heavy uploads
+            let downloadURL: string;
+            let retries = 3;
+            while (retries > 0) {
+              try {
+                downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                break;
+              } catch (error: any) {
+                retries--;
+                if (retries === 0) throw error;
+                // Wait 1 second before retry
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
             
             // Save metadata to Firestore
             await this.saveMediaMetadata({
               userId: user.uid,
               fileName: file.name,
-              fileUrl: downloadURL,
+              fileUrl: downloadURL!,
               fileType: 'video',
               fileSize: file.size,
               uploadedAt: serverTimestamp(),
               metadata
             });
 
-            observer.next({ progress: 100, url: downloadURL });
+            observer.next({ progress: 100, url: downloadURL! });
             observer.complete();
           } catch (error: any) {
-            observer.error({ error: error.message });
+            observer.error({ error: error.message || 'Failed to finalize upload' });
             observer.complete();
           }
         }
       );
+
+      // Return teardown logic to cancel upload if observable is unsubscribed
+      return () => {
+        if (uploadTask.snapshot.state === 'running') {
+          uploadTask.cancel();
+        }
+      };
     });
   }
 
@@ -123,6 +152,8 @@ export class UploadService {
       const uploadProgress: UploadProgress[] = files.map(() => ({ progress: 0 }));
       let completedUploads = 0;
 
+      const uploadTasks: UploadTask[] = [];
+
       files.forEach((file, index) => {
         const timestamp = Date.now();
         const sanitizedFileName = this.sanitizeFileName(file.name);
@@ -135,9 +166,12 @@ export class UploadService {
           contentType: file.type,
           customMetadata: {
             uploadedBy: user.uid,
-            originalName: file.name
+            originalName: file.name,
+            uploadTimestamp: timestamp.toString()
           }
         });
+
+        uploadTasks.push(uploadTask);
 
         uploadTask.on(
           'state_changed',
@@ -147,7 +181,14 @@ export class UploadService {
             observer.next([...uploadProgress]);
           },
           (error) => {
-            uploadProgress[index].error = error.message;
+            // Enhanced error handling
+            let errorMessage = error.message || 'Upload failed';
+            if (error.code === 'storage/canceled') {
+              errorMessage = 'Upload was cancelled';
+            } else if (error.code === 'storage/quota-exceeded') {
+              errorMessage = 'Storage quota exceeded';
+            }
+            uploadProgress[index].error = errorMessage;
             observer.next([...uploadProgress]);
             completedUploads++;
             if (completedUploads === files.length) {
@@ -156,15 +197,28 @@ export class UploadService {
           },
           async () => {
             try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              uploadProgress[index].url = downloadURL;
+              // Get download URL with retry for heavy images
+              let downloadURL: string;
+              let retries = 3;
+              while (retries > 0) {
+                try {
+                  downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  break;
+                } catch (error: any) {
+                  retries--;
+                  if (retries === 0) throw error;
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+              }
+
+              uploadProgress[index].url = downloadURL!;
               uploadProgress[index].progress = 100;
               
               // Save metadata to Firestore
               await this.saveMediaMetadata({
                 userId: user.uid,
                 fileName: file.name,
-                fileUrl: downloadURL,
+                fileUrl: downloadURL!,
                 fileType: 'image',
                 fileSize: file.size,
                 uploadedAt: serverTimestamp(),
@@ -178,7 +232,7 @@ export class UploadService {
                 observer.complete();
               }
             } catch (error: any) {
-              uploadProgress[index].error = error.message;
+              uploadProgress[index].error = error.message || 'Failed to finalize upload';
               observer.next([...uploadProgress]);
               completedUploads++;
               if (completedUploads === files.length) {
@@ -188,6 +242,15 @@ export class UploadService {
           }
         );
       });
+
+      // Return teardown logic to cancel all uploads if observable is unsubscribed
+      return () => {
+        uploadTasks.forEach(task => {
+          if (task.snapshot.state === 'running') {
+            task.cancel();
+          }
+        });
+      };
     });
   }
 
@@ -208,7 +271,22 @@ export class UploadService {
 
     // Use hierarchical structure: /uploads/{userId}/userUploads/{auto-generated-id}
     const uploadsRef = collection(this.db, 'uploads', userId, 'userUploads');
-    await addDoc(uploadsRef, payload);
+    
+    // Retry logic for Firestore writes (handles heavy load)
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await addDoc(uploadsRef, payload);
+        return;
+      } catch (error: any) {
+        retries--;
+        if (retries === 0) {
+          throw new Error(`Failed to save metadata: ${error.message}`);
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
   }
 
   /**
