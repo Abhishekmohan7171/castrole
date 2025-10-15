@@ -3,7 +3,7 @@ import { OtpComponent } from '../common-components/otp/otp.component';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 
@@ -166,6 +166,7 @@ export class ProducerOnboardComponent {
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
 
   errorMsg = '';
@@ -185,6 +186,12 @@ export class ProducerOnboardComponent {
   });
 
   constructor() {
+    // Pre-fill email if provided via query params (e.g., from Google/Apple auth)
+    const emailParam = this.route.snapshot.queryParams['email'];
+    if (emailParam) {
+      this.form.patchValue({ email: emailParam });
+    }
+
     // Load country codes from assets
     this.http
       .get<Array<{ name: string; dialCode: string; flag: string }>>('assets/json/country-code.json')

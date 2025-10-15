@@ -176,8 +176,10 @@ export class LoginComponent implements OnInit {
         await this.authService.updateLoginTimestamp(user.uid);
         await this.router.navigateByUrl(this.returnUrl);
       } else {
-        // If user doesn't exist, redirect to onboarding
-        await this.router.navigateByUrl('/onboarding');
+        // If user doesn't exist, redirect to onboarding with email pre-filled
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' }
+        });
       }
     } catch (e: any) {
       console.error('[login] google error', e);
@@ -200,8 +202,10 @@ export class LoginComponent implements OnInit {
         await this.authService.updateLoginTimestamp(user.uid);
         await this.router.navigateByUrl(this.returnUrl);
       } else {
-        // If user doesn't exist, redirect to onboarding
-        await this.router.navigateByUrl('/onboarding');
+        // If user doesn't exist, redirect to onboarding with email pre-filled
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' }
+        });
       }
     } catch (e: any) {
       console.error('[login] apple error', e);

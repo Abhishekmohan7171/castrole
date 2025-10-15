@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 
@@ -162,6 +162,7 @@ export class ActorOnboardComponent {
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
 
   errorMsg = '';
@@ -181,6 +182,12 @@ export class ActorOnboardComponent {
   });
 
   constructor() {
+    // Pre-fill email if provided via query params (e.g., from Google/Apple auth)
+    const emailParam = this.route.snapshot.queryParams['email'];
+    if (emailParam) {
+      this.form.patchValue({ email: emailParam });
+    }
+
     // Load country codes from assets
     this.http
       .get<Array<{ name: string; dialCode: string; flag: string }>>('assets/json/country-code.json')
