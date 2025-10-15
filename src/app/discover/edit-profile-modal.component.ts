@@ -5,6 +5,8 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -659,7 +661,7 @@ import {
     }
   `,
 })
-export class EditProfileModalComponent implements OnInit {
+export class EditProfileModalComponent implements OnInit, OnChanges {
   @Input() isOpen = false;
   @Input() profile: Profile | null = null;
   @Input() isActor = false;
@@ -677,8 +679,20 @@ export class EditProfileModalComponent implements OnInit {
 
   ngOnInit() {
     this.initializeForm();
-    if (this.profile) {
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    // Populate form when profile data changes or modal opens
+    if ((changes['profile'] && this.profile) || (changes['isOpen'] && this.isOpen && this.profile)) {
       this.populateForm();
+    }
+    
+    // Re-initialize form if isActor changes to update validators
+    if (changes['isActor'] && this.profileForm) {
+      this.initializeForm();
+      if (this.profile) {
+        this.populateForm();
+      }
     }
   }
 
@@ -741,11 +755,18 @@ export class EditProfileModalComponent implements OnInit {
 
       this.currentVoiceIntro.set(actor.voiceIntro || null);
 
-      // Populate arrays
-      this.populateSkills(actor.skills || []);
-      this.populateLanguages(actor.languages || []);
-      this.populateEducation(actor.listEducation || []);
-      this.populateActorWorks(actor.actorWorks || []);
+      // Populate arrays (ensure at least one empty field if none exist)
+      const skills = actor.skills || [];
+      this.populateSkills(skills.length > 0 ? skills : ['']);
+      
+      const languages = actor.languages || [];
+      this.populateLanguages(languages.length > 0 ? languages : ['']);
+      
+      const education = actor.listEducation || [];
+      this.populateEducation(education.length > 0 ? education : [{ yearCompleted: '', schoolName: '', courseName: '', certificateUrl: '' }]);
+      
+      const works = actor.actorWorks || [];
+      this.populateActorWorks(works.length > 0 ? works : [{ year: '', projectName: '', genre: '' }]);
     }
 
     if (!this.isActor && this.profile.producerProfile) {
@@ -758,7 +779,8 @@ export class EditProfileModalComponent implements OnInit {
         industryType: producer.industryType || '',
       });
 
-      this.populateProducerWorks(producer.producerWorks || []);
+      const producerWorks = producer.producerWorks || [];
+      this.populateProducerWorks(producerWorks.length > 0 ? producerWorks : [{ year: '', projectName: '', genre: '' }]);
     }
   }
 
@@ -944,6 +966,24 @@ export class EditProfileModalComponent implements OnInit {
     this.currentVoiceIntro.set(null);
   }
 
+  // Helper method to clean undefined values from objects
+  private cleanObject(obj: any): any {
+    const cleaned: any = {};
+    for (const key in obj) {
+      if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+        if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+          const cleanedNested = this.cleanObject(obj[key]);
+          if (Object.keys(cleanedNested).length > 0) {
+            cleaned[key] = cleanedNested;
+          }
+        } else {
+          cleaned[key] = obj[key];
+        }
+      }
+    }
+    return cleaned;
+  }
+
   // Modal methods
   closeModal() {
     this.close.emit();
@@ -963,26 +1003,28 @@ export class EditProfileModalComponent implements OnInit {
     try {
       const formValue = this.profileForm.value;
 
-      // Build updated profile
-      const updatedProfile: Profile = {
+      // Build updated profile (without undefined values)
+      const profileData: any = {
         uid: this.profile?.uid || '',
-        gender: formValue.gender || undefined,
-        location: formValue.location || undefined,
-        age: formValue.age || undefined,
+        gender: formValue.gender,
+        location: formValue.location,
+        age: formValue.age,
         social: {
-          instaIdUrl: formValue.social.instaIdUrl || undefined,
-          youtubeIdUrl: formValue.social.youtubeIdUrl || undefined,
-          externalLinkUrl: formValue.social.externalLinkUrl || undefined,
-          addLinkUrl: formValue.social.addLinkUrl || undefined,
+          instaIdUrl: formValue.social.instaIdUrl,
+          youtubeIdUrl: formValue.social.youtubeIdUrl,
+          externalLinkUrl: formValue.social.externalLinkUrl,
+          addLinkUrl: formValue.social.addLinkUrl,
         },
       };
 
+      const updatedProfile: Profile = this.cleanObject(profileData) as Profile;
+
       if (this.isActor) {
-        updatedProfile.actorProfile = {
+        const actorData = {
           stageName: formValue.stageName,
-          height: formValue.height || undefined,
-          weight: formValue.weight || undefined,
-          voiceIntro: this.currentVoiceIntro() || undefined,
+          height: formValue.height,
+          weight: formValue.weight,
+          voiceIntro: this.currentVoiceIntro(),
           skills: formValue.skills.filter((skill: string) => skill.trim()),
           languages: formValue.languages.filter((lang: string) => lang.trim()),
           listEducation: formValue.education.filter(
@@ -1002,12 +1044,14 @@ export class EditProfileModalComponent implements OnInit {
           actorProfileImageUrl:
             this.profile?.actorProfile?.actorProfileImageUrl,
         };
+        
+        updatedProfile.actorProfile = this.cleanObject(actorData);
       } else {
-        updatedProfile.producerProfile = {
+        const producerData = {
           name: formValue.name,
-          designation: formValue.designation || undefined,
-          productionHouse: formValue.productionHouse || undefined,
-          industryType: formValue.industryType || undefined,
+          designation: formValue.designation,
+          productionHouse: formValue.productionHouse,
+          industryType: formValue.industryType,
           producerWorks: formValue.producerWorks.filter(
             (work: any) => work.year && work.projectName
           ),
@@ -1020,9 +1064,12 @@ export class EditProfileModalComponent implements OnInit {
           producerProfileImageUrl:
             this.profile?.producerProfile?.producerProfileImageUrl,
         };
+        
+        updatedProfile.producerProfile = this.cleanObject(producerData);
       }
 
       // Save to Firestore
+      console.log('Saving cleaned profile data:', updatedProfile);
       const profileRef = doc(this.firestore, 'profiles', updatedProfile.uid);
       await updateDoc(profileRef, updatedProfile as any);
 

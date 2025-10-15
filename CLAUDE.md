@@ -5,12 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Core Development
+
 - `nx serve` - Start development server on http://localhost:4200
 - `nx build` - Build the project (artifacts in dist/)
 - `nx test` - Run unit tests via Karma
 - `nx build --watch --configuration development` - Build in watch mode
 
 ### Scripts
+
 - `process-locations` - Process location data using ts-node script
 - `serve:ssr:castrole` - Serve SSR build from dist/
 
@@ -19,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Castrole is an Angular 17 application using Nx workspace, Firebase, and Tailwind CSS. It's a platform connecting actors and producers with role-based access and chat functionality.
 
 ### Tech Stack
+
 - **Framework**: Angular 17 with SSR support
 - **Build System**: Nx workspace for monorepo management
 - **Styling**: Tailwind CSS with scrollbar plugin
@@ -28,6 +31,7 @@ Castrole is an Angular 17 application using Nx workspace, Firebase, and Tailwind
 ### Application Structure
 
 **Core Features:**
+
 - Two user roles: Actors and Producers
 - Onboarding flow with role selection
 - Firebase authentication with guards
@@ -35,6 +39,7 @@ Castrole is an Angular 17 application using Nx workspace, Firebase, and Tailwind
 - Location-based features
 
 **Key Directories:**
+
 - `src/app/auth/` - Authentication components (login, signup, reset password)
 - `src/app/onboarding/` - Role selection and onboarding flows
 - `src/app/discover/` - Main app features (feed, chat, profile, upload, settings)
@@ -44,13 +49,16 @@ Castrole is an Angular 17 application using Nx workspace, Firebase, and Tailwind
 - `src/assets/interfaces/` - Shared interface definitions
 
 ### Firebase Configuration
+
 Firebase is configured in `app.config.ts` with:
+
 - Authentication
 - Firestore database
 - Storage
 - Project: yberhood-castrole
 
 ### Routing Architecture
+
 - **Auth Loading**: Default route handles auth initialization
 - **Auth Routes**: Login/reset-password (logged-out users only)
 - **Onboarding**: Role selection and user type setup
@@ -58,24 +66,30 @@ Firebase is configured in `app.config.ts` with:
 - **Lazy Loading**: Most components use lazy loading for performance
 
 ### User Roles & Permissions
+
 - **Actors**: Can receive chat invitations, upload content
 - **Producers**: Can initiate chats, discover actors
 - **Chat System**: Role-based permissions (producers initiate, actors respond)
 
 ### Data Models
+
 Key interfaces defined in `src/assets/interfaces/interfaces.ts`:
+
 - UserDoc: Complete user profile with role, device info, settings
 - Chat system: ChatRooms and Messages with role-based access
 - Device tracking and blocking functionality
 
 ### Location Features
+
 - Location processing script in `scripts/`
 - JSON data files for countries and locations
 - Processed location data for app consumption
 
 ### Development Notes
+
 - Uses Firebase configuration directly in code (development setup)
 - Tailwind configured for Angular templates (`./src/**/*.{html,ts}`)
 - SSR enabled for better performance
 - Route guards prevent unauthorized access
 - Component-level code splitting for optimal loading
+- Use Signals and Computed for state management, effects for non-business side logic and logging
