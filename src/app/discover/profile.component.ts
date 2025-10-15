@@ -5,12 +5,13 @@ import { AuthService } from '../services/auth.service';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
+import { EditProfileModalComponent } from './edit-profile-modal.component';
  
 
 @Component({
   selector: 'app-discover-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, EditProfileModalComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4 md:py-6" [ngClass]="profileTheme()">
       <div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 md:gap-8 lg:gap-10">
@@ -71,7 +72,7 @@ import { Profile } from '../../assets/interfaces/profile.interfaces';
                           [ngClass]="{
                             'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
                             'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                          }" aria-label="edit" (click)="navigateToSettings()">
+                          }" aria-label="edit" (click)="openEditModal()">
                     <svg viewBox="0 0 24 24" class="h-3.5 w-3.5"
                          [ngClass]="{'text-purple-300/60': isActor(), 'text-neutral-300': !isActor()}">
                       <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
@@ -493,6 +494,15 @@ import { Profile } from '../../assets/interfaces/profile.interfaces';
         </section>
       </div>
     </div>
+
+    <!-- Edit Profile Modal -->
+    <app-edit-profile-modal 
+      [isOpen]="isEditModalOpen()"
+      [profile]="profileData()"
+      [isActor]="isActor()"
+      (close)="closeEditModal()"
+      (save)="onProfileUpdated($event)">
+    </app-edit-profile-modal>
   `,
   styles: [`
     :host {
@@ -527,6 +537,9 @@ export class ProfileComponent implements OnInit {
   userRole = signal<string>('actor');
   profileData = signal<Profile | null>(null);
   isActor = computed(() => this.userRole() === 'actor');
+  
+  // Modal state
+  isEditModalOpen = signal(false);
   profileTheme = computed(() => this.isActor() ? 'actor-theme' : '');
   
   // Computed properties for safe array access
@@ -658,6 +671,20 @@ export class ProfileComponent implements OnInit {
     }
   }
   
+  // Modal methods
+  openEditModal() {
+    this.isEditModalOpen.set(true);
+  }
+
+  closeEditModal() {
+    this.isEditModalOpen.set(false);
+  }
+
+  onProfileUpdated(updatedProfile: Profile) {
+    this.profileData.set(updatedProfile);
+    this.closeEditModal();
+  }
+
   navigateToSettings() {
     this.router.navigate(['/discover/settings']);
   }
