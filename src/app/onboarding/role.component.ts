@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-role',
@@ -16,6 +16,7 @@ import { RouterLink } from '@angular/router';
           <!-- Actor card -->
           <a
             routerLink="/onboarding/actor"
+            [queryParams]="emailParam ? { email: emailParam } : {}"
             class="group relative aspect-[4/3] flex flex-col items-center justify-center rounded-[28px] p-[1px] transition"
             aria-label="Continue as Actor"
           >
@@ -51,6 +52,7 @@ import { RouterLink } from '@angular/router';
           <!-- Producer card -->
           <a
             routerLink="/onboarding/producer"
+            [queryParams]="emailParam ? { email: emailParam } : {}"
             class="group relative aspect-[4/3] flex flex-col items-center justify-center rounded-[28px] p-[1px] transition"
             aria-label="Continue as Producer"
           >
@@ -95,5 +97,10 @@ import { RouterLink } from '@angular/router';
   ]
 })
 export class RoleComponent {
-
+  private route = inject(ActivatedRoute);
+  
+  // Get email from query params to pass to actor/producer onboarding
+  get emailParam(): string {
+    return this.route.snapshot.queryParams['email'] || '';
+  }
 }

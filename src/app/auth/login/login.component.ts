@@ -3,6 +3,7 @@ import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { AuthService } from '../../services/auth.service';
 import { LoaderComponent } from '../../common-components/loader/loader.component';
 
@@ -47,11 +48,30 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
               </svg>
             </span>
             <input
-              type="password"
+              [type]="showPassword ? 'text' : 'password'"
               placeholder="password"
               formControlName="password"
-              class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
+              class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-12 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-emerald-500/50 transition"
             />
+            <button
+              type="button"
+              (click)="showPassword = !showPassword"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors focus:outline-none"
+              [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <!-- Eye icon (show) -->
+              <svg *ngIf="!showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <!-- Eye-off icon (hide) -->
+              <svg *ngIf="showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            </button>
           </div>
 
           <div class="flex justify-end -mt-1">
@@ -110,9 +130,30 @@ export class LoginComponent implements OnInit {
   loading = false;
   error = '';
   resetEmailSent = false;
-  ngOnInit() {
+  showPassword = false;
+  
+  private firebaseAuth = inject(Auth);
+  private db = inject(Firestore);
+  
+  async ngOnInit() {
     // Get return url from route parameters or default to '/discover'
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/discover';
+    
+    // Check if user is already authenticated but hasn't completed onboarding
+    const user = this.firebaseAuth.currentUser;
+    if (user) {
+      const userRef = doc(this.db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        // User authenticated but no Firestore doc - redirect to onboarding
+        // Use replaceUrl to prevent back button from returning here
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
+        });
+      }
+    }
   }
 
   form = this.fb.group({
@@ -156,8 +197,12 @@ export class LoginComponent implements OnInit {
         await this.authService.updateLoginTimestamp(user.uid);
         await this.router.navigateByUrl(this.returnUrl);
       } else {
-        // If user doesn't exist, redirect to onboarding
-        await this.router.navigateByUrl('/onboarding');
+        // If user doesn't exist, redirect to onboarding with email pre-filled
+        // Use replaceUrl to prevent back button from returning to login
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
+        });
       }
     } catch (e: any) {
       console.error('[login] google error', e);
@@ -180,8 +225,12 @@ export class LoginComponent implements OnInit {
         await this.authService.updateLoginTimestamp(user.uid);
         await this.router.navigateByUrl(this.returnUrl);
       } else {
-        // If user doesn't exist, redirect to onboarding
-        await this.router.navigateByUrl('/onboarding');
+        // If user doesn't exist, redirect to onboarding with email pre-filled
+        // Use replaceUrl to prevent back button from returning to login
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
+        });
       }
     } catch (e: any) {
       console.error('[login] apple error', e);
