@@ -3,6 +3,7 @@ import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { AuthService } from '../../services/auth.service';
 import { LoaderComponent } from '../../common-components/loader/loader.component';
 
@@ -130,9 +131,29 @@ export class LoginComponent implements OnInit {
   error = '';
   resetEmailSent = false;
   showPassword = false;
-  ngOnInit() {
+  
+  private firebaseAuth = inject(Auth);
+  private db = inject(Firestore);
+  
+  async ngOnInit() {
     // Get return url from route parameters or default to '/discover'
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/discover';
+    
+    // Check if user is already authenticated but hasn't completed onboarding
+    const user = this.firebaseAuth.currentUser;
+    if (user) {
+      const userRef = doc(this.db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        // User authenticated but no Firestore doc - redirect to onboarding
+        // Use replaceUrl to prevent back button from returning here
+        await this.router.navigate(['/onboarding'], {
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
+        });
+      }
+    }
   }
 
   form = this.fb.group({
@@ -177,8 +198,10 @@ export class LoginComponent implements OnInit {
         await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding with email pre-filled
+        // Use replaceUrl to prevent back button from returning to login
         await this.router.navigate(['/onboarding'], {
-          queryParams: { email: user.email || '' }
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
         });
       }
     } catch (e: any) {
@@ -203,8 +226,10 @@ export class LoginComponent implements OnInit {
         await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding with email pre-filled
+        // Use replaceUrl to prevent back button from returning to login
         await this.router.navigate(['/onboarding'], {
-          queryParams: { email: user.email || '' }
+          queryParams: { email: user.email || '' },
+          replaceUrl: true
         });
       }
     } catch (e: any) {
