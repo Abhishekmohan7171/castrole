@@ -8,7 +8,6 @@ import {
   ref,
   listAll,
   getDownloadURL,
-  uploadBytes,
 } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
@@ -412,16 +411,8 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
               </div>
               }
               <!-- Add more videos button -->
-              <input
-                type="file"
-                accept="video/*"
-                (change)="onVideoFileSelect($event)"
-                class="hidden"
-                #videoInputMore
-              />
               <button
-                (click)="videoInputMore.click(); $event.stopPropagation()"
-                [disabled]="isUploadingMedia()"
+                (click)="navigateToUpload()"
                 class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
                 [ngClass]="{
                   'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10':
@@ -450,23 +441,15 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                     'text-neutral-400': !isActor()
                   }"
                 >
-                  {{ isUploadingMedia() ? 'Uploading...' : 'Add More' }}
+                  Add More
                 </span>
               </button>
             </div>
             } @else {
             <!-- Add video button -->
             <div class="mt-3">
-              <input
-                type="file"
-                accept="video/*"
-                (change)="onVideoFileSelect($event)"
-                class="hidden"
-                #videoInput
-              />
               <button
-                (click)="videoInput.click()"
-                [disabled]="isUploadingMedia()"
+                (click)="navigateToUpload()"
                 class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
                 [ngClass]="{
                   'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20':
@@ -495,16 +478,8 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                     'text-neutral-400': !isActor()
                   }"
                 >
-                  {{ isUploadingMedia() ? 'Uploading...' : 'Add Video' }}
+                  Add Video
                 </span>
-                @if (isUploadingMedia() && uploadProgress() > 0) {
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                  <div
-                    class="h-full bg-blue-500 transition-all duration-300"
-                    [style.width.%]="uploadProgress()"
-                  ></div>
-                </div>
-                }
               </button>
             </div>
             } }
@@ -547,16 +522,8 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
               </div>
               }
               <!-- Add more images button -->
-              <input
-                type="file"
-                accept="image/*"
-                (change)="onImageFileSelect($event)"
-                class="hidden"
-                #imageInputMore
-              />
               <button
-                (click)="imageInputMore.click(); $event.stopPropagation()"
-                [disabled]="isUploadingMedia()"
+                (click)="navigateToUpload()"
                 class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
                 [ngClass]="{
                   'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10':
@@ -585,23 +552,15 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                     'text-neutral-400': !isActor()
                   }"
                 >
-                  {{ isUploadingMedia() ? 'Uploading...' : 'Add More' }}
+                  Add More
                 </span>
               </button>
             </div>
             } @else {
             <!-- Add image button -->
             <div class="mt-3">
-              <input
-                type="file"
-                accept="image/*"
-                (change)="onImageFileSelect($event)"
-                class="hidden"
-                #imageInput
-              />
               <button
-                (click)="imageInput.click()"
-                [disabled]="isUploadingMedia()"
+                (click)="navigateToUpload()"
                 class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
                 [ngClass]="{
                   'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20':
@@ -630,16 +589,8 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                     'text-neutral-400': !isActor()
                   }"
                 >
-                  {{ isUploadingMedia() ? 'Uploading...' : 'Add Image' }}
+                  Add Image
                 </span>
-                @if (isUploadingMedia() && uploadProgress() > 0) {
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                  <div
-                    class="h-full bg-blue-500 transition-all duration-300"
-                    [style.width.%]="uploadProgress()"
-                  ></div>
-                </div>
-                }
               </button>
             </div>
             } }
@@ -1400,8 +1351,6 @@ export class ProfileComponent implements OnInit {
   videoUrls = signal<string[]>([]);
   imageUrls = signal<string[]>([]);
   isLoadingMedia = signal(false);
-  isUploadingMedia = signal(false);
-  uploadProgress = signal(0);
 
   // Modal state
   isEditModalOpen = signal(false);
@@ -1722,76 +1671,13 @@ export class ProfileComponent implements OnInit {
     this.closeEditModal();
   }
 
-  async onVideoFileSelect(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const user = this.auth.getCurrentUser();
-    if (!user) return;
-
-    this.isUploadingMedia.set(true);
-    this.uploadProgress.set(0);
-
-    try {
-      const file = input.files[0];
-      const timestamp = Date.now();
-      const fileName = `video_${timestamp}_${file.name}`;
-      const storageRef = ref(
-        this.storage,
-        `users/${user.uid}/videos/${fileName}`
-      );
-
-      await uploadBytes(storageRef, file);
-      this.uploadProgress.set(100);
-
-      // Reload videos
-      await this.loadMediaFromStorage(user.uid);
-    } catch (error) {
-      // Handle upload error silently
-    } finally {
-      this.isUploadingMedia.set(false);
-      this.uploadProgress.set(0);
-      // Reset input
-      input.value = '';
-    }
-  }
-
-  async onImageFileSelect(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const user = this.auth.getCurrentUser();
-    if (!user) return;
-
-    this.isUploadingMedia.set(true);
-    this.uploadProgress.set(0);
-
-    try {
-      const file = input.files[0];
-      const timestamp = Date.now();
-      const fileName = `image_${timestamp}_${file.name}`;
-      const storageRef = ref(
-        this.storage,
-        `users/${user.uid}/images/${fileName}`
-      );
-
-      await uploadBytes(storageRef, file);
-      this.uploadProgress.set(100);
-
-      // Reload images
-      await this.loadMediaFromStorage(user.uid);
-    } catch (error) {
-      // Handle upload error silently
-    } finally {
-      this.isUploadingMedia.set(false);
-      this.uploadProgress.set(0);
-      // Reset input
-      input.value = '';
-    }
-  }
 
   navigateToSettings() {
     this.router.navigate(['/discover/settings']);
+  }
+
+  navigateToUpload() {
+    this.router.navigate(['/discover/upload']);
   }
 
   openPreviewModal(url: string, type: 'image' | 'video') {
