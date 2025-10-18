@@ -995,10 +995,10 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
     try {
       this.voiceUploadProgress.set(0);
 
-      // Upload to Firebase Storage
-      const fileName = `voice-intros/${
-        this.profile?.uid
-      }-${Date.now()}.${file.name.split('.').pop()}`;
+      // Upload to Firebase Storage in users/:userid/voice directory
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `users/${this.profile?.uid}/voice/voice_intro_${timestamp}.${fileExtension}`;
       const storageRef = ref(this.storage, fileName);
 
       const uploadTask = uploadBytes(storageRef, file);
@@ -1009,7 +1009,6 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
         this.currentVoiceIntro.set(downloadURL);
       });
     } catch (error) {
-      console.error('Voice intro upload error:', error);
       alert('Failed to upload voice intro. Please try again.');
     }
   }
