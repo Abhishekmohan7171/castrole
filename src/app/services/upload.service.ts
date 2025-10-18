@@ -4,44 +4,21 @@ import {
   Firestore, 
   collection, 
   addDoc, 
+  doc,
+  setDoc,
   serverTimestamp, 
   query, 
   where, 
   orderBy, 
   limit,
   getDocs,
+  collectionGroup,
   QueryConstraint 
 } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
+import { UploadProgress, MediaUpload, VideoMetadata, ImageMetadata } from '../../assets/interfaces/interfaces';
 
-export interface UploadProgress {
-  progress: number;
-  url?: string;
-  error?: string;
-}
-
-export interface MediaUpload {
-  userId: string;
-  fileName: string;
-  fileUrl: string;
-  fileType: 'video' | 'image';
-  fileSize: number;
-  uploadedAt: any;
-  metadata?: VideoMetadata | ImageMetadata;
-}
-
-export interface VideoMetadata {
-  tags: string[];
-  mediaType: string;
-  description: string;
-  thumbnailUrl?: string;
-}
-
-export interface ImageMetadata {
-  caption?: string;
-  tags?: string[];
-}
 
 @Injectable({
   providedIn: 'root'
@@ -78,50 +55,79 @@ export class UploadService {
       // Create storage reference
       const storageRef = ref(this.storage, filePath);
       
-      // Start upload
+      // Start upload with resumable upload for heavy files
       const uploadTask = uploadBytesResumable(storageRef, file, {
         contentType: file.type,
         customMetadata: {
           uploadedBy: user.uid,
-          originalName: file.name
+          originalName: file.name,
+          uploadTimestamp: timestamp.toString()
         }
       });
 
       // Monitor upload progress
-      uploadTask.on(
+      const unsubscribe = uploadTask.on(
         'state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           observer.next({ progress });
         },
         (error) => {
-          observer.error({ error: error.message });
+          // Enhanced error handling
+          let errorMessage = error.message || 'Upload failed';
+          if (error.code === 'storage/canceled') {
+            errorMessage = 'Upload was cancelled';
+          } else if (error.code === 'storage/quota-exceeded') {
+            errorMessage = 'Storage quota exceeded';
+          } else if (error.code === 'storage/unauthenticated') {
+            errorMessage = 'Authentication required';
+          }
+          observer.error({ error: errorMessage });
           observer.complete();
         },
         async () => {
           try {
-            // Get download URL
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            // Get download URL with retry logic for heavy uploads
+            let downloadURL: string;
+            let retries = 3;
+            while (retries > 0) {
+              try {
+                downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                break;
+              } catch (error: any) {
+                retries--;
+                if (retries === 0) throw error;
+                // Wait 1 second before retry
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
             
             // Save metadata to Firestore
             await this.saveMediaMetadata({
               userId: user.uid,
               fileName: file.name,
-              fileUrl: downloadURL,
+              fileUrl: downloadURL!,
               fileType: 'video',
               fileSize: file.size,
               uploadedAt: serverTimestamp(),
               metadata
             });
 
-            observer.next({ progress: 100, url: downloadURL });
+            observer.next({ progress: 100, url: downloadURL! });
             observer.complete();
           } catch (error: any) {
-            observer.error({ error: error.message });
+            observer.error({ error: error.message || 'Failed to finalize upload' });
             observer.complete();
           }
         }
       );
+
+      // Return teardown logic to cancel upload if observable is unsubscribed
+      return () => {
+        if (uploadTask.snapshot.state === 'running') {
+          uploadTask.cancel();
+        }
+      };
     });
   }
 
@@ -146,6 +152,8 @@ export class UploadService {
       const uploadProgress: UploadProgress[] = files.map(() => ({ progress: 0 }));
       let completedUploads = 0;
 
+      const uploadTasks: UploadTask[] = [];
+
       files.forEach((file, index) => {
         const timestamp = Date.now();
         const sanitizedFileName = this.sanitizeFileName(file.name);
@@ -158,9 +166,12 @@ export class UploadService {
           contentType: file.type,
           customMetadata: {
             uploadedBy: user.uid,
-            originalName: file.name
+            originalName: file.name,
+            uploadTimestamp: timestamp.toString()
           }
         });
+
+        uploadTasks.push(uploadTask);
 
         uploadTask.on(
           'state_changed',
@@ -170,7 +181,14 @@ export class UploadService {
             observer.next([...uploadProgress]);
           },
           (error) => {
-            uploadProgress[index].error = error.message;
+            // Enhanced error handling
+            let errorMessage = error.message || 'Upload failed';
+            if (error.code === 'storage/canceled') {
+              errorMessage = 'Upload was cancelled';
+            } else if (error.code === 'storage/quota-exceeded') {
+              errorMessage = 'Storage quota exceeded';
+            }
+            uploadProgress[index].error = errorMessage;
             observer.next([...uploadProgress]);
             completedUploads++;
             if (completedUploads === files.length) {
@@ -179,15 +197,28 @@ export class UploadService {
           },
           async () => {
             try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              uploadProgress[index].url = downloadURL;
+              // Get download URL with retry for heavy images
+              let downloadURL: string;
+              let retries = 3;
+              while (retries > 0) {
+                try {
+                  downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  break;
+                } catch (error: any) {
+                  retries--;
+                  if (retries === 0) throw error;
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+              }
+
+              uploadProgress[index].url = downloadURL!;
               uploadProgress[index].progress = 100;
               
               // Save metadata to Firestore
               await this.saveMediaMetadata({
                 userId: user.uid,
                 fileName: file.name,
-                fileUrl: downloadURL,
+                fileUrl: downloadURL!,
                 fileType: 'image',
                 fileSize: file.size,
                 uploadedAt: serverTimestamp(),
@@ -201,7 +232,7 @@ export class UploadService {
                 observer.complete();
               }
             } catch (error: any) {
-              uploadProgress[index].error = error.message;
+              uploadProgress[index].error = error.message || 'Failed to finalize upload';
               observer.next([...uploadProgress]);
               completedUploads++;
               if (completedUploads === files.length) {
@@ -211,15 +242,25 @@ export class UploadService {
           }
         );
       });
+
+      // Return teardown logic to cancel all uploads if observable is unsubscribed
+      return () => {
+        uploadTasks.forEach(task => {
+          if (task.snapshot.state === 'running') {
+            task.cancel();
+          }
+        });
+      };
     });
   }
 
   /**
-   * Save media metadata to Firestore
-   * @param data Media upload data
+   * Save media metadata to Firestore using hierarchical structure
+   * Path: /uploads/{userId}/userUploads/{uploadId}
+   * @param data Media upload data (userId must be provided)
    */
-  private async saveMediaMetadata(data: MediaUpload): Promise<void> {
-    const { metadata, ...rest } = data;
+  private async saveMediaMetadata(data: MediaUpload & { userId: string }): Promise<void> {
+    const { metadata, userId, ...rest } = data;
     const payload: Record<string, unknown> = { ...rest };
 
     if (metadata !== undefined) {
@@ -228,7 +269,24 @@ export class UploadService {
       );
     }
 
-    await addDoc(collection(this.db, 'uploads'), payload);
+    // Use hierarchical structure: /uploads/{userId}/userUploads/{auto-generated-id}
+    const uploadsRef = collection(this.db, 'uploads', userId, 'userUploads');
+    
+    // Retry logic for Firestore writes (handles heavy load)
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await addDoc(uploadsRef, payload);
+        return;
+      } catch (error: any) {
+        retries--;
+        if (retries === 0) {
+          throw new Error(`Failed to save metadata: ${error.message}`);
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
   }
 
   /**
@@ -238,6 +296,21 @@ export class UploadService {
    */
   private sanitizeFileName(fileName: string): string {
     return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  /**
+   * Extract userId from document path
+   * Path format: uploads/{userId}/userUploads/{uploadId}
+   * @param docPath Document reference path
+   * @returns userId or undefined
+   */
+  private extractUserIdFromPath(docPath: string): string | undefined {
+    const pathParts = docPath.split('/');
+    // Path format: uploads/{userId}/userUploads/{uploadId}
+    if (pathParts.length >= 2 && pathParts[0] === 'uploads') {
+      return pathParts[1];
+    }
+    return undefined;
   }
 
   /**
@@ -262,7 +335,8 @@ export class UploadService {
   }
 
   /**
-   * Get uploads by user ID
+   * Get uploads by user ID using hierarchical structure
+   * Path: /uploads/{userId}/userUploads
    * @param userId User ID to filter by
    * @param fileType Optional file type filter ('video' | 'image')
    * @param limitCount Optional limit for number of results
@@ -274,22 +348,23 @@ export class UploadService {
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
     const constraints: QueryConstraint[] = [
-      where('userId', '==', userId),
       orderBy('uploadedAt', 'desc'),
       limit(limitCount)
     ];
 
     if (fileType) {
-      constraints.splice(1, 0, where('fileType', '==', fileType));
+      constraints.unshift(where('fileType', '==', fileType));
     }
 
-    const q = query(collection(this.db, 'uploads'), ...constraints);
+    // Query the user's specific subcollection
+    const uploadsRef = collection(this.db, 'uploads', userId, 'userUploads');
+    const q = query(uploadsRef, ...constraints);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({ id: doc.id, userId, ...doc.data() } as any));
   }
 
   /**
-   * Get uploads by media type (for videos only)
+   * Get uploads by media type across all users using collectionGroup
    * @param mediaType Media type to filter by (reel, short, scene, etc.)
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -298,8 +373,9 @@ export class UploadService {
     mediaType: string,
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
+    // Use collectionGroup to query across all user subcollections
     const q = query(
-      collection(this.db, 'uploads'),
+      collectionGroup(this.db, 'userUploads'),
       where('fileType', '==', 'video'),
       where('metadata.mediaType', '==', mediaType),
       orderBy('uploadedAt', 'desc'),
@@ -307,11 +383,15 @@ export class UploadService {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 
   /**
-   * Get uploads by tag
+   * Get uploads by tag across all users using collectionGroup
    * @param tag Tag to search for
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -320,8 +400,9 @@ export class UploadService {
     tag: string,
     limitCount: number = 50
   ): Promise<MediaUpload[]> {
+    // Use collectionGroup to query across all user subcollections
     const q = query(
-      collection(this.db, 'uploads'),
+      collectionGroup(this.db, 'userUploads'),
       where('fileType', '==', 'video'),
       where('metadata.tags', 'array-contains', tag),
       orderBy('uploadedAt', 'desc'),
@@ -329,11 +410,15 @@ export class UploadService {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 
   /**
-   * Get recent uploads across all users
+   * Get recent uploads across all users using collectionGroup
    * @param fileType Optional file type filter
    * @param limitCount Optional limit for number of results
    * @returns Promise of MediaUpload array
@@ -351,8 +436,13 @@ export class UploadService {
       constraints.unshift(where('fileType', '==', fileType));
     }
 
-    const q = query(collection(this.db, 'uploads'), ...constraints);
+    // Use collectionGroup to query across all user subcollections
+    const q = query(collectionGroup(this.db, 'userUploads'), ...constraints);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: this.extractUserIdFromPath(doc.ref.path),
+      ...doc.data()
+    } as any));
   }
 }

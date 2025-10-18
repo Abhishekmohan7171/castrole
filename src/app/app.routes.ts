@@ -33,6 +33,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./discover/feed.component').then(m => m.FeedComponent) },
       { path: 'upload', loadComponent: () => import('./discover/upload.component').then(m => m.UploadComponent) },
+      { path: 'search', loadComponent: () => import('./discover/search.component').then(m => m.SearchComponent) },
       { path: 'chat', loadComponent: () => import('./discover/chat.component').then(m => m.ChatComponent) },
       { path: 'profile', loadComponent: () => import('./discover/profile.component').then(m => m.ProfileComponent) },
       { path: 'settings', loadComponent: () => import('./discover/settings.component').then(m => m.SettingsComponent) },

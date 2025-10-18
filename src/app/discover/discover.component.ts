@@ -38,16 +38,27 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                  'text-neutral-100 font-semibold': discoverLink.isActive && !isActor(),
                  'text-neutral-500 hover:text-neutral-300': !discoverLink.isActive && !isActor()
                }">discover</a>
-            <a routerLink="/discover/upload"
+            <!-- Upload link for actors -->
+            <a *ngIf="isActor()"
+               routerLink="/discover/upload"
                #uploadLink="routerLinkActive"
                routerLinkActive
                class="transition-colors duration-200"
                [ngClass]="{
-                 'text-purple-200 font-semibold': uploadLink.isActive && isActor(),
-                 'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive && isActor(),
-                 'text-neutral-100 font-semibold': uploadLink.isActive && !isActor(),
-                 'text-neutral-500 hover:text-neutral-300': !uploadLink.isActive && !isActor()
+                 'text-purple-200 font-semibold': uploadLink.isActive,
+                 'text-purple-300/60 hover:text-purple-200': !uploadLink.isActive
                }">upload</a>
+            
+            <!-- Search link for producers -->
+            <a *ngIf="!isActor()"
+               routerLink="/discover/search"
+               #searchLink="routerLinkActive"
+               routerLinkActive
+               class="transition-colors duration-200"
+               [ngClass]="{
+                 'text-neutral-100 font-semibold': searchLink.isActive,
+                 'text-neutral-500 hover:text-neutral-300': !searchLink.isActive
+               }">search</a>
             <a routerLink="/discover/chat"
                #chatLink="routerLinkActive"
                routerLinkActive
@@ -220,12 +231,12 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                 this.userNameLoaded = true;
                 this.uid = user.uid;
                 // Set user role for theming
-                this.userRole.set(userData['role'] || 'actor');
+                this.userRole.set(userData['currentRole'] || 'actor');
 
                 // Initialize chat notification count
-                if (userData['role'] === 'actor') {
+                if (userData['currentRole'] === 'actor') {
                   // For actors, combine unread messages and requests
-                  const chatUnread$ = this.chatService.getTotalUnreadCount(user.uid, userData['role']);
+                  const chatUnread$ = this.chatService.getTotalUnreadCount(user.uid, userData['currentRole']);
                   const requestsCount$ = this.chatService.getChatRequestsCount(user.uid);
                   this.chatNotificationCount$ = chatUnread$.pipe(
                     switchMap(unreadCount =>
@@ -237,7 +248,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                   );
                 } else {
                   // For producers, just show unread messages
-                  this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(user.uid, userData['role'] || 'producer');
+                  this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(user.uid, userData['currentRole'] || 'producer');
                 }
               }
             })
@@ -305,11 +316,11 @@ export class DiscoverComponent implements OnInit, OnDestroy {
       this.getUserDoc(this.uid).pipe(take(1)).subscribe(userData => {
         if (userData) {
           // Update role for theming
-          this.userRole.set(userData['role'] || 'actor');
-          if (userData['role'] === 'actor') {
+          this.userRole.set(userData['currentRole'] || 'actor');
+          if (userData['currentRole'] === 'actor') {
             // For actors, combine unread messages and requests
             // Force re-create observables to get fresh data
-            const chatUnread$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role']);
+            const chatUnread$ = this.chatService.getTotalUnreadCount(this.uid!, userData['currentRole']);
             const requestsCount$ = this.chatService.getChatRequestsCount(this.uid!);
             this.chatNotificationCount$ = chatUnread$.pipe(
               switchMap(unreadCount =>
@@ -322,7 +333,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
           } else {
             // For producers, just show unread messages
             // Force re-create observable to get fresh data
-            this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(this.uid!, userData['role'] || 'producer');
+            this.chatNotificationCount$ = this.chatService.getTotalUnreadCount(this.uid!, userData['currentRole'] || 'producer');
           }
 
           // Force a refresh by subscribing

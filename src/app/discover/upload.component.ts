@@ -1,7 +1,8 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UploadService, UploadProgress } from '../services/upload.service';
+import { UploadService } from '../services/upload.service';
+import { UploadProgress } from '../../assets/interfaces/interfaces';
 
 interface Tag {
   id: string;
@@ -569,11 +570,6 @@ export class UploadComponent {
           setTimeout(() => {
             this.isUploading.set(false); // Stop uploading state FIRST
             this.uploadSuccess.set(true); // Then set success
-            
-            // Auto-reset form after 3 seconds to allow new uploads
-            setTimeout(() => {
-              this.resetVideoForm();
-            }, 3000);
           }, 500);
         }
       },
@@ -619,10 +615,6 @@ export class UploadComponent {
         if (this.allImagesCompleted() && !this.hasImageErrors()) {
           this.uploadSuccess.set(true);
           this.isUploading.set(false); // Stop uploading state immediately
-          // Auto-reset form after 3 seconds
-          setTimeout(() => {
-            this.resetImageForm();
-          }, 3000);
         }
       },
       error: () => {
@@ -659,22 +651,31 @@ export class UploadComponent {
   }
 
   resetVideoForm(): void {
+    // Clean up preview URL first
+    const url = this.videoPreviewUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    
+    // Reset all form states
     this.selectedVideoFile.set(null);
     this.videoPreviewUrl.set('');
     this.tags.set([]);
     this.mediaType.set('reel');
     this.description.set('');
     this.newTagName.set('');
+    this.showTagInput.set(false);
     
     // Reset upload states
     this.uploadProgress.set(0);
     this.uploadSuccess.set(false);
     this.uploadError.set('');
+    this.isUploading.set(false);
     
-    // Clean up preview URL
-    const url = this.videoPreviewUrl();
-    if (url) {
-      URL.revokeObjectURL(url);
+    // Reset file input
+    const videoInput = document.getElementById('video-upload') as HTMLInputElement;
+    if (videoInput) {
+      videoInput.value = '';
     }
   }
 
@@ -687,8 +688,19 @@ export class UploadComponent {
       }
     });
     
+    // Reset all states
     this.selectedImages.set([]);
     this.imagePreviewUrls.clear();
     this.imageUploadProgress.set([]);
+    this.uploadSuccess.set(false);
+    this.uploadError.set('');
+    this.isUploading.set(false);
+    this.isDragOver.set(false);
+    
+    // Reset file input
+    const imageInput = document.getElementById('image-upload') as HTMLInputElement;
+    if (imageInput) {
+      imageInput.value = '';
+    }
   }
 }

@@ -3,23 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ChatService, ChatMessage, ChatRoom, UserRole } from '../services/chat.service';
+import { ChatService } from '../services/chat.service';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
-import { UserDoc } from '../../assets/interfaces/interfaces';
+import { UserDoc, Message, Conversation, ChatMessage, ChatRoom, UserRole } from '../../assets/interfaces/interfaces';
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
-type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
-type Conversation = {
-  id: string;
-  name: string;
-  last: string;
-  messages?: Message[];
-  unreadCount?: Record<string, number>;
-  actorAccepted?: boolean;
-  actorRejected?: boolean;
-};
+import { PresenceService } from '../services/presence.service';
 
 @Component({
   selector: 'app-discover-chat',
@@ -57,7 +48,7 @@ type Conversation = {
                       <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ actor.name[0] | uppercase }}</div>
                       <div class="flex-1 min-w-0">
                         <p class="truncate text-sm text-neutral-100">{{ actor.name || actor.uid }}</p>
-                        <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p>
+                        <!-- <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p> -->
                       </div>
                     </button>
                   }
@@ -133,7 +124,7 @@ type Conversation = {
               </div>
 
               <!-- Content -->
-              <div class="flex-1 min-w-0" [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'" (click)="handleDesktopItemClick(c)">
+              <div class="flex-1 min-w-0 cursor-pointer" (click)="handleDesktopItemClick(c)">
                 <div class="flex items-center gap-2">
                   <p class="truncate text-sm"
                      [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
@@ -222,8 +213,7 @@ type Conversation = {
 
                 <!-- Content -->
                 <div
-                  class="flex-1 min-w-0"
-                  [class.cursor-pointer]="myRole() !== 'actor' || viewMode() !== 'requests'"
+                  class="flex-1 min-w-0 cursor-pointer"
                   (click)="handleMobileItemClick(c)"
                 >
                   <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
@@ -274,11 +264,21 @@ type Conversation = {
               <div [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
                 {{ active()?.name || 'select a chat' }}
               </div>
-              <div class="flex items-center"
+              <div class="flex items-center gap-2"
                    [ngClass]="{'text-purple-300/50': myRole() === 'actor', 'text-neutral-500': myRole() !== 'actor'}">
-                <span *ngIf="active()">online</span>
+                <!-- Online status indicator -->
+                <span *ngIf="active() && counterpartLastSeen()" class="flex items-center gap-1.5">
+                  <span 
+                    class="w-2 h-2 rounded-full"
+                    [ngClass]="{
+                      'bg-green-500 animate-pulse': counterpartOnline(),
+                      'bg-gray-500': !counterpartOnline()
+                    }"
+                  ></span>
+                  <span>{{ counterpartLastSeen() }}</span>
+                </span>
                 <!-- Typing indicator -->
-                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="ml-2 flex items-center text-fuchsia-300">
+                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex items-center text-fuchsia-300">
                   <span class="inline-flex space-x-1 mr-1">
                     <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
                     <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
@@ -506,6 +506,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private actor = inject(ActorService);
   private user = inject(UserService);
+  private presence = inject(PresenceService);
 
   // Signals for reactive state
   conversations = signal<Conversation[]>([]);
@@ -523,6 +524,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private typingSubscription = new Subscription();
   private counterpartByRoom = new Map<string, string>();
   private counterpartNames = new Map<string, string>();
+  private onlineStatusSub = new Subscription();
 
   actors$?: Observable<UserDoc[]>;
   filteredActors$?: Observable<UserDoc[]>;
@@ -557,6 +559,10 @@ export class ChatComponent implements OnInit, OnDestroy {
   isTyping = false;
   isSending = false;
 
+  // Online status
+  counterpartOnline = signal<boolean>(false);
+  counterpartLastSeen = signal<string>('');  // Start empty, will load
+
   // Unread counts - signals
   requestsCount$?: Observable<number>;
   totalUnreadCount$?: Observable<number>;
@@ -586,7 +592,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Role stream`
     this.myRole$ = this.user.observeUser(me.uid).pipe(
-      map(u => (u?.role as UserRole) || 'user'),
+      map(u => (u?.currentRole as UserRole) || 'user'),
       shareReplay(1)
     );
 
@@ -628,14 +634,8 @@ export class ChatComponent implements OnInit, OnDestroy {
       }
     }));
 
-    // Check for cached rooms to show immediately - wait for role
-    this.roomsSub.add(this.myRole$.pipe(take(1)).subscribe(role => {
-      const cachedRooms = this.chat.getCachedRooms(this.meUid!, role);
-      if (cachedRooms && cachedRooms.length > 0) {
-        // Process cached rooms to show immediately
-        this.processCachedRooms(cachedRooms);
-      }
-    }));
+    // Skip cached rooms processing to avoid showing user IDs
+    // The conversations$ observable will load proper data with names
 
     // Producer: actor search streams - LOAD ACTORS ON INIT
     this.roomsSub.add(this.myRole$.subscribe((role) => {
@@ -650,8 +650,7 @@ export class ChatComponent implements OnInit, OnDestroy {
             const t = (term || '').toLowerCase().trim();
             if (!t) return actors;
             return (actors || []).filter((a) =>
-              (a.name || '').toLowerCase().includes(t) ||
-              (a.location || '').toLowerCase().includes(t)
+              (a.name || '').toLowerCase().includes(t) 
             );
           }),
           tap(filtered => this.filteredActors.set(filtered))
@@ -708,14 +707,25 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.active$ = combineLatest([
       this.conversations$!,
       this.activeRoomId$,
+      this.viewMode$
     ]).pipe(
-      map(([cs, id]) => {
+      map(([cs, id, mode]) => {
         if (!cs.length) return null;
-        if (id) {
-          const found = cs.find(c => c.id === id);
-          return found ?? cs[0];
-        }
-        return cs[0];
+        // When no active ID, pick first conversation
+        if (!id) return cs[0];
+        // Try to find the requested conversation
+        const found = cs.find(c => c.id === id);
+        // If not found, pick first (likely switched modes)
+        return found ?? cs[0];
+      }),
+      // Only prevent duplicate emissions of the exact same conversation
+      distinctUntilChanged((prev, curr) => {
+        // If both null, skip
+        if (!prev && !curr) return true;
+        // If one is null, don't skip
+        if (!prev || !curr) return false;
+        // Only skip if same ID
+        return prev.id === curr.id;
       }),
       tap((c: Conversation | null) => {
         if (!c) return;
@@ -779,52 +789,43 @@ export class ChatComponent implements OnInit, OnDestroy {
       tap(users => this.typingUsers.set(users))
     );
     this.roomsSub.add(this.typingUsers$.subscribe());
-  }
 
+    // Setup online status tracking for active conversation
+    this.roomsSub.add(this.active$.pipe(
+      switchMap(activeConv => {
+        if (!activeConv) {
+          this.counterpartOnline.set(false);
+          this.counterpartLastSeen.set('');
+          return of(null);
+        }
+        // Get counterpart ID from the room
+        const counterpartId = this.counterpartByRoom.get(activeConv.id);
+        if (!counterpartId) {
+          this.counterpartOnline.set(false);
+          this.counterpartLastSeen.set('');
+          return of(null);
+        }
+        // Show loading state while fetching
+        this.counterpartLastSeen.set('loading...');
+        // Observe online status and last seen time
+        return combineLatest([
+          this.presence.observeUserOnlineStatus(counterpartId),
+          this.presence.getLastSeenTime(counterpartId)
+        ]).pipe(
+          tap(([isOnline, lastSeen]) => {
+            this.counterpartOnline.set(isOnline);
+            // Pass isOnline flag to formatLastSeen for accurate status
+            this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+          })
+        );
+      })
+    ).subscribe());
+  }
   // Process cached rooms to show immediately
   private processCachedRooms(rooms: (ChatRoom & { id: string })[]) {
-    // Convert rooms to conversations
-    const conversations: Conversation[] = rooms.map(r => {
-      const counterpartId = this.getCounterpartId(r);
-      this.counterpartByRoom.set(r.id!, counterpartId);
-      return {
-        id: r.id!,
-        name: counterpartId, // Will be updated later with real name
-        last: r.lastMessage?.text || '',
-        unreadCount: r.unreadCount,
-        actorAccepted: r.actorAccepted,
-        actorRejected: r.actorRejected,
-        messages: []
-      };
-    });
-
-    // Update the conversations signal
-    this.conversations.set(conversations);
-
-    // Set active conversation if we have a stored ID
-    const lastRoomId = typeof localStorage !== 'undefined' ?
-      localStorage.getItem(this.LAST_ROOM_KEY) : null;
-
-    if (lastRoomId) {
-      const found = conversations.find(c => c.id === lastRoomId);
-      if (found) {
-        this.active.set(found);
-        // Load messages for this conversation
-        const cachedMessages = this.chat.getCachedMessages(found.id);
-        if (cachedMessages) {
-          const messages = cachedMessages.map(m => {
-            const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
-            return {
-              id: m.id!,
-              from,
-              text: m.text,
-              time: this.formatTime(m.timestamp),
-            } as Message;
-          });
-          found.messages = messages;
-        }
-      }
-    }
+    // Disabled to prevent showing user IDs instead of names on reload
+    // The conversations$ observable will handle proper loading with user names
+    return;
   }
 
   // Process messages and update active conversation
@@ -847,6 +848,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.roomsSub.unsubscribe();
     this.msgsSub.unsubscribe();
     this.typingSubscription.unsubscribe();
+    this.onlineStatusSub.unsubscribe();
   }
 
   // Stream-based open with instant loading
@@ -967,6 +969,11 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   setViewMode(mode: 'chat' | 'requests') {
     if (this.viewMode() === mode) return;
+    
+    // Clear the active room ID so the stream picks the first conversation from new mode
+    this.activeRoomId$.next(null);
+    
+    // Update view mode - the active$ stream will handle selecting first conversation
     this.viewMode.set(mode);
     this.viewMode$.next(mode);
   }
@@ -1151,24 +1158,16 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   // Handle click on mobile conversation item
   handleMobileItemClick(c: Conversation) {
-    // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
-      return;
-    }
-
-    // Otherwise open the conversation and close the mobile list
+    // Always allow opening conversations to view them
+    // The accept/reject buttons have their own click handlers
     this.open(c);
     this.mobileListOpen = false;
   }
 
   // Handle click on desktop conversation item
   handleDesktopItemClick(c: Conversation) {
-    // If actor in requests view, do nothing (they need to use accept/reject buttons)
-    if (this.myRole() === 'actor' && this.viewMode() === 'requests') {
-      return;
-    }
-
-    // Otherwise open the conversation
+    // Always allow opening conversations to view them
+    // The accept/reject buttons have their own click handlers
     this.open(c);
   }
 
