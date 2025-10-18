@@ -16,6 +16,8 @@ import {
   ReactiveFormsModule,
   Validators,
   FormArray,
+  AbstractControl,
+  ValidationErrors,
 } from '@angular/forms';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import {
@@ -592,8 +594,22 @@ import {
                     type="url"
                     formControlName="instaIdUrl"
                     class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [class.border-red-500]="profileForm.get('social.instaIdUrl')?.invalid && profileForm.get('social.instaIdUrl')?.touched"
                     placeholder="https://instagram.com/username"
                   />
+                  @if (profileForm.get('social.instaIdUrl')?.invalid && profileForm.get('social.instaIdUrl')?.touched) {
+                    <div class="mt-1 text-sm text-red-400">
+                      @if (profileForm.get('social.instaIdUrl')?.errors?.['invalidUrl']) {
+                        Please enter a valid URL
+                      }
+                      @if (profileForm.get('social.instaIdUrl')?.errors?.['mustEndWithCom']) {
+                        URL must end with .com
+                      }
+                      @if (profileForm.get('social.instaIdUrl')?.errors?.['notInstagramUrl']) {
+                        Must be a valid Instagram URL
+                      }
+                    </div>
+                  }
                 </div>
 
                 <div>
@@ -604,8 +620,22 @@ import {
                     type="url"
                     formControlName="youtubeIdUrl"
                     class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [class.border-red-500]="profileForm.get('social.youtubeIdUrl')?.invalid && profileForm.get('social.youtubeIdUrl')?.touched"
                     placeholder="https://youtube.com/channel/..."
                   />
+                  @if (profileForm.get('social.youtubeIdUrl')?.invalid && profileForm.get('social.youtubeIdUrl')?.touched) {
+                    <div class="mt-1 text-sm text-red-400">
+                      @if (profileForm.get('social.youtubeIdUrl')?.errors?.['invalidUrl']) {
+                        Please enter a valid URL
+                      }
+                      @if (profileForm.get('social.youtubeIdUrl')?.errors?.['mustEndWithCom']) {
+                        URL must end with .com
+                      }
+                      @if (profileForm.get('social.youtubeIdUrl')?.errors?.['notYoutubeUrl']) {
+                        Must be a valid YouTube URL
+                      }
+                    </div>
+                  }
                 </div>
 
                 <div>
@@ -616,8 +646,19 @@ import {
                     type="url"
                     formControlName="externalLinkUrl"
                     class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [class.border-red-500]="profileForm.get('social.externalLinkUrl')?.invalid && profileForm.get('social.externalLinkUrl')?.touched"
                     placeholder="https://yourwebsite.com"
                   />
+                  @if (profileForm.get('social.externalLinkUrl')?.invalid && profileForm.get('social.externalLinkUrl')?.touched) {
+                    <div class="mt-1 text-sm text-red-400">
+                      @if (profileForm.get('social.externalLinkUrl')?.errors?.['invalidUrl']) {
+                        Please enter a valid URL
+                      }
+                      @if (profileForm.get('social.externalLinkUrl')?.errors?.['mustEndWithCom']) {
+                        URL must end with .com
+                      }
+                    </div>
+                  }
                 </div>
 
                 <div>
@@ -628,8 +669,19 @@ import {
                     type="url"
                     formControlName="addLinkUrl"
                     class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [class.border-red-500]="profileForm.get('social.addLinkUrl')?.invalid && profileForm.get('social.addLinkUrl')?.touched"
                     placeholder="https://additional-link.com"
                   />
+                  @if (profileForm.get('social.addLinkUrl')?.invalid && profileForm.get('social.addLinkUrl')?.touched) {
+                    <div class="mt-1 text-sm text-red-400">
+                      @if (profileForm.get('social.addLinkUrl')?.errors?.['invalidUrl']) {
+                        Please enter a valid URL
+                      }
+                      @if (profileForm.get('social.addLinkUrl')?.errors?.['mustEndWithCom']) {
+                        URL must end with .com
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             </div>
@@ -720,10 +772,10 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
 
       // Social fields
       social: this.fb.group({
-        instaIdUrl: [''],
-        youtubeIdUrl: [''],
-        externalLinkUrl: [''],
-        addLinkUrl: [''],
+        instaIdUrl: ['', [this.instagramValidator.bind(this)]],
+        youtubeIdUrl: ['', [this.youtubeValidator.bind(this)]],
+        externalLinkUrl: ['', [this.urlValidator.bind(this)]],
+        addLinkUrl: ['', [this.urlValidator.bind(this)]],
       }),
     });
   }
@@ -964,6 +1016,50 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
 
   removeVoiceIntro() {
     this.currentVoiceIntro.set(null);
+  }
+
+  // Helper method to clean undefined values from objects
+  // Custom validators
+  private urlValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) return null;
+    
+    const urlPattern = /^https?:\/\/(www\.)?[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.[a-zA-Z]{2,}(\/.*)?$/;
+    
+    if (!urlPattern.test(control.value)) {
+      return { invalidUrl: true };
+    }
+    
+    if (!control.value.endsWith('.com') && !control.value.includes('.com/')) {
+      return { mustEndWithCom: true };
+    }
+    
+    return null;
+  }
+
+  private instagramValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) return null;
+    
+    const urlError = this.urlValidator(control);
+    if (urlError) return urlError;
+    
+    if (!control.value.includes('instagram.com') && !control.value.includes('instagr.am')) {
+      return { notInstagramUrl: true };
+    }
+    
+    return null;
+  }
+
+  private youtubeValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) return null;
+    
+    const urlError = this.urlValidator(control);
+    if (urlError) return urlError;
+    
+    if (!control.value.includes('youtube.com') && !control.value.includes('youtu.be')) {
+      return { notYoutubeUrl: true };
+    }
+    
+    return null;
   }
 
   // Helper method to clean undefined values from objects

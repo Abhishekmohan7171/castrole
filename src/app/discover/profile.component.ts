@@ -2,7 +2,8 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Storage, ref, listAll, getDownloadURL, uploadBytes } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
 import { EditProfileModalComponent } from './edit-profile-modal.component';
@@ -25,7 +26,7 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                }">
             <div class="flex items-start gap-4">
               <!-- Profile image -->
-              <div class="relative h-20 w-20 sm:h-24 sm:w-24">
+              <div class="relative h-20 w-20 sm:h-24 sm:w-24 group">
                 <div class="absolute inset-0 rounded-full overflow-hidden transition-all duration-300"
                      [ngClass]="{
                        'ring-1 ring-purple-900/20': isActor(),
@@ -33,12 +34,27 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                      }">
                   @if (getProfileImageUrl()) {
                     <img [src]="getProfileImageUrl()" [alt]="getDisplayName()" class="w-full h-full object-cover">
+                    <!-- Remove profile picture button on hover -->
+                    <button (click)="removeProfilePicture()"
+                            class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                            aria-label="Remove profile picture">
+                      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
                   } @else {
-                    <div class="w-full h-full rounded-full transition-all duration-300"
-                         [ngClass]="{
-                           'bg-purple-950/20': isActor(),
-                           'bg-white/10': !isActor()
-                         }"></div>
+                    <button (click)="onDummyProfileClick()"
+                            class="w-full h-full rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer hover:bg-opacity-80"
+                            [ngClass]="{
+                              'bg-purple-950/20 hover:bg-purple-950/30': isActor(),
+                              'bg-white/10 hover:bg-white/15': !isActor()
+                            }"
+                            aria-label="Set profile picture">
+                      <svg class="w-10 h-10 sm:w-12 sm:h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                           [ngClass]="{'text-purple-300/40': isActor(), 'text-neutral-400': !isActor()}">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                    </button>
                   }
                 </div>
               </div>
@@ -202,31 +218,139 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                         (click)="mediaTab='photos'">photos</button>
               </div>
 
-              <!-- Media grid - Actor carousel images -->
-              @if (hasCarouselImages()) {
-                <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
-                  @for (imageUrl of profileData()?.actorProfile?.carouselImagesUrl; track imageUrl) {
-                    <div class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer"
-                         [ngClass]="{
-                           'ring-purple-900/10 hover:ring-purple-900/20': isActor(),
-                           'ring-white/10 hover:ring-white/20': !isActor()
-                         }">
-                      <img [src]="imageUrl" alt="Portfolio image" class="w-full h-full object-cover">
-                    </div>
-                  }
-                </div>
-              } @else {
-                <!-- Placeholder grid for actors without media -->
-                <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
-                  <div class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer"
-                       [ngClass]="{
-                         'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:ring-purple-900/20': isActor(),
-                         'ring-white/10 bg-green-800/50 hover:ring-white/20': !isActor()
-                       }">
-                    <span class="absolute top-1.5 left-2 text-[10px] uppercase tracking-wide"
-                          [ngClass]="{'text-purple-200/60': isActor(), 'text-white/80': !isActor()}">add media</span>
+              <!-- Videos Tab Content -->
+              @if (mediaTab === 'videos') {
+                @if (hasVideos()) {
+                  <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
+                    @for (videoUrl of videoUrls(); track videoUrl) {
+                      <div class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer group"
+                           [ngClass]="{
+                             'ring-purple-900/10 hover:ring-purple-900/20': isActor(),
+                             'ring-white/10 hover:ring-white/20': !isActor()
+                           }"
+                           (click)="openPreviewModal(videoUrl, 'video')">
+                        <video [src]="videoUrl" class="w-full h-full object-cover pointer-events-none"></video>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                          <svg class="h-12 w-12 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    }
+                    <!-- Add more videos button -->
+                    <input type="file" accept="video/*" (change)="onVideoFileSelect($event)" class="hidden" #videoInputMore>
+                    <button (click)="videoInputMore.click(); $event.stopPropagation()"
+                            [disabled]="isUploadingMedia()"
+                            class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
+                            [ngClass]="{
+                              'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10': isActor(),
+                              'ring-white/10 bg-neutral-800/30 hover:bg-neutral-700/40': !isActor()
+                            }">
+                      <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           [ngClass]="{'text-purple-300/60': isActor(), 'text-neutral-400': !isActor()}">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                      <span class="text-xs uppercase tracking-wide"
+                            [ngClass]="{'text-purple-200/60': isActor(), 'text-neutral-400': !isActor()}">
+                        {{ isUploadingMedia() ? 'Uploading...' : 'Add More' }}
+                      </span>
+                    </button>
                   </div>
-                </div>
+                } @else {
+                  <!-- Add video button -->
+                  <div class="mt-3">
+                    <input type="file" accept="video/*" (change)="onVideoFileSelect($event)" class="hidden" #videoInput>
+                    <button (click)="videoInput.click()" 
+                            [disabled]="isUploadingMedia()"
+                            class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
+                            [ngClass]="{
+                              'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20': isActor(),
+                              'ring-white/10 bg-neutral-800/50 hover:bg-neutral-700/50': !isActor()
+                            }">
+                      <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           [ngClass]="{'text-purple-300/60': isActor(), 'text-neutral-400': !isActor()}">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                      <span class="text-xs uppercase tracking-wide"
+                            [ngClass]="{'text-purple-200/60': isActor(), 'text-neutral-400': !isActor()}">
+                        {{ isUploadingMedia() ? 'Uploading...' : 'Add Video' }}
+                      </span>
+                      @if (isUploadingMedia() && uploadProgress() > 0) {
+                        <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                          <div class="h-full bg-blue-500 transition-all duration-300" [style.width.%]="uploadProgress()"></div>
+                        </div>
+                      }
+                    </button>
+                  </div>
+                }
+              }
+
+              <!-- Photos Tab Content -->
+              @if (mediaTab === 'photos') {
+                @if (hasImages()) {
+                  <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
+                    @for (imageUrl of imageUrls(); track imageUrl) {
+                      <div class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer group"
+                           [ngClass]="{
+                             'ring-purple-900/10 hover:ring-purple-900/20': isActor(),
+                             'ring-white/10 hover:ring-white/20': !isActor()
+                           }"
+                           (click)="openPreviewModal(imageUrl, 'image')">
+                        <img [src]="imageUrl" alt="Portfolio image" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                          <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    }
+                    <!-- Add more images button -->
+                    <input type="file" accept="image/*" (change)="onImageFileSelect($event)" class="hidden" #imageInputMore>
+                    <button (click)="imageInputMore.click(); $event.stopPropagation()"
+                            [disabled]="isUploadingMedia()"
+                            class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
+                            [ngClass]="{
+                              'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10': isActor(),
+                              'ring-white/10 bg-neutral-800/30 hover:bg-neutral-700/40': !isActor()
+                            }">
+                      <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           [ngClass]="{'text-purple-300/60': isActor(), 'text-neutral-400': !isActor()}">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                      <span class="text-xs uppercase tracking-wide"
+                            [ngClass]="{'text-purple-200/60': isActor(), 'text-neutral-400': !isActor()}">
+                        {{ isUploadingMedia() ? 'Uploading...' : 'Add More' }}
+                      </span>
+                    </button>
+                  </div>
+                } @else {
+                  <!-- Add image button -->
+                  <div class="mt-3">
+                    <input type="file" accept="image/*" (change)="onImageFileSelect($event)" class="hidden" #imageInput>
+                    <button (click)="imageInput.click()"
+                            [disabled]="isUploadingMedia()"
+                            class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
+                            [ngClass]="{
+                              'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20': isActor(),
+                              'ring-white/10 bg-neutral-800/50 hover:bg-neutral-700/50': !isActor()
+                            }">
+                      <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           [ngClass]="{'text-purple-300/60': isActor(), 'text-neutral-400': !isActor()}">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                      <span class="text-xs uppercase tracking-wide"
+                            [ngClass]="{'text-purple-200/60': isActor(), 'text-neutral-400': !isActor()}">
+                        {{ isUploadingMedia() ? 'Uploading...' : 'Add Image' }}
+                      </span>
+                      @if (isUploadingMedia() && uploadProgress() > 0) {
+                        <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                          <div class="h-full bg-blue-500 transition-all duration-300" [style.width.%]="uploadProgress()"></div>
+                        </div>
+                      }
+                    </button>
+                  </div>
+                }
               }
             </div>
           }
@@ -244,10 +368,10 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
                      }" aria-label="Instagram">
-                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.3 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .3-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.3-1-.4-2.2-.1-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.3 2.2-.4 1.3-.1 1.7-.1 4.9-.1zm0-2.2c-3.3 0-3.7 0-5 .1s-2.2.3-3 .5c-1.1.4-2 1-2.8 1.8s-1.4 1.7-1.8 2.8c-.2.8-.4 1.7-.5 3s-.1 1.7-.1 5 0 3.7.1 5 .3 2.2.5 3c.4 1.1 1 2 1.8 2.8s1.7 1.4 2.8 1.8c.8.2 1.7.4 3 .5s1.7.1 5 .1 3.7 0 5-.1 2.2-.3 3-.5c1.1-.4 2-1 2.8-1.8s1.4-1.7 1.8-2.8c.2-.8.4-1.7.5-3s.1-1.7.1-5 0-3.7-.1-5-.3-2.2-.5-3c-.4-1.1-1-2-1.8-2.8s-1.7-1.4-2.8-1.8c-.8-.2-1.7-.4-3-.5s-1.7-.1-5-.1z"/>
-                      <circle cx="12" cy="12" r="3.2"/>
-                      <circle cx="18.4" cy="5.6" r="1.3"/>
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
                     </svg>
                   </a>
                 }
@@ -258,8 +382,8 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
                      }" aria-label="YouTube">
-                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                     </svg>
                   </a>
                 }
@@ -270,8 +394,10 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
                      }" aria-label="External Link">
-                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3"/>
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/>
+                      <line x1="10" y1="14" x2="21" y2="3"/>
                     </svg>
                   </a>
                 }
@@ -282,7 +408,7 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
                      }" aria-label="Additional Link">
-                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                     </svg>
@@ -495,6 +621,78 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
       </div>
     </div>
 
+    <!-- Media Preview Modal -->
+    @if (isPreviewModalOpen()) {
+      <div class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+           (click)="closePreviewModal()">
+        <div class="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center"
+             (click)="$event.stopPropagation()">
+          <!-- Close button -->
+          <button (click)="closePreviewModal()"
+                  class="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors ring-1 ring-white/20"
+                  aria-label="Close preview">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+
+          <!-- Set as Profile Picture button (only for images) -->
+          @if (previewMediaType() === 'image') {
+            <button (click)="setAsProfilePicture(); $event.stopPropagation()"
+                    class="absolute top-4 left-4 z-10 px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+                    aria-label="Set as profile picture">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+              <span class="text-white text-sm">Set as Profile Picture</span>
+            </button>
+          }
+
+          <!-- Previous button -->
+          @if (canGoToPrevious()) {
+            <button (click)="goToPreviousMedia(); $event.stopPropagation()"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors ring-1 ring-white/20"
+                    aria-label="Previous media">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+          }
+
+          <!-- Next button -->
+          @if (canGoToNext()) {
+            <button (click)="goToNextMedia(); $event.stopPropagation()"
+                    class="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors ring-1 ring-white/20"
+                    aria-label="Next media">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          }
+
+          <!-- Media content -->
+          <div class="w-full h-full flex items-center justify-center px-20">
+            @if (previewMediaType() === 'image') {
+              <img [src]="previewMediaUrl()" 
+                   alt="Preview" 
+                   class="max-w-full max-h-full object-contain rounded-lg">
+            } @else if (previewMediaType() === 'video') {
+              <video [src]="previewMediaUrl()" 
+                     class="max-w-full max-h-full object-contain rounded-lg" 
+                     controls 
+                     autoplay>
+              </video>
+            }
+          </div>
+          
+          <!-- Counter indicator -->
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-black/50 rounded-full text-white text-sm ring-1 ring-white/20">
+            {{ currentMediaIndex() + 1 }} / {{ currentMediaList().length }}
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Edit Profile Modal -->
     <app-edit-profile-modal 
       [isOpen]="isEditModalOpen()"
@@ -529,6 +727,7 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
 export class ProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
+  private storage = inject(Storage);
   private router = inject(Router);
   
   mediaTab: 'videos' | 'photos' = 'videos';
@@ -538,15 +737,37 @@ export class ProfileComponent implements OnInit {
   profileData = signal<Profile | null>(null);
   isActor = computed(() => this.userRole() === 'actor');
   
+  // Media signals
+  videoUrls = signal<string[]>([]);
+  imageUrls = signal<string[]>([]);
+  isLoadingMedia = signal(false);
+  isUploadingMedia = signal(false);
+  uploadProgress = signal(0);
+  
   // Modal state
   isEditModalOpen = signal(false);
+  isPreviewModalOpen = signal(false);
+  previewMediaUrl = signal<string | null>(null);
+  previewMediaType = signal<'image' | 'video'>('image');
+  currentMediaIndex = signal(0);
   profileTheme = computed(() => this.isActor() ? 'actor-theme' : '');
+  
+  // Computed for navigation
+  currentMediaList = computed(() => {
+    return this.previewMediaType() === 'video' ? this.videoUrls() : this.imageUrls();
+  });
+  
+  canGoToPrevious = computed(() => this.currentMediaIndex() > 0);
+  canGoToNext = computed(() => this.currentMediaIndex() < this.currentMediaList().length - 1);
   
   // Computed properties for safe array access
   hasCarouselImages = computed(() => {
     const profile = this.profileData();
     return profile?.actorProfile?.carouselImagesUrl && profile.actorProfile.carouselImagesUrl.length > 0;
   });
+  
+  hasVideos = computed(() => this.videoUrls().length > 0);
+  hasImages = computed(() => this.imageUrls().length > 0);
   
   hasEducation = computed(() => {
     const profile = this.profileData();
@@ -587,6 +808,31 @@ export class ProfileComponent implements OnInit {
     this.loadUserProfile();
   }
   
+  private async loadMediaFromStorage(userId: string) {
+    this.isLoadingMedia.set(true);
+    try {
+      // Fetch videos
+      const videosRef = ref(this.storage, `users/${userId}/videos`);
+      const videosList = await listAll(videosRef);
+      const videoUrlPromises = videosList.items.map(item => getDownloadURL(item));
+      const videos = await Promise.all(videoUrlPromises);
+      this.videoUrls.set(videos);
+      
+      // Fetch images
+      const imagesRef = ref(this.storage, `users/${userId}/images`);
+      const imagesList = await listAll(imagesRef);
+      const imageUrlPromises = imagesList.items.map(item => getDownloadURL(item));
+      const images = await Promise.all(imageUrlPromises);
+      this.imageUrls.set(images);
+    } catch (error) {
+      // Set empty arrays if folders don't exist
+      this.videoUrls.set([]);
+      this.imageUrls.set([]);
+    } finally {
+      this.isLoadingMedia.set(false);
+    }
+  }
+  
   private async loadUserProfile() {
     const user = this.auth.getCurrentUser();
     if (user) {
@@ -605,9 +851,10 @@ export class ProfileComponent implements OnInit {
         if (profileDoc.exists()) {
           const profile = profileDoc.data() as Profile;
           this.profileData.set(profile);
+          // Load media from storage
+          await this.loadMediaFromStorage(user.uid);
         } else {
           // Profile doesn't exist, try to migrate
-          console.log('Profile not found, attempting migration...');
           try {
             await this.auth.migrateUserProfile(user.uid);
             // Retry loading profile after migration
@@ -615,14 +862,14 @@ export class ProfileComponent implements OnInit {
             if (migratedProfileDoc.exists()) {
               const profile = migratedProfileDoc.data() as Profile;
               this.profileData.set(profile);
-              console.log('Profile migration successful');
+              // Load media from storage
+              await this.loadMediaFromStorage(user.uid);
             }
           } catch (migrationError) {
-            console.error('Profile migration failed:', migrationError);
+            // Migration failed, continue without profile
           }
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
         // Default to actor if there's an error
         this.userRole.set('actor');
       }
@@ -665,12 +912,72 @@ export class ProfileComponent implements OnInit {
     if (voiceIntroUrl) {
       // Create and play audio element
       const audio = new Audio(voiceIntroUrl);
-      audio.play().catch(error => {
-        console.error('Error playing voice intro:', error);
+      audio.play().catch(() => {
+        // Handle playback error silently
       });
     }
   }
   
+  // Helper method to get platform-specific icon
+  getSocialIcon(url: string, platform: string): string {
+    if (!url) return this.getDefaultLinkIcon();
+    
+    const lowerUrl = url.toLowerCase();
+    
+    // Instagram
+    if (lowerUrl.includes('instagram.com') || lowerUrl.includes('instagr.am')) {
+      return `<path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.3 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .3-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.3-1-.4-2.2-.1-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.3 2.2-.4 1.3-.1 1.7-.1 4.9-.1zm0-2.2c-3.3 0-3.7 0-5 .1s-2.2.3-3 .5c-1.1.4-2 1-2.8 1.8s-1.4 1.7-1.8 2.8c-.2.8-.4 1.7-.5 3s-.1 1.7-.1 5 0 3.7.1 5 .3 2.2.5 3c.4 1.1 1 2 1.8 2.8s1.7 1.4 2.8 1.8c.8.2 1.7.4 3 .5s1.7.1 5 .1 3.7 0 5-.1 2.2-.3 3-.5c1.1-.4 2-1 2.8-1.8s1.4-1.7 1.8-2.8c.2-.8.4-1.7.5-3s.1-1.7.1-5 0-3.7-.1-5-.3-2.2-.5-3c-.4-1.1-1-2-1.8-2.8s-1.7-1.4-2.8-1.8c-.8-.2-1.7-.4-3-.5s-1.7-.1-5-.1z"/><circle cx="12" cy="12" r="3.2"/><circle cx="18.4" cy="5.6" r="1.3"/>`;
+    }
+    
+    // YouTube
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
+      return `<path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>`;
+    }
+    
+    // Twitter/X
+    if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) {
+      return `<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>`;
+    }
+    
+    // LinkedIn
+    if (lowerUrl.includes('linkedin.com')) {
+      return `<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>`;
+    }
+    
+    // TikTok
+    if (lowerUrl.includes('tiktok.com')) {
+      return `<path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>`;
+    }
+    
+    // Facebook
+    if (lowerUrl.includes('facebook.com') || lowerUrl.includes('fb.com')) {
+      return `<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>`;
+    }
+    
+    // Default link icon for unknown platforms
+    return this.getDefaultLinkIcon();
+  }
+  
+  private getDefaultLinkIcon(): string {
+    return `<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3"/>`;
+  }
+  
+  // Helper method to get social platform name for aria-label
+  getSocialPlatformName(url: string): string {
+    if (!url) return 'External Link';
+    
+    const lowerUrl = url.toLowerCase();
+    
+    if (lowerUrl.includes('instagram.com') || lowerUrl.includes('instagr.am')) return 'Instagram';
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 'YouTube';
+    if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return 'Twitter/X';
+    if (lowerUrl.includes('linkedin.com')) return 'LinkedIn';
+    if (lowerUrl.includes('tiktok.com')) return 'TikTok';
+    if (lowerUrl.includes('facebook.com') || lowerUrl.includes('fb.com')) return 'Facebook';
+    
+    return 'External Link';
+  }
+
   // Modal methods
   openEditModal() {
     this.isEditModalOpen.set(true);
@@ -684,8 +991,204 @@ export class ProfileComponent implements OnInit {
     this.profileData.set(updatedProfile);
     this.closeEditModal();
   }
+  
+  async onVideoFileSelect(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+    
+    this.isUploadingMedia.set(true);
+    this.uploadProgress.set(0);
+    
+    try {
+      const file = input.files[0];
+      const timestamp = Date.now();
+      const fileName = `video_${timestamp}_${file.name}`;
+      const storageRef = ref(this.storage, `users/${user.uid}/videos/${fileName}`);
+      
+      await uploadBytes(storageRef, file);
+      this.uploadProgress.set(100);
+      
+      // Reload videos
+      await this.loadMediaFromStorage(user.uid);
+    } catch (error) {
+      // Handle upload error silently
+    } finally {
+      this.isUploadingMedia.set(false);
+      this.uploadProgress.set(0);
+      // Reset input
+      input.value = '';
+    }
+  }
+  
+  async onImageFileSelect(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+    
+    this.isUploadingMedia.set(true);
+    this.uploadProgress.set(0);
+    
+    try {
+      const file = input.files[0];
+      const timestamp = Date.now();
+      const fileName = `image_${timestamp}_${file.name}`;
+      const storageRef = ref(this.storage, `users/${user.uid}/images/${fileName}`);
+      
+      await uploadBytes(storageRef, file);
+      this.uploadProgress.set(100);
+      
+      // Reload images
+      await this.loadMediaFromStorage(user.uid);
+    } catch (error) {
+      // Handle upload error silently
+    } finally {
+      this.isUploadingMedia.set(false);
+      this.uploadProgress.set(0);
+      // Reset input
+      input.value = '';
+    }
+  }
 
   navigateToSettings() {
     this.router.navigate(['/discover/settings']);
+  }
+  
+  openPreviewModal(url: string, type: 'image' | 'video') {
+    this.previewMediaUrl.set(url);
+    this.previewMediaType.set(type);
+    
+    // Find the index of the current media in the appropriate list
+    const mediaList = type === 'video' ? this.videoUrls() : this.imageUrls();
+    const index = mediaList.indexOf(url);
+    this.currentMediaIndex.set(index >= 0 ? index : 0);
+    
+    this.isPreviewModalOpen.set(true);
+  }
+  
+  closePreviewModal() {
+    this.isPreviewModalOpen.set(false);
+    this.previewMediaUrl.set(null);
+    this.currentMediaIndex.set(0);
+  }
+  
+  goToPreviousMedia() {
+    if (this.canGoToPrevious()) {
+      const newIndex = this.currentMediaIndex() - 1;
+      this.currentMediaIndex.set(newIndex);
+      const mediaList = this.currentMediaList();
+      this.previewMediaUrl.set(mediaList[newIndex]);
+    }
+  }
+  
+  goToNextMedia() {
+    if (this.canGoToNext()) {
+      const newIndex = this.currentMediaIndex() + 1;
+      this.currentMediaIndex.set(newIndex);
+      const mediaList = this.currentMediaList();
+      this.previewMediaUrl.set(mediaList[newIndex]);
+    }
+  }
+  
+  async setAsProfilePicture() {
+    const user = this.auth.getCurrentUser();
+    if (!user || !this.previewMediaUrl()) return;
+    
+    const imageUrl = this.previewMediaUrl();
+    if (!imageUrl) return;
+    
+    try {
+      const profileDocRef = doc(this.firestore, 'profiles', user.uid);
+      
+      if (this.isActor()) {
+        // Update actor profile image
+        await updateDoc(profileDocRef, {
+          'actorProfile.actorProfileImageUrl': imageUrl
+        });
+        
+        // Update local state
+        const currentProfile = this.profileData();
+        if (currentProfile?.actorProfile) {
+          currentProfile.actorProfile.actorProfileImageUrl = imageUrl;
+          this.profileData.set({ ...currentProfile });
+        }
+      } else {
+        // Update producer profile image
+        await updateDoc(profileDocRef, {
+          'producerProfile.producerProfileImageUrl': imageUrl
+        });
+        
+        // Update local state
+        const currentProfile = this.profileData();
+        if (currentProfile?.producerProfile) {
+          currentProfile.producerProfile.producerProfileImageUrl = imageUrl;
+          this.profileData.set({ ...currentProfile });
+        }
+      }
+      
+      // Close the preview modal after setting
+      this.closePreviewModal();
+    } catch (error) {
+      // Handle error silently
+    }
+  }
+  
+  onDummyProfileClick() {
+    // Switch to photos tab
+    this.mediaTab = 'photos';
+    
+    // If there are images, open the first one in preview
+    if (this.hasImages()) {
+      const firstImage = this.imageUrls()[0];
+      this.openPreviewModal(firstImage, 'image');
+    } else {
+      // If no images, trigger the image upload input
+      // We need to find and click the image input element
+      const imageInput = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
+      if (imageInput) {
+        imageInput.click();
+      }
+    }
+  }
+  
+  async removeProfilePicture() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+    
+    try {
+      const profileDocRef = doc(this.firestore, 'profiles', user.uid);
+      
+      if (this.isActor()) {
+        // Remove actor profile image
+        await updateDoc(profileDocRef, {
+          'actorProfile.actorProfileImageUrl': null
+        });
+        
+        // Update local state
+        const currentProfile = this.profileData();
+        if (currentProfile?.actorProfile) {
+          currentProfile.actorProfile.actorProfileImageUrl = undefined;
+          this.profileData.set({ ...currentProfile });
+        }
+      } else {
+        // Remove producer profile image
+        await updateDoc(profileDocRef, {
+          'producerProfile.producerProfileImageUrl': null
+        });
+        
+        // Update local state
+        const currentProfile = this.profileData();
+        if (currentProfile?.producerProfile) {
+          currentProfile.producerProfile.producerProfileImageUrl = undefined;
+          this.profileData.set({ ...currentProfile });
+        }
+      }
+    } catch (error) {
+      // Handle error silently
+    }
   }
 }
