@@ -1,31 +1,30 @@
-import { Timestamp } from "firebase/firestore";
+import { Timestamp } from 'firebase/firestore';
 
 //USER INTERFACES
 export interface UserDoc {
   uid: string;
   name: string;
   email: string;
-  phone: string;           // e.g., +91-9xxxxxxxxx
+  phone: string; // e.g., +91-9xxxxxxxxx
   // location: string;
-  currentRole: string;            // e.g., 'user' | 'actor' | 'producer' | 'admin'
-  createdAt: any;          // Firestore serverTimestamp
-  updatedAt: any;          // Firestore serverTimestamp
+  currentRole: string; // e.g., 'user' | 'actor' | 'producer' | 'admin'
+  createdAt: any; // Firestore serverTimestamp
+  updatedAt: any; // Firestore serverTimestamp
   isLoggedIn: boolean;
-  device: devices[];          // e.g., 'web', 'ios', 'android'
-  loggedInTime: any;       // Firestore serverTimestamp
+  device: devices[]; // e.g., 'web', 'ios', 'android'
+  loggedInTime: any; // Firestore serverTimestamp
   isPhoneVerified: boolean;
   // Presence tracking
-  lastSeen?: any;          // Firestore serverTimestamp - last activity
-  isOnline?: boolean;      // Real-time online status
+  lastSeen?: any; // Firestore serverTimestamp - last activity
+  isOnline?: boolean; // Real-time online status
   presenceUpdatedAt?: any; // Last presence update timestamp
   roles: string[];
-	//settings related
-	ghost?: boolean;
-	blocked?: blockedDetails[];
+  //settings related
+  ghost?: boolean;
+  blocked?: blockedDetails[];
   deleteAccount?: boolean;
-	deleteAccountDate?: any;
+  deleteAccountDate?: any;
 }
-
 
 export interface devices {
   model?: string;
@@ -34,20 +33,24 @@ export interface devices {
 }
 
 export interface blockedDetails {
-	blockedBy: string;
-	date: any;
-	reason?: string;
+  blockedBy: string;
+  date: any;
+  reason?: string;
 }
 
 //CHAT INTERFACES
 interface ChatPermissions {
-  canInitiateChat: boolean;    // Only producers
-  canSeeChat: boolean;         // Actors after receiving message
-  canSendMessage: boolean;     // Both after chat is initiated
+  canInitiateChat: boolean; // Only producers
+  canSeeChat: boolean; // Actors after receiving message
+  canSendMessage: boolean; // Both after chat is initiated
 }
 
-
-export type Message = { id: string; from: 'me' | 'them'; text: string; time: string };
+export type Message = {
+  id: string;
+  from: 'me' | 'them';
+  text: string;
+  time: string;
+};
 export type Conversation = {
   id: string;
   name: string;
@@ -58,21 +61,21 @@ export type Conversation = {
   actorRejected?: boolean;
 };
 
-
 export type UserRole = 'actor' | 'producer' | 'user';
+
 
 export interface ChatRoom {
   id?: string;
-  participants: string[];             // [actorId, producerId]
+  participants: string[]; // [actorId, producerId]
   actorId: string;
   producerId: string;
-  createdBy: string;                  // producerId
+  createdBy: string; // producerId
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   lastMessage?: ChatMessage;
-  actorCanSee: boolean;               // only true after producer sends first message
-  actorAccepted?: boolean;            // true when actor accepts the chat request
-  actorRejected?: boolean;            // true when actor rejects the chat request
+  actorCanSee: boolean; // only true after producer sends first message
+  actorAccepted?: boolean; // true when actor accepts the chat request
+  actorRejected?: boolean; // true when actor rejects the chat request
 
   // Unread counts - per user
   unreadCount?: Record<string, number>; // { userId: count }
@@ -120,4 +123,3 @@ export interface ImageMetadata {
   caption?: string;
   tags?: string[];
 }
-

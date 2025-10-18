@@ -246,6 +246,7 @@ export class ProducerOnboardComponent {
       phone: phoneDisplay,
       location: v.location ?? '',
       role: 'producer',
+      productionHouse: v.productionHouse ?? '',
     };
 
     if (current) {
