@@ -165,7 +165,7 @@ Steps in that computation:
 
 ## Wishlist Feature
 
-The wishlist allows producers to save actors they're interested in. It persists across sessions.
+The wishlist allows producers to save actors they're interested in. It persists across sessions and syncs in real-time across all devices.
 
 ### How it works
 1. **Storage**: Firestore collection `wishlists` with document ID = producer's UID.
@@ -177,16 +177,24 @@ The wishlist allows producers to save actors they're interested in. It persists 
      updatedAt: Date
    }
    ```
-3. **Loading**: After actors load, we fetch the wishlist document and populate full actor data.
-4. **Saving**: Every add/remove triggers `saveWishlist()` which updates Firestore.
-5. **UI**: Heart icon on each card (filled = in wishlist, outline = not in wishlist).
-6. **Sidebar**: Shows mini cards of wishlisted actors with remove button.
+3. **Real-time Sync**: Uses Firestore `onSnapshot` listener for live updates.
+4. **Loading**: After actors load, we setup a real-time listener that automatically updates the wishlist.
+5. **Saving**: Every add/remove triggers `saveWishlist()` which updates Firestore.
+6. **Cross-device**: Changes on one device instantly reflect on all other devices.
+7. **UI**: Heart icon on each card (filled = in wishlist, outline = not in wishlist).
+8. **Sidebar**: Shows mini cards of wishlisted actors with remove button.
 
 ### Key methods
-- `loadWishlist()`: Fetches wishlist UIDs from Firestore, maps to full actor data.
+- `setupWishlistListener()`: Sets up real-time Firestore listener using `onSnapshot`.
 - `saveWishlist()`: Writes current wishlist UIDs to Firestore.
 - `toggleWishlist(actor)`: Adds/removes actor and persists immediately.
 - `isInWishlist(actor)`: Checks if actor is in wishlist (for UI state).
+
+### Real-time sync behavior
+- **Device A adds actor** → Firestore updates → **Device B sees update instantly**
+- **Device B removes actor** → Firestore updates → **Device A sees removal instantly**
+- Listener automatically handles reconnection after network issues.
+- Unsubscribes on component destroy to prevent memory leaks.
 
 ### Auth requirement
 - Requires logged-in user (`this.auth.currentUser?.uid`).

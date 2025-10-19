@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Firestore, collection, query, where, getDocs, DocumentData, doc, getDoc, setDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, getDocs, DocumentData, doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { Profile, ActorProfile } from '../../assets/interfaces/profile.interfaces';
@@ -328,7 +328,14 @@ interface ParsedSearchQuery {
             <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-4">Wishlist</h2>
 
-              @if (wishlist().length > 0) {
+              @if (wishlistLoading()) {
+                <!-- Loading State -->
+                <div class="flex flex-col items-center justify-center py-12">
+                  <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-fuchsia-500 border-r-transparent mb-3"></div>
+                  <p class="text-sm text-neutral-400">Loading wishlist...</p>
+                </div>
+              } @else if (wishlist().length > 0) {
+                <!-- Wishlist Items -->
                 <div class="space-y-3 mb-4">
                   @for (actor of wishlist(); track actor.uid) {
                     <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
@@ -355,11 +362,13 @@ interface ParsedSearchQuery {
                   View Profile
                 </button>
               } @else {
+                <!-- Empty State -->
                 <div class="text-center py-8">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-neutral-700 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <p class="text-sm text-neutral-500">No actors in wishlist</p>
+                  <p class="text-sm text-neutral-500 mb-1">No actors in wishlist</p>
+                  <p class="text-xs text-neutral-600">Click the heart icon to add actors</p>
                 </div>
               }
             </div>
@@ -392,6 +401,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private logger = inject(LoggerService);
   private destroy$ = new Subject<void>();
   private currentUserId: string | null = null;
+  private wishlistUnsubscribe: Unsubscribe | null = null;
 
   // Search state
   searchQuery = signal('');
@@ -423,6 +433,7 @@ export class SearchComponent implements OnInit, OnDestroy {
 
   // Wishlist
   wishlist = signal<ActorSearchResult[]>([]);
+  wishlistLoading = signal(false);
 
   // Computed filtered actors with advanced logic
   filteredActors = computed(() => {
@@ -540,6 +551,11 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Get current user
     this.currentUserId = this.auth.currentUser?.uid || null;
     
+    // Set wishlist loading if user is logged in
+    if (this.currentUserId) {
+      this.wishlistLoading.set(true);
+    }
+    
     // Load actors in background but don't display until search
     // Wishlist will be loaded after actors are loaded
     this.loadActors();
@@ -550,6 +566,11 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.searchSubject.complete();
+    
+    // Unsubscribe from wishlist listener
+    if (this.wishlistUnsubscribe) {
+      this.wishlistUnsubscribe();
+    }
   }
 
   /**
@@ -596,9 +617,9 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.logger.log(`Loaded ${actors.length} actor profiles`);
       this.allActors.set(actors);
       
-      // Load wishlist after actors are loaded (so we can populate full data)
+      // Setup real-time wishlist listener after actors are loaded
       if (this.currentUserId) {
-        await this.loadWishlist();
+        this.setupWishlistListener();
       }
       
     } catch (err) {
@@ -873,33 +894,49 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load wishlist from Firestore for current producer
+   * Setup real-time wishlist listener for current producer
+   * Updates automatically when wishlist changes on any device
    */
-  async loadWishlist(): Promise<void> {
+  setupWishlistListener(): void {
     if (!this.currentUserId) {
-      this.logger.warn('No user logged in, cannot load wishlist');
+      this.logger.warn('No user logged in, cannot setup wishlist listener');
+      this.wishlistLoading.set(false);
       return;
     }
 
-    try {
-      const wishlistRef = doc(this.firestore, 'wishlists', this.currentUserId);
-      const wishlistDoc = await getDoc(wishlistRef);
-      
-      if (wishlistDoc.exists()) {
-        const data = wishlistDoc.data();
-        const actorUids = data['actorUids'] || [];
+    const wishlistRef = doc(this.firestore, 'wishlists', this.currentUserId);
+    
+    // Setup real-time listener
+    this.wishlistUnsubscribe = onSnapshot(
+      wishlistRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const actorUids = data['actorUids'] || [];
+          
+          // Filter allActors to get full actor data for wishlisted UIDs
+          const wishlistedActors = this.allActors().filter(actor => 
+            actorUids.includes(actor.uid)
+          );
+          
+          this.wishlist.set(wishlistedActors);
+          this.logger.log(`Wishlist updated: ${wishlistedActors.length} actors`);
+        } else {
+          // No wishlist document exists yet
+          this.wishlist.set([]);
+          this.logger.log('No wishlist found, starting fresh');
+        }
         
-        // Filter allActors to get full actor data for wishlisted UIDs
-        const wishlistedActors = this.allActors().filter(actor => 
-          actorUids.includes(actor.uid)
-        );
-        
-        this.wishlist.set(wishlistedActors);
-        this.logger.log(`Loaded ${wishlistedActors.length} actors from wishlist`);
+        // Stop loading after first data received
+        this.wishlistLoading.set(false);
+      },
+      (error) => {
+        this.logger.error('Error in wishlist listener:', error);
+        this.wishlistLoading.set(false);
       }
-    } catch (err) {
-      this.logger.error('Error loading wishlist:', err);
-    }
+    );
+    
+    this.logger.log('Wishlist real-time listener activated');
   }
 
   /**
