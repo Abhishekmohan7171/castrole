@@ -163,11 +163,43 @@ Steps in that computation:
 
 ---
 
+## Wishlist Feature
+
+The wishlist allows producers to save actors they're interested in. It persists across sessions.
+
+### How it works
+1. **Storage**: Firestore collection `wishlists` with document ID = producer's UID.
+2. **Structure**:
+   ```ts
+   {
+     producerId: string,
+     actorUids: string[],  // Array of actor UIDs
+     updatedAt: Date
+   }
+   ```
+3. **Loading**: After actors load, we fetch the wishlist document and populate full actor data.
+4. **Saving**: Every add/remove triggers `saveWishlist()` which updates Firestore.
+5. **UI**: Heart icon on each card (filled = in wishlist, outline = not in wishlist).
+6. **Sidebar**: Shows mini cards of wishlisted actors with remove button.
+
+### Key methods
+- `loadWishlist()`: Fetches wishlist UIDs from Firestore, maps to full actor data.
+- `saveWishlist()`: Writes current wishlist UIDs to Firestore.
+- `toggleWishlist(actor)`: Adds/removes actor and persists immediately.
+- `isInWishlist(actor)`: Checks if actor is in wishlist (for UI state).
+
+### Auth requirement
+- Requires logged-in user (`this.auth.currentUser?.uid`).
+- If no user, wishlist operations are skipped with a warning log.
+
+---
+
 ## Future enhancements (nice-to-have)
 - Add infinite scroll (currently preloads, then filters client-side).
-- Persist wishlist to Firestore per producer.
 - Voice search and AI search actions on the input.
 - Proper language multi-select instead of free text.
+- Export wishlist as PDF/CSV.
+- Share wishlist with team members.
 
 ---
 

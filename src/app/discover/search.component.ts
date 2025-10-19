@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Firestore, collection, query, where, getDocs, DocumentData } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, getDocs, DocumentData, doc, getDoc, setDoc, updateDoc } from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { Profile, ActorProfile } from '../../assets/interfaces/profile.interfaces';
 import { UserDoc } from '../../assets/interfaces/interfaces';
@@ -386,9 +387,11 @@ interface ParsedSearchQuery {
 })
 export class SearchComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
+  private auth = inject(Auth);
   private router = inject(Router);
   private logger = inject(LoggerService);
   private destroy$ = new Subject<void>();
+  private currentUserId: string | null = null;
 
   // Search state
   searchQuery = signal('');
@@ -534,7 +537,11 @@ export class SearchComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Get current user
+    this.currentUserId = this.auth.currentUser?.uid || null;
+    
     // Load actors in background but don't display until search
+    // Wishlist will be loaded after actors are loaded
     this.loadActors();
     this.setupSearchDebounce();
   }
@@ -588,6 +595,11 @@ export class SearchComponent implements OnInit, OnDestroy {
       
       this.logger.log(`Loaded ${actors.length} actor profiles`);
       this.allActors.set(actors);
+      
+      // Load wishlist after actors are loaded (so we can populate full data)
+      if (this.currentUserId) {
+        await this.loadWishlist();
+      }
       
     } catch (err) {
       const errorMsg = 'Failed to load actors. Please try again.';
@@ -860,17 +872,80 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Filters are automatically applied via computed signal
   }
 
-  toggleWishlist(actor: ActorSearchResult): void {
+  /**
+   * Load wishlist from Firestore for current producer
+   */
+  async loadWishlist(): Promise<void> {
+    if (!this.currentUserId) {
+      this.logger.warn('No user logged in, cannot load wishlist');
+      return;
+    }
+
+    try {
+      const wishlistRef = doc(this.firestore, 'wishlists', this.currentUserId);
+      const wishlistDoc = await getDoc(wishlistRef);
+      
+      if (wishlistDoc.exists()) {
+        const data = wishlistDoc.data();
+        const actorUids = data['actorUids'] || [];
+        
+        // Filter allActors to get full actor data for wishlisted UIDs
+        const wishlistedActors = this.allActors().filter(actor => 
+          actorUids.includes(actor.uid)
+        );
+        
+        this.wishlist.set(wishlistedActors);
+        this.logger.log(`Loaded ${wishlistedActors.length} actors from wishlist`);
+      }
+    } catch (err) {
+      this.logger.error('Error loading wishlist:', err);
+    }
+  }
+
+  /**
+   * Save wishlist to Firestore
+   */
+  async saveWishlist(): Promise<void> {
+    if (!this.currentUserId) {
+      this.logger.warn('No user logged in, cannot save wishlist');
+      return;
+    }
+
+    try {
+      const wishlistRef = doc(this.firestore, 'wishlists', this.currentUserId);
+      const actorUids = this.wishlist().map(actor => actor.uid);
+      
+      await setDoc(wishlistRef, {
+        producerId: this.currentUserId,
+        actorUids: actorUids,
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      this.logger.log('Wishlist saved to Firestore');
+    } catch (err) {
+      this.logger.error('Error saving wishlist:', err);
+    }
+  }
+
+  /**
+   * Toggle actor in wishlist and persist to Firestore
+   */
+  async toggleWishlist(actor: ActorSearchResult): Promise<void> {
     const currentWishlist = this.wishlist();
     const index = currentWishlist.findIndex(a => a.uid === actor.uid);
     
     if (index > -1) {
       // Remove from wishlist
       this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
+      this.logger.log(`Removed ${actor.stageName} from wishlist`);
     } else {
       // Add to wishlist
       this.wishlist.set([...currentWishlist, actor]);
+      this.logger.log(`Added ${actor.stageName} to wishlist`);
     }
+    
+    // Persist to Firestore
+    await this.saveWishlist();
   }
 
   isInWishlist(actor: ActorSearchResult): boolean {
