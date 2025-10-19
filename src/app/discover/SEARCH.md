@@ -119,6 +119,88 @@ Steps in that computation:
    - Weight: ±5kg tolerance
    - Languages: intersection with actor languages
 
+## Filters — explained like I’m five (E‑L‑I5)
+Everything you do in the left sidebar changes one big object called `filters`. When `filters` change, the grid on the right updates by itself.
+
+- `filters` lives in `search.component.ts`:
+```ts
+filters = signal<SearchFilters>({
+  characterType: 'any',
+  minAge: 18,
+  maxAge: 50,
+  gender: 'any',
+  heightFt: '',
+  heightIn: '',
+  weight: '',
+  languages: []
+});
+```
+
+- Signals can’t be changed directly with two-way binding. So we read a value and write updates with helper methods.
+
+### How each control updates filters
+- **Character Type (dropdown)**
+  - Reads current value: `[value]="filters().characterType"`
+  - When you pick a new one: `(change)="updateFilter('characterType', $any($event.target).value)"`
+  - Note: Today, character type doesn’t affect filtering yet. It’s wired for future use.
+
+- **Age (number + slider)**
+  - Minimum: `(input)="updateFilter('minAge', +$any($event.target).value)"`
+  - Maximum: `(input)="updateFilter('maxAge', +$any($event.target).value)"`
+  - In filtering, age is considered only if you changed it away from the default 18–50.
+
+- **Gender (radio buttons)**
+  - Checked state comes from the signal, e.g. `[checked]="filters().gender === 'male'"`
+  - Clicking a radio runs: `(change)="updateFilter('gender', 'male')"`
+
+- **Height / Weight (text inputs)**
+  - Height feet: `(input)="updateFilter('heightFt', $any($event.target).value)"`
+  - Height inches: `(input)="updateFilter('heightIn', $any($event.target).value)"`
+  - Weight: `(input)="updateFilter('weight', $any($event.target).value)"`
+
+- **Languages (comma-separated input)**
+  - What you type temporarily lives in `languageInput` (so you can edit without changing filters yet).
+  - Press Enter or click “Apply Filters” to copy it into `filters.languages`:
+```ts
+applyLanguageFilter() {
+  const input = this.languageInput().trim();
+  const languages = input
+    ? input.split(',').map(x => x.trim()).filter(Boolean)
+    : [];
+  updateFilter('languages', languages);
+}
+```
+
+### What happens when you click “Apply Filters”
+1. We parse the language text and store it in `filters.languages`.
+2. We log the current filters for debugging.
+3. We don’t manually refresh the grid — the computed `filteredActors` updates automatically because a signal changed.
+
+### How the grid actually filters
+Inside `filteredActors` we take `allActors` and narrow it step by step:
+- **Gender**: keep only actors whose `actor.gender` matches your choice (case-insensitive).
+- **Age**: keep only actors between `minAge` and `maxAge` if you changed them from defaults.
+- **Height**: convert both your input and the actor’s height into inches; keep actors within ±2 inches.
+- **Weight**: keep actors within ±5 kg of the number you typed.
+- **Languages**: if you entered any, keep an actor if at least one of your languages appears in their language list (case-insensitive).
+
+Each step logs how many actors were removed, so you can see exactly what happened. Example logs:
+```
+Gender filter (male): 50 → 27 actors
+Age filter (20-30): 27 → 18 actors
+Languages filter (English, Hindi): 18 → 12 actors
+Filtered results: 12 actors found
+```
+
+### How to clear filters
+- Click “Clear All Filters” to reset everything back to defaults.
+- Or click the little “×” on each active filter chip above the grid to remove just that one.
+
+### Quick mental model
+- Think of filters like stacking sieves: each sieve removes some actors.
+- Changing the knobs just swaps a sieve for a tighter/looser one.
+- When you’re done, you see only the actors that passed through all sieves.
+
 ---
 
 ## UI states

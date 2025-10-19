@@ -108,8 +108,8 @@ interface ParsedSearchQuery {
               <div class="mb-6">
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Character Type</label>
                 <select 
-                  [(ngModel)]="filters().characterType"
-                  (change)="applyFilters()"
+                  [value]="filters().characterType"
+                  (change)="updateFilter('characterType', $any($event.target).value)"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
                   <option value="any">Any</option>
                   <option value="lead">Lead</option>
@@ -124,16 +124,16 @@ interface ParsedSearchQuery {
                 <div class="flex items-center gap-3">
                   <input 
                     type="number" 
-                    [(ngModel)]="filters().minAge"
-                    (change)="applyFilters()"
+                    [value]="filters().minAge"
+                    (input)="updateFilter('minAge', +$any($event.target).value)"
                     min="18" 
                     max="100"
                     class="w-20 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                   <div class="flex-1 relative">
                     <input 
                       type="range" 
-                      [(ngModel)]="filters().maxAge"
-                      (change)="applyFilters()"
+                      [value]="filters().maxAge"
+                      (input)="updateFilter('maxAge', +$any($event.target).value)"
                       min="18" 
                       max="100"
                       class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-fuchsia-500">
@@ -151,8 +151,8 @@ interface ParsedSearchQuery {
                       type="radio" 
                       name="gender" 
                       value="any"
-                      [(ngModel)]="filters().gender"
-                      (change)="applyFilters()"
+                      [checked]="filters().gender === 'any'"
+                      (change)="updateFilter('gender', 'any')"
                       class="w-4 h-4 accent-fuchsia-500">
                     <span class="text-neutral-300">Any</span>
                   </label>
@@ -161,8 +161,8 @@ interface ParsedSearchQuery {
                       type="radio" 
                       name="gender" 
                       value="male"
-                      [(ngModel)]="filters().gender"
-                      (change)="applyFilters()"
+                      [checked]="filters().gender === 'male'"
+                      (change)="updateFilter('gender', 'male')"
                       class="w-4 h-4 accent-fuchsia-500">
                     <span class="text-neutral-300">Male</span>
                   </label>
@@ -171,8 +171,8 @@ interface ParsedSearchQuery {
                       type="radio" 
                       name="gender" 
                       value="female"
-                      [(ngModel)]="filters().gender"
-                      (change)="applyFilters()"
+                      [checked]="filters().gender === 'female'"
+                      (change)="updateFilter('gender', 'female')"
                       class="w-4 h-4 accent-fuchsia-500">
                     <span class="text-neutral-300">Female</span>
                   </label>
@@ -185,17 +185,20 @@ interface ParsedSearchQuery {
                 <div class="grid grid-cols-3 gap-2">
                   <input 
                     type="text" 
-                    [(ngModel)]="filters().heightFt"
+                    [value]="filters().heightFt"
+                    (input)="updateFilter('heightFt', $any($event.target).value)"
                     placeholder="ft"
                     class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                   <input 
                     type="text" 
-                    [(ngModel)]="filters().heightIn"
+                    [value]="filters().heightIn"
+                    (input)="updateFilter('heightIn', $any($event.target).value)"
                     placeholder="In"
                     class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                   <input 
                     type="text" 
-                    [(ngModel)]="filters().weight"
+                    [value]="filters().weight"
+                    (input)="updateFilter('weight', $any($event.target).value)"
                     placeholder="weight"
                     class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                 </div>
@@ -206,21 +209,91 @@ interface ParsedSearchQuery {
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Languages</label>
                 <input 
                   type="text" 
+                  [value]="languageInput()"
+                  (input)="languageInput.set($any($event.target).value)"
+                  (keyup.enter)="applyFilters()"
                   placeholder="e.g., English, Hindi"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                <p class="text-xs text-neutral-500 mt-1">Separate multiple languages with commas</p>
               </div>
 
-              <!-- Apply Filters Button -->
-              <button 
-                (click)="applyFilters()"
-                class="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium py-3 rounded-lg transition-colors">
-                Apply Filters
-              </button>
+              <!-- Filter Actions -->
+              <div class="space-y-2">
+                <button 
+                  (click)="applyFilters()"
+                  class="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium py-3 rounded-lg transition-colors">
+                  Apply Filters
+                  @if (hasActiveFilters()) {
+                    <span class="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                      {{ getActiveFilterCount() }}
+                    </span>
+                  }
+                </button>
+                
+                @if (hasActiveFilters()) {
+                  <button 
+                    (click)="clearFilters()"
+                    class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium py-2 rounded-lg transition-colors text-sm">
+                    Clear All Filters
+                  </button>
+                }
+              </div>
             </div>
           </aside>
 
           <!-- Actor Cards Grid -->
           <main class="lg:col-span-2">
+            <!-- Active Filters Display -->
+            @if (hasActiveFilters() || searchQuery()) {
+              <div class="mb-4 flex items-center gap-2 flex-wrap">
+                <span class="text-sm text-neutral-400">Active:</span>
+                
+                @if (searchQuery()) {
+                  <span class="inline-flex items-center gap-1 bg-fuchsia-500/20 text-fuchsia-300 px-3 py-1 rounded-full text-sm">
+                    Search: "{{ searchQuery() }}"
+                    <button (click)="searchQuery.set('')" class="hover:text-fuchsia-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().gender !== 'any') {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Gender: {{ filters().gender }}
+                    <button (click)="updateFilter('gender', 'any')" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().minAge !== 18 || filters().maxAge !== 50) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Age: {{ filters().minAge }}-{{ filters().maxAge }}
+                    <button (click)="updateFilter('minAge', 18); updateFilter('maxAge', 50)" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().languages.length > 0) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Languages: {{ filters().languages.join(', ') }}
+                    <button (click)="updateFilter('languages', []); languageInput.set('')" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+              </div>
+            }
+            
             @if (loading()) {
               <!-- Loading State -->
               <div class="flex items-center justify-center py-20">
@@ -430,6 +503,9 @@ export class SearchComponent implements OnInit, OnDestroy {
     weight: '',
     languages: []
   });
+  
+  // Temporary language input
+  languageInput = signal('');
 
   // Wishlist
   wishlist = signal<ActorSearchResult[]>([]);
@@ -490,18 +566,22 @@ export class SearchComponent implements OnInit, OnDestroy {
 
     // Apply gender filter
     if (currentFilters.gender !== 'any') {
+      const beforeCount = actors.length;
       actors = actors.filter(actor => 
         actor.gender?.toLowerCase() === currentFilters.gender.toLowerCase()
       );
+      this.logger.log(`Gender filter (${currentFilters.gender}): ${beforeCount} → ${actors.length} actors`);
     }
 
     // Apply age range filter (only if changed from defaults)
     const hasAgeFilter = currentFilters.minAge !== 18 || currentFilters.maxAge !== 50;
     if (hasAgeFilter) {
+      const beforeCount = actors.length;
       actors = actors.filter(actor => {
         const age = parseInt(actor.age || '0');
         return age >= currentFilters.minAge && age <= currentFilters.maxAge;
       });
+      this.logger.log(`Age filter (${currentFilters.minAge}-${currentFilters.maxAge}): ${beforeCount} → ${actors.length} actors`);
     }
 
     // Apply height filter if specified
@@ -511,11 +591,13 @@ export class SearchComponent implements OnInit, OnDestroy {
         currentFilters.heightIn
       );
       if (targetHeightInches > 0) {
+        const beforeCount = actors.length;
         actors = actors.filter(actor => {
           const actorHeight = this.parseHeight(actor.height || '');
           // Allow ±2 inches tolerance
           return Math.abs(actorHeight - targetHeightInches) <= 2;
         });
+        this.logger.log(`Height filter (${currentFilters.heightFt}'${currentFilters.heightIn}"): ${beforeCount} → ${actors.length} actors`);
       }
     }
 
@@ -523,16 +605,19 @@ export class SearchComponent implements OnInit, OnDestroy {
     if (currentFilters.weight) {
       const targetWeight = parseInt(currentFilters.weight);
       if (targetWeight > 0) {
+        const beforeCount = actors.length;
         actors = actors.filter(actor => {
           const actorWeight = parseInt(actor.weight || '0');
           // Allow ±5 kg tolerance
           return Math.abs(actorWeight - targetWeight) <= 5;
         });
+        this.logger.log(`Weight filter (${currentFilters.weight}kg ±5): ${beforeCount} → ${actors.length} actors`);
       }
     }
 
     // Apply languages filter
     if (currentFilters.languages.length > 0) {
+      const beforeCount = actors.length;
       actors = actors.filter(actor => {
         return currentFilters.languages.some(lang => 
           actor.languages?.some(actorLang => 
@@ -541,6 +626,7 @@ export class SearchComponent implements OnInit, OnDestroy {
           )
         );
       });
+      this.logger.log(`Languages filter (${currentFilters.languages.join(', ')}): ${beforeCount} → ${actors.length} actors`);
     }
 
     this.logger.log(`Filtered results: ${actors.length} actors found`);
@@ -889,8 +975,78 @@ export class SearchComponent implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Update a specific filter property
+   */
+  updateFilter<K extends keyof SearchFilters>(key: K, value: SearchFilters[K]): void {
+    this.filters.set({
+      ...this.filters(),
+      [key]: value
+    });
+    this.logger.log(`Filter updated: ${key} = ${value}`);
+  }
+  
+  /**
+   * Parse and apply language filter from comma-separated input
+   */
+  applyLanguageFilter(): void {
+    const input = this.languageInput().trim();
+    if (input) {
+      // Split by comma and clean up
+      const languages = input.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0);
+      this.updateFilter('languages', languages);
+      this.logger.log(`Languages filter applied: ${languages.join(', ')}`);
+    } else {
+      this.updateFilter('languages', []);
+    }
+  }
+  
+  /**
+   * Apply all filters (triggered by Apply Filters button)
+   */
   applyFilters(): void {
-    // Filters are automatically applied via computed signal
+    // Parse language input
+    this.applyLanguageFilter();
+    
+    // Log current filter state
+    this.logger.log('Filters applied:', this.filters());
+    this.logger.log('Active filters count:', this.getActiveFilterCount());
+    
+    // Computed signal will automatically recalculate
+  }
+  
+  /**
+   * Clear all filters and reset to defaults
+   */
+  clearFilters(): void {
+    this.filters.set({
+      characterType: 'any',
+      minAge: 18,
+      maxAge: 50,
+      gender: 'any',
+      heightFt: '',
+      heightIn: '',
+      weight: '',
+      languages: []
+    });
+    this.languageInput.set('');
+    this.logger.log('All filters cleared');
+  }
+  
+  /**
+   * Get count of active non-default filters
+   */
+  getActiveFilterCount(): number {
+    const currentFilters = this.filters();
+    let count = 0;
+    
+    if (currentFilters.gender !== 'any') count++;
+    if (currentFilters.minAge !== 18 || currentFilters.maxAge !== 50) count++;
+    if (currentFilters.heightFt || currentFilters.heightIn) count++;
+    if (currentFilters.weight) count++;
+    if (currentFilters.languages.length > 0) count++;
+    
+    return count;
   }
 
   /**
