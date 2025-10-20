@@ -317,7 +317,7 @@ export class AuthService {
 
   // --- Email/Password ---
 
-  /** Register a user with email/password and create a user profile document. */
+  /** Register a user with email/password and create both user and profile documents. */
   async registerWithEmail(params: {
     name: string;
     email: string;
@@ -362,6 +362,21 @@ export class AuthService {
     };
 
     await setDoc(ref, userDoc, { merge: true } as any);
+
+    // Create role-specific profile document
+    if (role === 'actor') {
+      await this.createActorProfile(cred.user.uid, {
+        stageName: name,
+        location: location,
+      });
+    } else if (role === 'producer') {
+      await this.createProducerProfile(cred.user.uid, {
+        name: name,
+        location: location,
+        productionHouse: productionHouse,
+      });
+    }
+
     return cred.user;
   }
 
