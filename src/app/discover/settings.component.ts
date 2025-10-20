@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 
 @Component({
@@ -29,10 +29,12 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
               <div class="text-[11px]"
                    [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">username, phone number, email, account type</div>
             </button>
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+            <button (click)="activeSection.set('privacy')" class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
                     [ngClass]="{
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor(),
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor()
+                      'ring-purple-900/15 bg-purple-900/20 text-purple-100/80': isActor() && activeSection() === 'privacy',
+                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor() && activeSection() !== 'privacy',
+                      'ring-white/10 bg-white/5 text-neutral-200': !isActor() && activeSection() === 'privacy',
+                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor() && activeSection() !== 'privacy'
                     }">
               privacy & security
               <div class="text-[11px]"
@@ -77,16 +79,19 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
           </nav>
         </aside>
 
-        <!-- Right: Account panel -->
+        <!-- Right: Dynamic panel based on active section -->
         <section class="rounded-2xl p-6 transition-all duration-300"
                  [ngClass]="{
                    'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10': isActor(),
                    'bg-black/40 ring-2 ring-white/10 border border-neutral-800': !isActor()
                  }">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold"
-                [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">account</h2>
-          </div>
+          
+          <!-- Account Section -->
+          <div *ngIf="activeSection() === 'account'">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold"
+                  [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">account</h2>
+            </div>
 
           <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Username/email/mobile fields -->
@@ -155,6 +160,56 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
               </div>
             </div>
           </div>
+          </div>
+
+          <!-- Privacy & Security Section -->
+          <div *ngIf="activeSection() === 'privacy'">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-sm font-semibold"
+                  [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">privacy & security</h2>
+            </div>
+
+            <!-- Read Receipts Toggle -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between p-4 rounded-xl ring-1"
+                   [ngClass]="{
+                     'ring-purple-900/15 bg-purple-950/5': isActor(),
+                     'ring-white/10 bg-white/5': !isActor()
+                   }">
+                <div class="flex-1">
+                  <div class="text-sm font-medium"
+                       [ngClass]="{'text-purple-200': isActor(), 'text-neutral-200': !isActor()}">
+                    read receipts
+                  </div>
+                  <div class="text-xs mt-1"
+                       [ngClass]="{'text-purple-300/50': isActor(), 'text-neutral-500': !isActor()}">
+                    send blue ticks when you read messages
+                  </div>
+                </div>
+                <button (click)="toggleReadReceipts()" 
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                        [ngClass]="{
+                          'bg-purple-600': readReceipts(),
+                          'bg-neutral-700': !readReceipts()
+                        }">
+                  <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                        [ngClass]="{
+                          'translate-x-6': readReceipts(),
+                          'translate-x-1': !readReceipts()
+                        }"></span>
+                </button>
+              </div>
+
+              <div class="text-xs p-3 rounded-xl"
+                   [ngClass]="{
+                     'bg-purple-950/10 text-purple-300/60': isActor(),
+                     'bg-white/5 text-neutral-500': !isActor()
+                   }">
+                ℹ️ when disabled, others won't see blue ticks when you read their messages. you'll still see double gray checkmarks for delivered messages.
+              </div>
+            </div>
+          </div>
+
         </section>
       </div>
     </div>
@@ -190,8 +245,15 @@ export class SettingsComponent implements OnInit {
   isActor = computed(() => this.userRole() === 'actor');
   settingsTheme = computed(() => this.isActor() ? 'actor-theme' : '');
   
+  // Active section
+  activeSection = signal<'account' | 'privacy'>('account');
+  
+  // Privacy settings
+  readReceipts = signal<boolean>(true);
+  
   ngOnInit() {
     this.loadUserRole();
+    this.loadPrivacySettings();
   }
   
   private async loadUserRole() {
@@ -208,6 +270,44 @@ export class SettingsComponent implements OnInit {
         // Default to actor if there's an error
         this.userRole.set('actor');
       }
+    }
+  }
+  
+  private async loadPrivacySettings() {
+    const user = this.auth.getCurrentUser();
+    if (user) {
+      try {
+        const userDocRef = doc(this.firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserDoc;
+          // Default to true if not set
+          this.readReceipts.set(userData.readReceipts !== false);
+        }
+      } catch (error) {
+        console.error('Error loading privacy settings:', error);
+      }
+    }
+  }
+  
+  async toggleReadReceipts() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+    
+    try {
+      const newValue = !this.readReceipts();
+      this.readReceipts.set(newValue);
+      
+      const userDocRef = doc(this.firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        readReceipts: newValue
+      });
+      
+      console.log(`✓ Read receipts ${newValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error updating read receipts setting:', error);
+      // Revert on error
+      this.readReceipts.set(!this.readReceipts());
     }
   }
 }

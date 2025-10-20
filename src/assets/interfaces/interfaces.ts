@@ -24,6 +24,8 @@ export interface UserDoc {
   blocked?: blockedDetails[];
   deleteAccount?: boolean;
   deleteAccountDate?: any;
+  // Privacy settings
+  readReceipts?: boolean; // Default true - send read receipts
 }
 
 export interface devices {
@@ -50,6 +52,8 @@ export type Message = {
   from: 'me' | 'them';
   text: string;
   time: string;
+  // Read receipt status
+  status?: 'sent' | 'delivered' | 'seen';
 };
 export type Conversation = {
   id: string;
@@ -93,6 +97,9 @@ export interface ChatMessage {
   timestamp: Timestamp;
   read: boolean;
   messageType: 'text' | 'image' | 'file';
+  // Read receipts
+  deliveredAt?: Timestamp; // When message was delivered to receiver
+  readAt?: Timestamp; // When message was read/seen by receiver
 }
 
 //UPLOAD INTERFACES
