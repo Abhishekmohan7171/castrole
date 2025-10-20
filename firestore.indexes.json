@@ -27,5 +27,6 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [],
+  "comment": "Read receipts now use simple queries with client-side filtering - no complex indexes needed"
 }
