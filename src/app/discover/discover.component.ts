@@ -116,6 +116,7 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                      'bg-neutral-800/95 ring-neutral-700/50 backdrop-blur-sm': !isActor()
                    }">
                 <a routerLink="/discover/profile"
+                   (click)="closeDropdown()"
                    [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
                    class="block px-4 py-2 text-sm transition-colors duration-200"
                    [ngClass]="{
@@ -123,6 +124,16 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
                      'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
                    }">
                   Profile
+                </a>
+                <a routerLink="/discover/settings"
+                   (click)="closeDropdown()"
+                   [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
+                   class="block px-4 py-2 text-sm transition-colors duration-200"
+                   [ngClass]="{
+                     'text-purple-200/90 hover:bg-purple-900/15': isActor(),
+                     'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                   }">
+                  Settings
                 </a>
                 <button (click)="logout()"
                         class="w-full text-left block px-4 py-2 text-sm transition-colors duration-200"

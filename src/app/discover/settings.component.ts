@@ -4,258 +4,432 @@ import { AuthService } from '../services/auth.service';
 import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 
+type SettingsTab =
+  | 'account'
+  | 'privacy'
+  | 'subscriptions'
+  | 'analytics'
+  | 'support'
+  | 'legal';
+
 @Component({
   selector: 'app-discover-settings',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-6" [ngClass]="settingsTheme()">
+    <div
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-6"
+      [ngClass]="settingsTheme()"
+    >
       <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
         <!-- Left: Sidebar -->
-        <aside class="rounded-2xl p-4 transition-all duration-300"
-               [ngClass]="{
-                 'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10': isActor(),
-                 'bg-black/40 ring-2 ring-white/10 border border-neutral-800': !isActor()
-               }">
-          <h2 class="text-sm font-semibold mb-3"
-              [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">settings</h2>
+        <aside
+          class="rounded-2xl p-4 transition-all duration-300"
+          [ngClass]="{
+            'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
+              isActor(),
+            'bg-black/40 ring-2 ring-white/10 border border-neutral-800':
+              !isActor()
+          }"
+        >
+          <h2
+            class="text-sm font-semibold mb-3"
+            [ngClass]="{
+              'text-purple-200/70': isActor(),
+              'text-neutral-300': !isActor()
+            }"
+          >
+            settings
+          </h2>
           <nav class="space-y-1 text-sm">
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 bg-purple-900/20 text-purple-100/80': isActor(),
-                      'ring-white/10 bg-white/5 text-neutral-200': !isActor()
-                    }">
+            <button
+              (click)="setActiveTab('account')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === 'account',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== 'account',
+                'ring-white/10 bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === 'account',
+                'ring-white/10 text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== 'account'
+              }"
+            >
               account
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">username, phone number, email, account type</div>
+              <div
+                class="text-[11px]"
+                [ngClass]="{
+                  'text-purple-200/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                username, phone number, email, account type
+              </div>
             </button>
-            <button (click)="activeSection.set('privacy')" class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 bg-purple-900/20 text-purple-100/80': isActor() && activeSection() === 'privacy',
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor() && activeSection() !== 'privacy',
-                      'ring-white/10 bg-white/5 text-neutral-200': !isActor() && activeSection() === 'privacy',
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor() && activeSection() !== 'privacy'
-                    }">
+            <button
+              (click)="setActiveTab('privacy')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === 'privacy',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== 'privacy',
+                'ring-white/10 bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === 'privacy',
+                'ring-white/10 text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== 'privacy'
+              }"
+            >
               privacy & security
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">visibility, password, activity status, 2fa, blocked users</div>
+              <div
+                class="text-[11px]"
+                [ngClass]="{
+                  'text-purple-200/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                visibility, password, activity status, blocked users
+              </div>
             </button>
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor(),
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor()
-                    }">
+            <button
+              (click)="setActiveTab('subscriptions')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === 'subscriptions',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== 'subscriptions',
+                'ring-white/10 bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === 'subscriptions',
+                'ring-white/10 text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== 'subscriptions'
+              }"
+            >
               subscriptions
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">manage subscription, plans, payments, history</div>
+              <div
+                class="text-[11px]"
+                [ngClass]="{
+                  'text-purple-200/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                manage subscription, plans, payments, history
+              </div>
             </button>
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor(),
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor()
-                    }">
+            @if (isActor()) {
+            <button
+              (click)="setActiveTab('analytics')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  activeTab() === 'analytics',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  activeTab() !== 'analytics'
+              }"
+            >
               analytics
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">profile views, reach, media library insights</div>
+              <div class="text-[11px] text-purple-200/50">
+                profile views, reach, media library insights
+              </div>
             </button>
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor(),
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor()
-                    }">
+            }
+            <button
+              (click)="setActiveTab('support')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === 'support',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== 'support',
+                'ring-white/10 bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === 'support',
+                'ring-white/10 text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== 'support'
+              }"
+            >
               support & feedback
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">help, bugs, feedback, contact</div>
+              <div
+                class="text-[11px]"
+                [ngClass]="{
+                  'text-purple-200/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                help, bugs, feedback, contact
+              </div>
             </button>
-            <button class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10': isActor(),
-                      'ring-white/10 text-neutral-300 hover:bg-white/5': !isActor()
-                    }">
+            <button
+              (click)="setActiveTab('legal')"
+              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              [ngClass]="{
+                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === 'legal',
+                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== 'legal',
+                'ring-white/10 bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === 'legal',
+                'ring-white/10 text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== 'legal'
+              }"
+            >
               legal
-              <div class="text-[11px]"
-                   [ngClass]="{'text-purple-200/50': isActor(), 'text-neutral-500': !isActor()}">terms & conditions, privacy policy, guidelines, about us</div>
+              <div
+                class="text-[11px]"
+                [ngClass]="{
+                  'text-purple-200/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                terms & conditions, privacy policy, guidelines
+              </div>
             </button>
           </nav>
         </aside>
 
-        <!-- Right: Dynamic panel based on active section -->
-        <section class="rounded-2xl p-6 transition-all duration-300"
-                 [ngClass]="{
-                   'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10': isActor(),
-                   'bg-black/40 ring-2 ring-white/10 border border-neutral-800': !isActor()
-                 }">
-          
-          <!-- Account Section -->
-          <div *ngIf="activeSection() === 'account'">
-            <div class="flex items-center justify-between">
-              <h2 class="text-sm font-semibold"
-                  [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">account</h2>
-            </div>
+        <!-- Right: Content panel -->
+        <section
+          class="rounded-2xl p-6 transition-all duration-300"
+          [ngClass]="{
+            'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
+              isActor(),
+            'bg-black/40 ring-2 ring-white/10 border border-neutral-800':
+              !isActor()
+          }"
+        >
+          <h2
+            class="text-sm font-semibold mb-6"
+            [ngClass]="{
+              'text-purple-200/70': isActor(),
+              'text-neutral-300': !isActor()
+            }"
+          >
+            {{ getTabLabel(activeTab()) }}
+          </h2>
 
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Username/email/mobile fields -->
-            <div class="space-y-4">
-              <div class="flex items-center gap-3">
-                <button class="h-8 w-8 rounded-full grid place-items-center ring-1 transition-all duration-200"
-                        [ngClass]="{
-                          'ring-purple-900/15 bg-purple-950/10 text-purple-300/60 hover:bg-purple-900/20': isActor(),
-                          'ring-white/10 bg-white/5 text-neutral-300 hover:bg-white/10': !isActor()
-                        }" aria-label="edit username">✎</button>
-                <div class="flex-1 h-10 px-4 rounded-xl ring-1 grid place-items-center text-sm transition-all duration-200"
-                     [ngClass]="{
-                       'ring-purple-900/15 bg-purple-950/10 text-purple-200/60': isActor(),
-                       'ring-white/10 bg-white/5 text-neutral-400': !isActor()
-                     }">username</div>
-              </div>
-              <div class="flex items-center gap-3">
-                <button class="h-8 w-8 rounded-full grid place-items-center ring-1 transition-all duration-200"
-                        [ngClass]="{
-                          'ring-purple-900/15 bg-purple-950/10 text-purple-300/60 hover:bg-purple-900/20': isActor(),
-                          'ring-white/10 bg-white/5 text-neutral-300 hover:bg-white/10': !isActor()
-                        }" aria-label="edit email">✎</button>
-                <div class="flex-1 h-10 px-4 rounded-xl ring-1 grid place-items-center text-sm transition-all duration-200"
-                     [ngClass]="{
-                       'ring-purple-900/15 bg-purple-950/10 text-purple-200/60': isActor(),
-                       'ring-white/10 bg-white/5 text-neutral-400': !isActor()
-                     }">email</div>
-              </div>
-              <div class="flex items-center gap-3">
-                <button class="h-8 w-8 rounded-full grid place-items-center ring-1 transition-all duration-200"
-                        [ngClass]="{
-                          'ring-purple-900/15 bg-purple-950/10 text-purple-300/60 hover:bg-purple-900/20': isActor(),
-                          'ring-white/10 bg-white/5 text-neutral-300 hover:bg-white/10': !isActor()
-                        }" aria-label="edit mobile">✎</button>
-                <div class="flex-1 h-10 px-4 rounded-xl ring-1 grid place-items-center text-sm transition-all duration-200"
-                     [ngClass]="{
-                       'ring-purple-900/15 bg-purple-950/10 text-purple-200/60': isActor(),
-                       'ring-white/10 bg-white/5 text-neutral-400': !isActor()
-                     }">mobile</div>
-              </div>
+          @switch (activeTab()) { @case ('account') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3"
+              [ngClass]="{
+                'text-purple-300/50': isActor(),
+                'text-neutral-500': !isActor()
+              }"
+            >
+              Basic Information
             </div>
-
-            <!-- Add account tiles -->
             <div class="space-y-3">
-              <div class="text-sm mb-1"
-                   [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">add account</div>
-              <div class="grid grid-cols-2 gap-3">
-                <button class="aspect-square rounded-xl ring-1 transition-all duration-200 grid place-items-center"
-                        [ngClass]="{
-                          'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
-                          'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                        }">
-                  <svg viewBox="0 0 24 24" class="h-10 w-10"
-                       [ngClass]="{'text-purple-300/50': isActor(), 'text-neutral-300': !isActor()}"
-                       fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                </button>
-                <button class="aspect-square rounded-xl ring-1 transition-all duration-200 grid place-items-center"
-                        [ngClass]="{
-                          'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20': isActor(),
-                          'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                        }">
-                  <svg viewBox="0 0 24 24" class="h-10 w-10"
-                       [ngClass]="{'text-purple-300/50': isActor(), 'text-neutral-300': !isActor()}"
-                       fill="currentColor"><path d="M12 5.5c-2.48 0-4.5 2.02-4.5 4.5S9.52 14.5 12 14.5 16.5 12.48 16.5 10 14.48 5.5 12 5.5zM4 19c0-2.21 3.58-4 8-4s8 1.79 8 4v1H4v-1z"/></svg>
-                </button>
+              <div
+                class="text-xs"
+                [ngClass]="{
+                  'text-purple-200/60': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                @if (isActor()) { Profile, Notifications, Linked Accounts,
+                Deactivate Account } @else { Mobile Number Edit, Username Edit,
+                Email Edit, Add Actor Account }
               </div>
             </div>
           </div>
-          </div>
-
-          <!-- Privacy & Security Section -->
-          <div *ngIf="activeSection() === 'privacy'">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-sm font-semibold"
-                  [ngClass]="{'text-purple-200/70': isActor(), 'text-neutral-300': !isActor()}">privacy & security</h2>
+          } @case ('privacy') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3"
+              [ngClass]="{
+                'text-purple-300/50': isActor(),
+                'text-neutral-500': !isActor()
+              }"
+            >
+              Privacy & Security Settings
             </div>
-
-            <!-- Read Receipts Toggle -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between p-4 rounded-xl ring-1"
-                   [ngClass]="{
-                     'ring-purple-900/15 bg-purple-950/5': isActor(),
-                     'ring-white/10 bg-white/5': !isActor()
-                   }">
-                <div class="flex-1">
-                  <div class="text-sm font-medium"
-                       [ngClass]="{'text-purple-200': isActor(), 'text-neutral-200': !isActor()}">
-                    read receipts
-                  </div>
-                  <div class="text-xs mt-1"
-                       [ngClass]="{'text-purple-300/50': isActor(), 'text-neutral-500': !isActor()}">
-                    send blue ticks when you read messages
-                  </div>
-                </div>
-                <button (click)="toggleReadReceipts()" 
-                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                        [ngClass]="{
-                          'bg-purple-600': readReceipts(),
-                          'bg-neutral-700': !readReceipts()
-                        }">
-                  <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                        [ngClass]="{
-                          'translate-x-6': readReceipts(),
-                          'translate-x-1': !readReceipts()
-                        }"></span>
-                </button>
-              </div>
-
-              <div class="text-xs p-3 rounded-xl"
-                   [ngClass]="{
-                     'bg-purple-950/10 text-purple-300/60': isActor(),
-                     'bg-white/5 text-neutral-500': !isActor()
-                   }">
-                ℹ️ when disabled, others won't see blue ticks when you read their messages. you'll still see double gray checkmarks for delivered messages.
+            <div class="space-y-3">
+              <div
+                class="text-xs"
+                [ngClass]="{
+                  'text-purple-200/60': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                @if (isActor()) { Visibility & Search, Account Management, Data
+                & Privacy } @else { Profile Visibility, Change Password, Chat
+                Settings, Account Management }
               </div>
             </div>
           </div>
-
+          } @case ('subscriptions') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3"
+              [ngClass]="{
+                'text-purple-300/50': isActor(),
+                'text-neutral-500': !isActor()
+              }"
+            >
+              Subscription Management
+            </div>
+            <div class="space-y-3">
+              <div
+                class="text-xs"
+                [ngClass]="{
+                  'text-purple-200/60': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                @if (isActor()) { Current Plan, Billing, Payment Methods } @else
+                { Promo Codes, Manage Plan, History of Payments, Billing Address
+                }
+              </div>
+            </div>
+          </div>
+          } @case ('analytics') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3 text-purple-300/50"
+            >
+              Analytics & Insights
+            </div>
+            <div class="space-y-3">
+              <div class="text-xs text-purple-200/60">
+                Profile Views, Search Appearances, Portfolio Views, Video Views,
+                Business Card Scans
+              </div>
+            </div>
+          </div>
+          } @case ('support') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3"
+              [ngClass]="{
+                'text-purple-300/50': isActor(),
+                'text-neutral-500': !isActor()
+              }"
+            >
+              Support & Feedback
+            </div>
+            <div class="space-y-3">
+              <div
+                class="text-xs"
+                [ngClass]="{
+                  'text-purple-200/60': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                @if (isActor()) { Contact Us (Suggestions, Reporting, Contact),
+                Documentation Access } @else { Report Bug, Support, Suggestions
+                }
+              </div>
+            </div>
+          </div>
+          } @case ('legal') {
+          <div class="space-y-6">
+            <div
+              class="text-xs font-medium uppercase tracking-wide mb-3"
+              [ngClass]="{
+                'text-purple-300/50': isActor(),
+                'text-neutral-500': !isActor()
+              }"
+            >
+              Legal Documents
+            </div>
+            <div class="space-y-3">
+              <div
+                class="text-xs"
+                [ngClass]="{
+                  'text-purple-200/60': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                @if (isActor()) { Terms of Service, Privacy Policy, Community
+                Guidelines, Cookie Policy } @else { Community Guidelines,
+                Privacy Policy, Terms & Conditions, Licenses and Open Software }
+              </div>
+            </div>
+          </div>
+          } }
         </section>
       </div>
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-    /* Subtle purple gradient background for actors */
-    .actor-theme::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(ellipse at top left, rgba(147, 51, 234, 0.03) 0%, transparent 40%),
-                  radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.02) 0%, transparent 40%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .actor-theme {
-      position: relative;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+      /* Subtle purple gradient background for actors */
+      .actor-theme::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            ellipse at top left,
+            rgba(147, 51, 234, 0.03) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            ellipse at bottom right,
+            rgba(168, 85, 247, 0.02) 0%,
+            transparent 40%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .actor-theme {
+        position: relative;
+      }
+    `,
+  ],
 })
 export class SettingsComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
-  
+
   // User role signals
   userRole = signal<string>('actor');
   isActor = computed(() => this.userRole() === 'actor');
-  settingsTheme = computed(() => this.isActor() ? 'actor-theme' : '');
-  
-  // Active section
-  activeSection = signal<'account' | 'privacy'>('account');
-  
-  // Privacy settings
-  readReceipts = signal<boolean>(true);
-  
+  settingsTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
+
+  // Active tab signal
+  activeTab = signal<SettingsTab>('account');
+
+  // Available tabs based on role
+  availableTabs = computed(() => {
+    const tabs: SettingsTab[] = [
+      'account',
+      'privacy',
+      'subscriptions',
+      'support',
+      'legal',
+    ];
+    if (this.isActor()) {
+      tabs.splice(3, 0, 'analytics'); // Insert analytics before support for actors
+    }
+    return tabs;
+  });
+
   ngOnInit() {
     this.loadUserRole();
-    this.loadPrivacySettings();
   }
-  
+
+  setActiveTab(tab: SettingsTab) {
+    this.activeTab.set(tab);
+  }
+
+  getTabLabel(tab: SettingsTab): string {
+    const labels: Record<SettingsTab, string> = {
+      account: 'account',
+      privacy: 'privacy & security',
+      subscriptions: 'subscriptions',
+      analytics: 'analytics',
+      support: 'support & feedback',
+      legal: 'legal',
+    };
+    return labels[tab];
+  }
+
   private async loadUserRole() {
     const user = this.auth.getCurrentUser();
     if (user) {
@@ -272,7 +446,7 @@ export class SettingsComponent implements OnInit {
       }
     }
   }
-  
+
   private async loadPrivacySettings() {
     const user = this.auth.getCurrentUser();
     if (user) {
@@ -289,20 +463,20 @@ export class SettingsComponent implements OnInit {
       }
     }
   }
-  
+
   async toggleReadReceipts() {
     const user = this.auth.getCurrentUser();
     if (!user) return;
-    
+
     try {
       const newValue = !this.readReceipts();
       this.readReceipts.set(newValue);
-      
+
       const userDocRef = doc(this.firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
-        readReceipts: newValue
+        readReceipts: newValue,
       });
-      
+
       console.log(`✓ Read receipts ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error updating read receipts setting:', error);

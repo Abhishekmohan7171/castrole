@@ -1,9 +1,9 @@
 import { CanActivateFn, CanMatchFn, Router, UrlSegment } from '@angular/router';
 import { inject } from '@angular/core';
 import { Auth, User } from '@angular/fire/auth';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { Observable, map, filter, take, from, switchMap } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
+import { UserOnboardingCacheService } from '../services/user-onboarding-cache.service';
 
 // No longer needed as we use LoadingService to wait for auth initialization
 
@@ -31,12 +31,13 @@ export const authGuard: CanActivateFn = () => {
  * Prefer this for guarding feature routes to avoid flicker during initial navigation.
  * Router will not match the route until the observable resolves.
  * Checks both Firebase Auth AND Firestore user document existence.
+ * Uses in-memory cache to minimize Firestore reads.
  */
 export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
   const router = inject(Router);
   const auth = inject(Auth);
-  const db = inject(Firestore);
   const loadingService = inject(LoadingService);
+  const onboardingCache = inject(UserOnboardingCacheService);
   
   return loadingService.isLoading$.pipe(
     // Wait until loading is complete
@@ -52,11 +53,10 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
         })));
       }
       
-      // User is authenticated, check if Firestore document exists
-      const userRef = doc(db, 'users', user.uid);
-      return from(getDoc(userRef)).pipe(
-        map(snapshot => {
-          if (snapshot.exists()) {
+      // User is authenticated, check if Firestore document exists (cached)
+      return from(onboardingCache.hasCompletedOnboarding(user.uid)).pipe(
+        map(hasCompleted => {
+          if (hasCompleted) {
             // User has completed onboarding, allow access
             return true;
           } else {
@@ -76,12 +76,13 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
  * Guard for the login route: only redirect fully onboarded users away.
  * Allows access for logged out users AND authenticated users without Firestore doc.
  * This enables the back button from onboarding to work naturally.
+ * Uses in-memory cache to minimize Firestore reads.
  */
 export const loggedOutOnlyGuard: CanMatchFn = (route, segments) => {
   const router = inject(Router);
   const auth = inject(Auth);
-  const db = inject(Firestore);
   const loadingService = inject(LoadingService);
+  const onboardingCache = inject(UserOnboardingCacheService);
   
   return loadingService.isLoading$.pipe(
     // Wait until loading is complete
@@ -94,11 +95,10 @@ export const loggedOutOnlyGuard: CanMatchFn = (route, segments) => {
         return from(Promise.resolve(true));
       }
       
-      // User is authenticated, check if Firestore document exists
-      const userRef = doc(db, 'users', user.uid);
-      return from(getDoc(userRef)).pipe(
-        map(snapshot => {
-          if (snapshot.exists()) {
+      // User is authenticated, check if Firestore document exists (cached)
+      return from(onboardingCache.hasCompletedOnboarding(user.uid)).pipe(
+        map(hasCompleted => {
+          if (hasCompleted) {
             // User has completed onboarding, redirect to discover or return URL
             const returnUrl = router.getCurrentNavigation()?.extractedUrl.queryParams['returnUrl'] || '/discover';
             return router.createUrlTree([returnUrl]);

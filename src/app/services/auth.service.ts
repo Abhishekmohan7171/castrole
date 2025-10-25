@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { UserOnboardingCacheService } from './user-onboarding-cache.service';
 import { BrowserDetectionService } from '../utils/browser-detection';
 import { PresenceService } from './presence.service';
 import {
@@ -40,6 +41,7 @@ export class AuthService {
   private db = inject(Firestore);
   private browserDetection = inject(BrowserDetectionService);
   private presence = inject(PresenceService);
+  private onboardingCache = inject(UserOnboardingCacheService);
 
   constructor() {
     // Auto-track presence based on auth state
@@ -377,6 +379,9 @@ export class AuthService {
       });
     }
 
+    // Mark user as onboarded in cache
+    this.onboardingCache.markAsOnboarded(cred.user.uid);
+
     return cred.user;
   }
 
@@ -582,6 +587,9 @@ export class AuthService {
         productionHouse: params.productionHouse,
       });
     }
+
+    // Mark user as onboarded in cache
+    this.onboardingCache.markAsOnboarded(user.uid);
 
     return user;
   }

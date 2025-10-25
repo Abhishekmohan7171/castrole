@@ -1,6 +1,7 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { UploadService } from '../services/upload.service';
 import { UploadProgress } from '../../assets/interfaces/interfaces';
 
@@ -354,7 +355,11 @@ interface Tag {
   `,
   styles: []
 })
-export class UploadComponent {
+export class UploadComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private returnUrl = signal<string | null>(null);
+  
   uploadType = signal<'video' | 'image'>('video');
   
   // Video upload state
@@ -423,6 +428,17 @@ export class UploadComponent {
       return `Uploading images... ${progress.toFixed(0)}%`;
     }
   });
+
+  ngOnInit() {
+    // Check for returnUrl query param
+    this.route.queryParams.subscribe(params => {
+      if (params['returnUrl']) {
+        this.returnUrl.set(params['returnUrl']);
+        // Set upload type to image if coming from profile
+        this.uploadType.set('image');
+      }
+    });
+  }
 
   onVideoFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -615,6 +631,14 @@ export class UploadComponent {
         if (this.allImagesCompleted() && !this.hasImageErrors()) {
           this.uploadSuccess.set(true);
           this.isUploading.set(false); // Stop uploading state immediately
+          
+          // Redirect if returnUrl is set
+          const returnUrl = this.returnUrl();
+          if (returnUrl) {
+            setTimeout(() => {
+              this.router.navigate([returnUrl]);
+            }, 1500); // Wait 1.5s to show success message
+          }
         }
       },
       error: () => {
