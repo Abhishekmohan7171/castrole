@@ -11,12 +11,11 @@ import {
 } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
-import { EditProfileModalComponent } from './edit-profile-modal.component';
 
 @Component({
   selector: 'app-discover-profile',
   standalone: true,
-  imports: [CommonModule, EditProfileModalComponent],
+  imports: [CommonModule],
   template: `
     <div
       class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4 md:py-6"
@@ -199,7 +198,7 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
                       'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
                     }"
                     aria-label="edit"
-                    (click)="openEditModal()"
+                    (click)="openEditProfile()"
                   >
                     <svg
                       viewBox="0 0 24 24"
@@ -1291,16 +1290,6 @@ import { EditProfileModalComponent } from './edit-profile-modal.component';
       </div>
     </div>
     }
-
-    <!-- Edit Profile Modal -->
-    <app-edit-profile-modal
-      [isOpen]="isEditModalOpen()"
-      [profile]="profileData()"
-      [isActor]="isActor()"
-      (close)="closeEditModal()"
-      (save)="onProfileUpdated($event)"
-    >
-    </app-edit-profile-modal>
   `,
   styles: [
     `
@@ -1353,7 +1342,6 @@ export class ProfileComponent implements OnInit {
   isLoadingMedia = signal(false);
 
   // Modal state
-  isEditModalOpen = signal(false);
   isPreviewModalOpen = signal(false);
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
@@ -1657,18 +1645,9 @@ export class ProfileComponent implements OnInit {
     return 'External Link';
   }
 
-  // Modal methods
-  openEditModal() {
-    this.isEditModalOpen.set(true);
-  }
-
-  closeEditModal() {
-    this.isEditModalOpen.set(false);
-  }
-
-  onProfileUpdated(updatedProfile: Profile) {
-    this.profileData.set(updatedProfile);
-    this.closeEditModal();
+  // Navigation methods
+  openEditProfile() {
+    this.router.navigate(['/discover/profile/edit']);
   }
 
 
