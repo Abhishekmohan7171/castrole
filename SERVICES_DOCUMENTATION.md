@@ -7,11 +7,12 @@ Complete technical documentation for Authentication, Upload, and Chat services i
 ## Table of Contents
 
 1. [Authentication Service](#authentication-service)
-2. [Upload Service](#upload-service)
-3. [Chat Service](#chat-service)
-4. [Presence Service](#presence-service)
-5. [Firestore Data Structure](#firestore-data-structure)
-6. [Best Practices](#best-practices)
+2. [Phone Authentication & OTP Services](#phone-authentication--otp-services)
+3. [Upload Service](#upload-service)
+4. [Chat Service](#chat-service)
+5. [Presence Service](#presence-service)
+6. [Firestore Data Structure](#firestore-data-structure)
+7. [Best Practices](#best-practices)
 
 ---
 
@@ -65,7 +66,8 @@ await authService.registerWithEmail({
   password: 'SecurePass123',
   phone: '+91-9876543210',
   location: 'Mumbai',
-  role: 'actor'
+  role: 'actor',
+  isPhoneVerified: true // Set after OTP verification
 });
 ```
 
@@ -106,7 +108,8 @@ const user = await authService.onboardProviderUser({
   password: 'OptionalPassword123', // Optional
   phone: '+91-9123456789',
   location: 'Delhi',
-  role: 'producer'
+  role: 'producer',
+  isPhoneVerified: true // Set after OTP verification
 });
 ```
 
@@ -210,6 +213,343 @@ constructor() {
 - **Last seen [time] ago**: Shows relative time (5m, 2h, etc.)
 - **Last seen yesterday**: Last active yesterday
 - **Last seen long time ago**: Inactive for > 7 days
+
+---
+
+## Phone Authentication & OTP Services
+
+### Overview
+The phone authentication system consists of two services that work together to provide secure OTP-based phone number verification during user onboarding. This system integrates Firebase Auth phone verification with reCAPTCHA protection and provides a seamless user experience.
+
+### Services Architecture
+
+#### **PhoneAuthService**
+Handles Firebase phone authentication with reCAPTCHA verification.
+
+#### **OtpVerificationService** 
+Manages verification status using Angular signals for reactive UI updates.
+
+### PhoneAuthService
+
+**File:** `src/app/services/phone-auth.service.ts`
+
+#### **Key Methods**
+
+**`initializeRecaptcha(containerId)`**
+- Sets up Firebase reCAPTCHA verifier
+- Must be called before sending OTP
+- Uses invisible reCAPTCHA for better UX
+- Returns: `void`
+
+```typescript
+// Usually called automatically by OTP component
+phoneAuthService.initializeRecaptcha('recaptcha-container');
+```
+
+**`sendOTP(phoneNumber)`**
+- Sends OTP to specified phone number
+- Supports test numbers in development
+- Returns confirmation result for verification
+- Returns: `Promise<ConfirmationResult>`
+
+```typescript
+const confirmationResult = await phoneAuthService.sendOTP('+917358356139');
+// For production numbers, user receives SMS
+// For test numbers (dev), use OTP: 123456
+```
+
+**`verifyOTP(otp)`**
+- Verifies the OTP code entered by user
+- Works with both real and test phone numbers
+- Returns: `Promise<boolean>`
+
+```typescript
+const isValid = await phoneAuthService.verifyOTP('123456');
+if (isValid) {
+  console.log('Phone number verified successfully');
+}
+```
+
+**`cleanup()`**
+- Cleans up reCAPTCHA verifier
+- Called on component destroy
+- Returns: `void`
+
+#### **Test Numbers Support**
+
+For development, the service supports test phone numbers:
+
+```typescript
+// Test numbers (development only)
+private testPhoneNumbers = new Map([
+  ['+917358356139', '123456'],
+  ['+916374087443', '123456'],
+]);
+```
+
+**Usage in Development:**
+1. Use test phone numbers during development
+2. OTP code is always `123456` for test numbers
+3. No actual SMS is sent
+4. Production numbers work normally with real SMS
+
+### OtpVerificationService
+
+**File:** `src/app/services/otp-verification.service.ts`
+
+#### **Purpose**
+Manages phone verification status across components using Angular signals for reactive updates.
+
+#### **Key Methods**
+
+**`markAsVerified(phoneNumber)`**
+- Marks a phone number as verified
+- Updates reactive signal
+- Triggers UI updates automatically
+- Returns: `void`
+
+```typescript
+// Called automatically after successful OTP verification
+otpVerificationService.markAsVerified('+917358356139');
+```
+
+**`isPhoneVerified(phoneNumber)`**
+- Checks if a phone number is verified
+- Returns: `boolean`
+
+```typescript
+const isVerified = otpVerificationService.isPhoneVerified('+917358356139');
+```
+
+**`getVerificationSignal()`**
+- Returns readonly signal for reactive programming
+- Used in computed signals and effects
+- Returns: `Signal<ReadonlyMap<string, VerificationStatus>>`
+
+```typescript
+// In computed signals
+const verificationMap = this.otpVerificationService.getVerificationSignal()();
+const status = verificationMap.get(phoneNumber);
+```
+
+**`clearVerificationStatus(phoneNumber?)`**
+- Clears verification status (single number or all)
+- Useful for logout/cleanup
+- Returns: `void`
+
+#### **Interface**
+
+```typescript
+export interface VerificationStatus {
+  phoneNumber: string;
+  isVerified: boolean;
+  timestamp: Date;
+}
+```
+
+### OTP Modal Component
+
+**File:** `src/app/common-components/otp/otp.component.ts`
+
+#### **Features**
+- Modal design that overlays onboarding forms
+- Auto-sends OTP when opened
+- Supports paste functionality for 6-digit codes
+- Automatic phone number formatting
+- Test number detection with dev hints
+- RxJS-based input handling for smooth UX
+
+#### **Key Methods**
+
+**`open(phoneNumber)`**
+- Opens modal and sends OTP automatically
+- Initializes reCAPTCHA if needed
+- Resets previous state
+- Returns: `void`
+
+```typescript
+// Called by onboarding components
+this.otpModal.open('+917358356139');
+```
+
+**Input/Output Properties:**
+```typescript
+@Input() isOpen = false;
+@Input() phone: string | null = null;
+@Output() closeModal = new EventEmitter<void>();
+@Output() otpVerified = new EventEmitter<void>();
+```
+
+### Integration with Onboarding
+
+#### **Actor/Producer Onboarding Integration**
+
+Both onboarding components now include:
+
+1. **Phone verification requirement** for form submission
+2. **OTP modal integration** with event handling
+3. **Reactive UI updates** showing verification status
+4. **Form state management** with verification status
+
+**Template Integration:**
+```html
+<!-- Verify button / Verified indicator -->
+@if (isPhoneVerified) {
+  <div class="verified-indicator">
+    <svg>✓</svg>
+    verified
+  </div>
+} @else {
+  <button (click)="onVerifyMobile()">verify</button>
+}
+
+<!-- Next button with verification requirement -->
+<button 
+  [disabled]="form.invalid || !isPhoneVerified"
+  (click)="onNext()"
+>
+  next
+</button>
+
+<!-- OTP Modal -->
+<app-otp 
+  #otpModal
+  [isOpen]="showOtpModal" 
+  [phone]="otpPhoneNumber"
+  (closeModal)="onCloseOtpModal()"
+  (otpVerified)="onOtpVerified()"
+></app-otp>
+```
+
+**Component Logic:**
+```typescript
+export class ActorOnboardComponent {
+  isPhoneVerified = false;
+  @ViewChild('otpModal') otpModal!: OtpComponent;
+
+  onVerifyMobile() {
+    const phoneNumber = this.constructPhoneNumber();
+    this.otpModal.open(phoneNumber);
+  }
+
+  onOtpVerified() {
+    this.isPhoneVerified = true;
+    // UI updates automatically
+  }
+
+  onNext() {
+    if (this.form.invalid || !this.isPhoneVerified) {
+      this.errorMsg = 'Please complete all fields and verify your phone number';
+      return;
+    }
+    // Proceed with registration...
+  }
+}
+```
+
+### User Flow
+
+#### **Complete Verification Flow:**
+
+1. **User fills onboarding form** including phone number
+2. **User clicks "verify" button** next to phone field
+3. **OTP modal opens** and automatically sends OTP
+4. **User receives SMS** (or uses test code in dev)
+5. **User enters 6-digit code** in modal
+6. **System verifies OTP** with Firebase
+7. **On success:**
+   - Modal closes automatically
+   - Verify button becomes green "verified" indicator
+   - Next button becomes enabled
+   - Verification status stored in service
+8. **User completes onboarding** with verified phone number
+9. **Account created** with `isPhoneVerified: true`
+
+#### **Form Validation:**
+
+- **Next button disabled** until phone is verified AND form is valid
+- **Phone number changes** reset verification status
+- **Error handling** for failed OTP attempts
+- **User-friendly messages** for validation states
+
+### Firebase Configuration
+
+#### **Required Firebase Setup:**
+
+1. **Enable Phone Authentication** in Firebase Console
+2. **Configure reCAPTCHA** for web applications
+3. **Add test phone numbers** in Firebase Console (development)
+4. **Set up production domain** for reCAPTCHA verification
+
+#### **Test Numbers Configuration:**
+
+In Firebase Console → Authentication → Settings → Phone numbers for testing:
+- `+917358356139` → `123456`
+- `+916374087443` → `123456`
+
+### Error Handling
+
+#### **Common Error Scenarios:**
+
+**reCAPTCHA Issues:**
+```typescript
+// Error: auth/invalid-app-credential
+// Solution: Ensure Phone Auth is enabled in Firebase Console
+```
+
+**Rate Limiting:**
+```typescript
+// Error: auth/too-many-requests
+// Solution: Use test numbers for development, implement retry logic
+```
+
+**Invalid Phone Format:**
+```typescript
+// Error: auth/invalid-phone-number
+// Solution: Ensure international format (+CountryCodeNumber)
+```
+
+### Security Considerations
+
+1. **reCAPTCHA Protection** - Prevents automated OTP requests
+2. **Rate Limiting** - Firebase enforces SMS limits
+3. **Test Numbers** - Only work in development environment
+4. **Input Validation** - Phone numbers validated client-side
+5. **Session Management** - OTP verification tied to user session
+
+### Best Practices
+
+#### **Development:**
+- ✅ Use test phone numbers for consistent testing
+- ✅ Initialize reCAPTCHA before sending OTP
+- ✅ Clean up verifiers on component destroy
+- ✅ Handle async operations with proper loading states
+- ❌ Don't skip reCAPTCHA initialization
+- ❌ Don't forget to clean up on destroy
+
+#### **Production:**
+- ✅ Monitor SMS usage and costs
+- ✅ Implement proper error messages for users
+- ✅ Use production domain for reCAPTCHA
+- ✅ Validate phone numbers before sending OTP
+- ❌ Don't expose test numbers in production
+- ❌ Don't skip rate limiting considerations
+
+#### **UX Guidelines:**
+- ✅ Show clear loading states during OTP operations
+- ✅ Provide visual feedback for verification status
+- ✅ Support paste functionality for OTP codes
+- ✅ Auto-focus next input field after digit entry
+- ❌ Don't make users manually trigger OTP send
+- ❌ Don't hide verification status from users
+
+### Performance Optimizations
+
+1. **Lazy Loading** - OTP component loaded only when needed
+2. **Signal-based Updates** - Efficient reactive UI updates
+3. **Debounced Input** - Smooth OTP entry experience
+4. **Minimal Re-renders** - Strategic change detection triggers
+5. **Memory Management** - Proper cleanup of services and subscriptions
 
 ---
 
@@ -688,8 +1028,23 @@ service cloud.firestore {
 - ✅ Update `updatedAt` on every profile change
 - ✅ Track devices for security auditing
 - ✅ Call `updateLoginTimestamp()` on all login methods
+- ✅ Pass `isPhoneVerified` parameter after OTP verification
+- ✅ Store phone numbers in display format (+Country-Number)
 - ❌ Never store sensitive data in Firestore
 - ❌ Don't skip device tracking—useful for security
+- ❌ Don't skip phone verification in production
+
+### Phone Verification
+- ✅ Use test numbers for development and testing
+- ✅ Initialize reCAPTCHA before sending OTP
+- ✅ Validate phone number format before verification
+- ✅ Clean up verifiers on component destroy
+- ✅ Implement proper error handling for OTP failures
+- ✅ Use modal design for better form state retention
+- ✅ Reset verification status when phone number changes
+- ❌ Don't expose test numbers in production builds
+- ❌ Don't skip reCAPTCHA initialization
+- ❌ Don't allow form submission without verification
 
 ### Uploads
 - ✅ Validate file size and type before upload
@@ -1019,6 +1374,18 @@ const mockMessage = {
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** October 12, 2025  
+**Document Version:** 1.1  
+**Last Updated:** October 25, 2025  
 **Maintained By:** Castrole Development Team
+
+### Version History
+
+**v1.1 (October 25, 2025)**
+- Added comprehensive Phone Authentication & OTP Services documentation
+- Updated Authentication Service with phone verification parameters
+- Added integration examples for onboarding components
+- Included test numbers configuration and development guidelines
+- Added security considerations and best practices for phone verification
+
+**v1.0 (October 12, 2025)**
+- Initial documentation for Authentication, Upload, Chat, and Presence services

@@ -18,6 +18,10 @@ import {
   sendPasswordResetEmail,
   confirmPasswordReset,
   verifyPasswordResetCode,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  PhoneAuthProvider,
 } from '@angular/fire/auth';
 import {
   Firestore,
@@ -51,6 +55,42 @@ export class AuthService {
       } else {
         this.presence.stopTracking();
       }
+    });
+  }
+
+  // =========================
+  // Phone Authentication
+  // =========================
+
+  /** Send OTP to phone number for verification */
+  async sendOTP(phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> {
+    try {
+      const confirmationResult = await signInWithPhoneNumber(this.auth, phoneNumber, recaptchaVerifier);
+      return confirmationResult;
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      throw error;
+    }
+  }
+
+  /** Verify OTP code */
+  async verifyOTP(confirmationResult: ConfirmationResult, code: string): Promise<User> {
+    try {
+      const credential = await confirmationResult.confirm(code);
+      return credential.user;
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      throw error;
+    }
+  }
+
+  /** Update user phone verification status */
+  async markPhoneAsVerified(uid: string, phoneNumber: string): Promise<void> {
+    const ref = doc(this.db, 'users', uid);
+    await updateDoc(ref, {
+      phone: phoneNumber,
+      isPhoneVerified: true,
+      updatedAt: serverTimestamp(),
     });
   }
 
@@ -328,8 +368,9 @@ export class AuthService {
     location: string;
     role: string; // e.g., 'actor', 'producer', 'user'
     productionHouse?: string; // For producer onboarding
+    isPhoneVerified?: boolean; // Whether phone was verified via OTP
   }): Promise<User> {
-    const { name, email, password, phone, location, role, productionHouse } =
+    const { name, email, password, phone, location, role, productionHouse, isPhoneVerified = false } =
       params;
     const cred = await createUserWithEmailAndPassword(
       this.auth,
@@ -356,7 +397,7 @@ export class AuthService {
       isLoggedIn: true,
       device: [currentDevice],
       loggedInTime: serverTimestamp(),
-      isPhoneVerified: false,
+      isPhoneVerified: isPhoneVerified,
       blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
@@ -525,6 +566,7 @@ export class AuthService {
     location: string;
     role: string;
     productionHouse?: string; // For producer onboarding
+    isPhoneVerified?: boolean; // Whether phone was verified via OTP
   }): Promise<User> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No authenticated user found for onboarding');
@@ -565,7 +607,7 @@ export class AuthService {
       isLoggedIn: true,
       device: [currentDevice],
       loggedInTime: serverTimestamp(),
-      isPhoneVerified: !!user.phoneNumber,
+      isPhoneVerified: params.isPhoneVerified ?? !!user.phoneNumber,
       blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
