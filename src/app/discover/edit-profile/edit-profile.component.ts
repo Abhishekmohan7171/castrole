@@ -6,11 +6,22 @@ import { Auth } from '@angular/fire/auth';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
 import { EditSection, NavigationItem } from '../../../assets/interfaces/edit-profile.interfaces';
 import { BasicInfoSectionComponent } from './sections/basic-info-section.component';
+import { EducationSectionComponent } from './sections/education-section.component';
+import { VoiceIntroSectionComponent } from './sections/voice-intro-section.component';
+import { LanguagesSkillsSectionComponent } from './sections/languages-skills-section.component';
+import { SocialsSectionComponent } from './sections/socials-section.component';
 
 @Component({
   selector: 'app-edit-profile',
   standalone: true,
-  imports: [CommonModule, BasicInfoSectionComponent],
+  imports: [
+    CommonModule,
+    BasicInfoSectionComponent,
+    EducationSectionComponent,
+    VoiceIntroSectionComponent,
+    LanguagesSkillsSectionComponent,
+    SocialsSectionComponent
+  ],
   template: `
     <div class="min-h-screen bg-neutral-950">
       <!-- Mobile Header -->
@@ -111,27 +122,40 @@ import { BasicInfoSectionComponent } from './sections/basic-info-section.compone
                     </div>
                   }
                   @case ('education') {
-                    <div class="text-white">
-                      <h2 class="text-2xl font-semibold mb-6">Education & Experience</h2>
-                      <p class="text-neutral-400">Education section coming soon...</p>
+                    <div>
+                      <h2 class="text-2xl font-semibold text-white mb-6">Education & Experience</h2>
+                      <app-education-section
+                        [profile]="profile()"
+                        [isActor]="isActor()"
+                        (save)="onSectionSave($event, 'education')"
+                      />
                     </div>
                   }
                   @case ('voice-intro') {
-                    <div class="text-white">
-                      <h2 class="text-2xl font-semibold mb-6">Voice Introduction</h2>
-                      <p class="text-neutral-400">Voice intro section coming soon...</p>
+                    <div>
+                      <h2 class="text-2xl font-semibold text-white mb-6">Voice Introduction</h2>
+                      <app-voice-intro-section
+                        [profile]="profile()"
+                        (save)="onSectionSave($event, 'voice-intro')"
+                      />
                     </div>
                   }
                   @case ('languages-skills') {
-                    <div class="text-white">
-                      <h2 class="text-2xl font-semibold mb-6">Languages & Skills</h2>
-                      <p class="text-neutral-400">Languages section coming soon...</p>
+                    <div>
+                      <h2 class="text-2xl font-semibold text-white mb-6">Languages & Skills</h2>
+                      <app-languages-skills-section
+                        [profile]="profile()"
+                        (save)="onSectionSave($event, 'languages-skills')"
+                      />
                     </div>
                   }
                   @case ('socials') {
-                    <div class="text-white">
-                      <h2 class="text-2xl font-semibold mb-6">Social Links</h2>
-                      <p class="text-neutral-400">Socials section coming soon...</p>
+                    <div>
+                      <h2 class="text-2xl font-semibold text-white mb-6">Social Links</h2>
+                      <app-socials-section
+                        [profile]="profile()"
+                        (save)="onSectionSave($event, 'socials')"
+                      />
                     </div>
                   }
                 }
@@ -324,7 +348,37 @@ export class EditProfileComponent implements OnInit {
           }
           break;
 
-        // Add other cases as sections are implemented
+        case 'education':
+          if (this.isActor()) {
+            updatedProfile.actorProfile = {
+              ...currentProfile.actorProfile,
+              listEducation: data.education
+            };
+          }
+          break;
+
+        case 'voice-intro':
+          if (this.isActor()) {
+            updatedProfile.actorProfile = {
+              ...currentProfile.actorProfile,
+              voiceIntro: data.voiceIntro
+            };
+          }
+          break;
+
+        case 'languages-skills':
+          if (this.isActor()) {
+            updatedProfile.actorProfile = {
+              ...currentProfile.actorProfile,
+              languages: data.languages,
+              skills: data.skills
+            };
+          }
+          break;
+
+        case 'socials':
+          updatedProfile.social = data.social;
+          break;
       }
 
       // Save to Firestore
