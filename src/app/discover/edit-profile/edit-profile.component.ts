@@ -65,18 +65,59 @@ import { SocialsSectionComponent } from './sections/socials-section.component';
             </div>
 
             <!-- Navigation Items -->
-            <nav class="p-4 space-y-2">
+            <nav class="space-y-1">
               @for (item of navigationItems; track item.id) {
                 <button
                   (click)="navigateToSection(item.id)"
-                  [class]="getNavItemClasses(item.id)"
-                  type="button"
+                  [class]="activeSection() === item.id 
+                    ? 'w-full text-left px-4 py-3 rounded-lg bg-purple-600/20 border-l-2 border-purple-500 transition-all duration-200'
+                    : 'w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 border-l-2 border-transparent transition-all duration-200'"
                 >
                   <div class="flex items-start gap-3">
-                    <div [innerHTML]="item.icon" class="w-5 h-5 mt-0.5 flex-shrink-0"></div>
-                    <div class="flex-1 text-left">
-                      <div class="font-medium">{{ item.label }}</div>
-                      <div class="text-xs opacity-70 mt-0.5">{{ item.description }}</div>
+                    <!-- Icon -->
+                    <div [class]="activeSection() === item.id ? 'text-purple-400 mt-0.5' : 'text-neutral-500 mt-0.5'">
+                      @switch (item.id) {
+                        @case ('basic-info') {
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        }
+                        @case ('education') {
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                        }
+                        @case ('voice-intro') {
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                        }
+                        @case ('languages-skills') {
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        }
+                        @case ('socials') {
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        }
+                      }
+                    </div>
+                    
+                    <!-- Text -->
+                    <div class="flex-1 space-y-0.5">
+                      <h3 
+                        [class]="activeSection() === item.id 
+                          ? 'text-base font-medium text-white'
+                          : 'text-base font-medium text-neutral-300'"
+                      >
+                        {{ item.label }}
+                      </h3>
+                      <p class="text-xs text-neutral-500 leading-tight">
+                        {{ item.description }}
+                      </p>
                     </div>
                   </div>
                 </button>

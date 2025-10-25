@@ -29,169 +29,167 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
             }
           </div>
           
-          <!-- Edit Overlay -->
+          <!-- Upload Button Overlay -->
           <button
             type="button"
-            (click)="imageInput.click()"
+            (click)="fileInput.click()"
             class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            [disabled]="isUploading()"
           >
-            @if (isUploading()) {
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            } @else {
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            <div class="text-center">
+              <svg class="w-8 h-8 text-white mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            }
+              <span class="text-xs text-white font-medium">Change Photo</span>
+            </div>
           </button>
           
           <input
-            #imageInput
+            #fileInput
             type="file"
             accept="image/*"
             (change)="onImageSelect($event)"
             class="hidden"
           />
         </div>
-        <p class="text-sm text-neutral-400 mt-3">Click to upload profile image</p>
+        
+        @if (isUploading()) {
+          <p class="text-sm text-purple-400 mt-3">Uploading...</p>
+        }
+        
+        <p class="text-xs text-neutral-500 mt-3 text-center max-w-xs">
+          Click to upload profile image
+        </p>
       </div>
 
       <!-- Form Fields -->
       <form [formGroup]="form" class="space-y-6">
         <!-- Stage Name / Name -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-neutral-300">
+        <div>
+          <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">
             {{ isActor ? 'stage name' : 'name' }}
-            @if (isActor) {
-              <span class="text-red-400 ml-1">*</span>
-            }
           </label>
           <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </div>
             <input
               type="text"
               [formControlName]="isActor ? 'stageName' : 'name'"
-              [placeholder]="isActor ? 'enter stage name' : 'enter name'"
-              class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              [placeholder]="isActor ? 'lil rahul nair' : 'enter name'"
             />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-            >
-              <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
           </div>
-          @if (form.get(isActor ? 'stageName' : 'name')?.invalid && form.get(isActor ? 'stageName' : 'name')?.touched) {
-            <p class="text-xs text-red-400">This field is required</p>
-          }
         </div>
 
-        <!-- Two Column Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Height -->
-          @if (isActor) {
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-neutral-300">height</label>
+        @if (isActor) {
+          <!-- Height and Weight Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <!-- Height -->
+            <div>
+              <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">height</label>
               <div class="relative">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
                 <input
                   type="text"
                   formControlName="height"
-                  placeholder="160cm"
-                  class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                  placeholder="180cm"
                 />
-                <button
-                  type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
               </div>
             </div>
 
             <!-- Weight -->
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-neutral-300">weight</label>
+            <div>
+              <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">weight</label>
               <div class="relative">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
                 <input
                   type="text"
                   formControlName="weight"
-                  placeholder="60kg"
-                  class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                  placeholder="85kg"
                 />
-                <button
-                  type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
               </div>
             </div>
-          }
+          </div>
+        }
 
+        <!-- Age and Gender Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <!-- Age -->
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-neutral-300">age</label>
+          <div>
+            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">age</label>
             <div class="relative">
-              <input
-                type="text"
-                formControlName="age"
-                placeholder="25"
-                class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-              >
-                <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
-              </button>
+              </div>
+              <input
+                type="number"
+                formControlName="age"
+                min="1"
+                max="120"
+                class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                placeholder="25"
+              />
             </div>
           </div>
 
           <!-- Gender -->
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-neutral-300">gender</label>
+          <div>
+            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">gender</label>
             <div class="relative">
+              <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 z-10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </div>
               <select
                 formControlName="gender"
-                class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+                class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
               >
-                <option value="">select gender</option>
-                <option value="Male">male</option>
-                <option value="Female">female</option>
-                <option value="Other">other</option>
+                <option value="" disabled class="bg-neutral-900 text-neutral-500">Select gender</option>
+                <option value="male" class="bg-neutral-900 text-white">male</option>
+                <option value="female" class="bg-neutral-900 text-white">female</option>
+                <option value="non-binary" class="bg-neutral-900 text-white">non-binary</option>
+                <option value="prefer-not-to-say" class="bg-neutral-900 text-white">prefer not to say</option>
               </select>
-              <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+              <div class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Location (Full Width) -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-neutral-300">location</label>
+        <!-- Location -->
+        <div>
+          <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">location</label>
           <div class="relative">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </div>
             <input
               type="text"
               formControlName="location"
-              placeholder="Chennai, Tamil Nadu"
-              class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              placeholder="ernakulam"
             />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-            >
-              <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -201,7 +199,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
             type="button"
             (click)="onSave()"
             [disabled]="form.invalid || isSaving()"
-            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
+            class="px-8 py-3.5 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 text-base"
           >
             {{ isSaving() ? 'Saving...' : 'Save Changes' }}
           </button>
@@ -213,7 +211,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
 })
 export class BasicInfoSectionComponent implements OnInit {
   @Input() profile: Profile | null = null;
-  @Input() isActor = false;
+  @Input() isActor: boolean = false;
   @Output() save = new EventEmitter<any>();
 
   private fb = inject(FormBuilder);
@@ -235,16 +233,16 @@ export class BasicInfoSectionComponent implements OnInit {
         stageName: ['', Validators.required],
         height: [''],
         weight: [''],
-        age: [''],
-        gender: [''],
-        location: ['']
+        age: ['', [Validators.required, Validators.min(1), Validators.max(120)]],
+        gender: ['', Validators.required],
+        location: ['', Validators.required]
       });
     } else {
       this.form = this.fb.group({
         name: ['', Validators.required],
-        age: [''],
-        gender: [''],
-        location: ['']
+        age: ['', [Validators.required, Validators.min(1), Validators.max(120)]],
+        gender: ['', Validators.required],
+        location: ['', Validators.required]
       });
     }
   }
@@ -252,31 +250,24 @@ export class BasicInfoSectionComponent implements OnInit {
   populateForm() {
     if (!this.profile) return;
 
-    // Set profile image
-    if (this.isActor && this.profile.actorProfile?.actorProfileImageUrl) {
-      this.profileImageUrl.set(this.profile.actorProfile.actorProfileImageUrl);
-    } else if (!this.isActor && this.profile.producerProfile?.producerProfileImageUrl) {
-      this.profileImageUrl.set(this.profile.producerProfile.producerProfileImageUrl);
-    }
-
-    // Populate common fields
-    this.form.patchValue({
-      age: this.profile.age || '',
-      gender: this.profile.gender || '',
-      location: this.profile.location || ''
-    });
-
-    // Populate role-specific fields
     if (this.isActor && this.profile.actorProfile) {
       this.form.patchValue({
         stageName: this.profile.actorProfile.stageName || '',
         height: this.profile.actorProfile.height || '',
-        weight: this.profile.actorProfile.weight || ''
+        weight: this.profile.actorProfile.weight || '',
+        age: this.profile.age || '',
+        gender: this.profile.gender || '',
+        location: this.profile.location || ''
       });
-    } else if (!this.isActor && this.profile.producerProfile) {
+      this.profileImageUrl.set(this.profile.actorProfile.actorProfileImageUrl || null);
+    } else if (this.profile.producerProfile) {
       this.form.patchValue({
-        name: this.profile.producerProfile.name || ''
+        name: this.profile.producerProfile.name || '',
+        age: this.profile.age || '',
+        gender: this.profile.gender || '',
+        location: this.profile.location || ''
       });
+      this.profileImageUrl.set(this.profile.producerProfile.producerProfileImageUrl || null);
     }
   }
 
@@ -294,7 +285,7 @@ export class BasicInfoSectionComponent implements OnInit {
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+      alert('Image must be less than 5MB');
       return;
     }
 
@@ -302,23 +293,17 @@ export class BasicInfoSectionComponent implements OnInit {
 
     try {
       // Compress image
-      const compressedFile = await this.compressImage(file);
+      const compressedBlob = await this.compressImage(file);
       
       // Upload to Firebase Storage
       const timestamp = Date.now();
       const fileName = `profile-images/${this.profile?.uid}/${timestamp}.jpg`;
       const storageRef = ref(this.storage, fileName);
       
-      await uploadBytes(storageRef, compressedFile);
+      await uploadBytes(storageRef, compressedBlob);
       const downloadURL = await getDownloadURL(storageRef);
       
       this.profileImageUrl.set(downloadURL);
-      
-      // Emit change
-      this.save.emit({
-        ...this.form.value,
-        profileImageUrl: downloadURL
-      });
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image. Please try again.');
@@ -327,33 +312,33 @@ export class BasicInfoSectionComponent implements OnInit {
     }
   }
 
-  private compressImage(file: File): Promise<Blob> {
+  private async compressImage(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      
-      reader.onload = (e) => {
+      reader.onload = (event) => {
         const img = new Image();
-        img.src = e.target?.result as string;
-        
+        img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d')!;
           
-          // Target size: 800x800 max
-          const maxSize = 800;
+          // Max dimensions
+          const maxWidth = 800;
+          const maxHeight = 800;
+          
           let width = img.width;
           let height = img.height;
           
           if (width > height) {
-            if (width > maxSize) {
-              height *= maxSize / width;
-              width = maxSize;
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
             }
           } else {
-            if (height > maxSize) {
-              width *= maxSize / height;
-              height = maxSize;
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
             }
           }
           
@@ -370,13 +355,11 @@ export class BasicInfoSectionComponent implements OnInit {
               }
             },
             'image/jpeg',
-            0.85
+            0.8
           );
         };
-        
         img.onerror = reject;
       };
-      
       reader.onerror = reject;
     });
   }
@@ -386,14 +369,24 @@ export class BasicInfoSectionComponent implements OnInit {
 
     this.isSaving.set(true);
 
-    const formData = {
-      ...this.form.value,
+    const formValue = this.form.value;
+    const data: any = {
+      age: formValue.age,
+      gender: formValue.gender,
+      location: formValue.location,
       profileImageUrl: this.profileImageUrl()
     };
 
-    this.save.emit(formData);
+    if (this.isActor) {
+      data.stageName = formValue.stageName;
+      data.height = formValue.height;
+      data.weight = formValue.weight;
+    } else {
+      data.name = formValue.name;
+    }
 
-    // Reset saving state after a delay (parent should handle this)
+    this.save.emit(data);
+
     setTimeout(() => this.isSaving.set(false), 1000);
   }
 }
