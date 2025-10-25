@@ -392,6 +392,8 @@ export class SettingsComponent implements OnInit {
   isActor = computed(() => this.userRole() === 'actor');
   settingsTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
 
+  readReceipts = signal<boolean>(true);
+
   // Active tab signal
   activeTab = signal<SettingsTab>('account');
 
