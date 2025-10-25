@@ -36,6 +36,7 @@ export const routes: Routes = [
       { path: 'search', loadComponent: () => import('./discover/search.component').then(m => m.SearchComponent) },
       { path: 'chat', loadComponent: () => import('./discover/chat.component').then(m => m.ChatComponent) },
       { path: 'profile', loadComponent: () => import('./discover/profile.component').then(m => m.ProfileComponent) },
+      { path: 'profile/edit', loadComponent: () => import('./discover/edit-profile/edit-profile.component').then(m => m.EditProfileComponent) },
       { path: 'settings', loadComponent: () => import('./discover/settings.component').then(m => m.SettingsComponent) },
     ]
   },
