@@ -1768,14 +1768,10 @@ export class ProfileComponent implements OnInit {
       const firstImage = this.imageUrls()[0];
       this.openPreviewModal(firstImage, 'image');
     } else {
-      // If no images, trigger the image upload input
-      // We need to find and click the image input element
-      const imageInput = document.querySelector(
-        'input[type="file"][accept="image/*"]'
-      ) as HTMLInputElement;
-      if (imageInput) {
-        imageInput.click();
-      }
+      // If no images, redirect to upload page with return URL
+      this.router.navigate(['/discover/upload'], {
+        queryParams: { returnUrl: '/discover/profile' }
+      });
     }
   }
 
