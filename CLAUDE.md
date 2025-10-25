@@ -93,3 +93,4 @@ Key interfaces defined in `src/assets/interfaces/interfaces.ts`:
 - Route guards prevent unauthorized access
 - Component-level code splitting for optimal loading
 - Use Signals and Computed for state management, effects for non-business side logic and logging
+- Don't use ngIf, ngFor, ngSwitch, but instead use @if, @for, @switch
