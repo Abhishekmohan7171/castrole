@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
+import { Storage, ref, uploadBytes, getDownloadURL, listAll } from '@angular/fire/storage';
 import { Profile } from '../../../../assets/interfaces/profile.interfaces';
 
 @Component({
@@ -223,26 +223,34 @@ export class VoiceIntroSectionComponent implements OnInit {
   private audioElement: HTMLAudioElement | null = null;
 
   recordingBars = [20, 40, 60, 40, 20, 40, 60, 80, 60, 40, 20, 40, 60, 40, 20];
+  private staticWaveform = signal<string>('');
 
   ngOnInit() {
+    this.initializeWaveform();
     if (this.profile?.actorProfile?.voiceIntro) {
       this.currentVoiceUrl.set(this.profile.actorProfile.voiceIntro);
+    } else {
+      this.checkForExistingVoiceIntro();
     }
   }
 
-  waveformPath(): string {
-    // Generate a simple waveform path
+  private initializeWaveform() {
+    // Generate a static waveform path once to avoid change detection issues
     const points: string[] = [];
     const segments = 50;
     
     for (let i = 0; i <= segments; i++) {
       const x = (i / segments) * 400;
-      const randomHeight = Math.random() * 40 + 30;
-      const y = 50 + (Math.sin(i * 0.5) * randomHeight);
+      const height = 20 + Math.sin(i * 0.3) * 15 + Math.sin(i * 0.8) * 10;
+      const y = 50 + (i % 2 === 0 ? height : -height);
       points.push(`${i === 0 ? 'M' : 'L'} ${x} ${y}`);
     }
     
-    return points.join(' ');
+    this.staticWaveform.set(points.join(' '));
+  }
+
+  waveformPath(): string {
+    return this.staticWaveform();
   }
 
   async startRecording() {
@@ -309,12 +317,20 @@ export class VoiceIntroSectionComponent implements OnInit {
     await this.uploadAudio(file);
   }
 
-  async uploadAudio(audioBlob: Blob) {
+  async uploadAudio(audioBlob: Blob | File) {
     this.isUploading.set(true);
 
     try {
       const timestamp = Date.now();
-      const fileName = `voice-intros/${this.profile?.uid}/${timestamp}.webm`;
+      
+      // Determine file extension
+      let extension = 'webm'; // default for recorded audio
+      if (audioBlob instanceof File) {
+        extension = audioBlob.name.split('.').pop() || 'webm';
+      }
+      
+      // Use the same directory structure as edit-profile-modal
+      const fileName = `users/${this.profile?.uid}/voice/voice_intro_${timestamp}.${extension}`;
       const storageRef = ref(this.storage, fileName);
       
       await uploadBytes(storageRef, audioBlob);
@@ -327,6 +343,28 @@ export class VoiceIntroSectionComponent implements OnInit {
       alert('Failed to upload audio. Please try again.');
     } finally {
       this.isUploading.set(false);
+    }
+  }
+
+  // Check for existing voice intro in storage directory
+  async checkForExistingVoiceIntro() {
+    if (!this.profile?.uid) return;
+
+    try {
+      const voiceStorageRef = ref(this.storage, `users/${this.profile.uid}/voice`);
+      const voiceFiles = await listAll(voiceStorageRef);
+      
+      if (voiceFiles.items.length > 0) {
+        // Get the most recent voice file (assuming timestamp naming)
+        const sortedFiles = voiceFiles.items.sort((a, b) => b.name.localeCompare(a.name));
+        const latestVoiceFile = sortedFiles[0];
+        
+        const downloadURL = await getDownloadURL(latestVoiceFile);
+        this.currentVoiceUrl.set(downloadURL);
+      }
+    } catch (error) {
+      // No voice directory or files exist, which is fine
+      this.currentVoiceUrl.set(null);
     }
   }
 
