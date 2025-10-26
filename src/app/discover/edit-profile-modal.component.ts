@@ -25,6 +25,7 @@ import {
   ref,
   uploadBytes,
   getDownloadURL,
+  listAll,
 } from '@angular/fire/storage';
 import {
   Profile,
@@ -805,14 +806,21 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
         weight: actor.weight || '',
       });
 
-      this.currentVoiceIntro.set(actor.voiceIntro || null);
+      // Check for voice intro in database first, then in storage if not found
+      if (actor.voiceIntro) {
+        this.currentVoiceIntro.set(actor.voiceIntro);
+      } else {
+        this.checkForExistingVoiceIntro();
+      }
 
       // Populate arrays (ensure at least one empty field if none exist)
       const skills = actor.skills || [];
-      this.populateSkills(skills.length > 0 ? skills : ['']);
+      const skillStrings = skills.map(skill => typeof skill === 'string' ? skill : skill.skill);
+      this.populateSkills(skillStrings.length > 0 ? skillStrings : ['']);
       
       const languages = actor.languages || [];
-      this.populateLanguages(languages.length > 0 ? languages : ['']);
+      const languageStrings = languages.map(lang => typeof lang === 'string' ? lang : lang.language);
+      this.populateLanguages(languageStrings.length > 0 ? languageStrings : ['']);
       
       const education = actor.listEducation || [];
       this.populateEducation(education.length > 0 ? education : [{ yearCompleted: '', schoolName: '', courseName: '', certificateUrl: '' }]);
@@ -1001,20 +1009,55 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
       const fileName = `users/${this.profile?.uid}/voice/voice_intro_${timestamp}.${fileExtension}`;
       const storageRef = ref(this.storage, fileName);
 
+      this.voiceUploadProgress.set(50); // Show progress
       const uploadTask = uploadBytes(storageRef, file);
 
       uploadTask.then(async (snapshot) => {
-        this.voiceUploadProgress.set(100);
+        this.voiceUploadProgress.set(90);
         const downloadURL = await getDownloadURL(snapshot.ref);
         this.currentVoiceIntro.set(downloadURL);
+        this.voiceUploadProgress.set(100);
+        
+        // Reset progress after a short delay
+        setTimeout(() => {
+          this.voiceUploadProgress.set(0);
+        }, 1000);
+      }).catch((error) => {
+        console.error('Upload failed:', error);
+        this.voiceUploadProgress.set(0);
+        alert('Failed to upload voice intro. Please try again.');
       });
     } catch (error) {
+      console.error('Upload initialization failed:', error);
+      this.voiceUploadProgress.set(0);
       alert('Failed to upload voice intro. Please try again.');
     }
   }
 
   removeVoiceIntro() {
     this.currentVoiceIntro.set(null);
+  }
+
+  // Check for existing voice intro in storage directory
+  async checkForExistingVoiceIntro() {
+    if (!this.profile?.uid) return;
+
+    try {
+      const voiceStorageRef = ref(this.storage, `users/${this.profile.uid}/voice`);
+      const voiceFiles = await listAll(voiceStorageRef);
+      
+      if (voiceFiles.items.length > 0) {
+        // Get the most recent voice file (assuming timestamp naming)
+        const sortedFiles = voiceFiles.items.sort((a, b) => b.name.localeCompare(a.name));
+        const latestVoiceFile = sortedFiles[0];
+        
+        const downloadURL = await getDownloadURL(latestVoiceFile);
+        this.currentVoiceIntro.set(downloadURL);
+      }
+    } catch (error) {
+      // No voice directory or files exist, which is fine
+      this.currentVoiceIntro.set(null);
+    }
   }
 
   // Helper method to clean undefined values from objects
@@ -1120,8 +1163,8 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
           height: formValue.height,
           weight: formValue.weight,
           voiceIntro: this.currentVoiceIntro(),
-          skills: formValue.skills.filter((skill: string) => skill.trim()),
-          languages: formValue.languages.filter((lang: string) => lang.trim()),
+          skills: formValue.skills.filter((skill: string) => skill.trim()).map((skill: string) => ({ skill, rating: 3 })),
+          languages: formValue.languages.filter((lang: string) => lang.trim()).map((lang: string) => ({ language: lang, rating: 3 })),
           listEducation: formValue.education.filter(
             (edu: any) => edu.yearCompleted && edu.schoolName && edu.courseName
           ),

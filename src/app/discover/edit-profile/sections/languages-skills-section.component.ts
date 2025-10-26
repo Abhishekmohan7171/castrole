@@ -1,11 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Profile } from '../../../../assets/interfaces/profile.interfaces';
-
-interface LanguageItem {
-  name: string;
-  proficiency: number; // 1-5 stars
-}
+import { Profile, Language, Skill } from '../../../../assets/interfaces/profile.interfaces';
 
 @Component({
   selector: 'app-languages-skills-section',
@@ -76,10 +71,10 @@ interface LanguageItem {
         <!-- Languages List -->
         @if (languages().length > 0) {
           <div class="space-y-3">
-            @for (lang of languages(); track lang.name) {
+            @for (lang of languages(); track lang.language) {
               <div class="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700/50 flex items-center justify-between group hover:border-neutral-600 transition-all">
                 <div class="flex-1 flex items-center gap-4">
-                  <span class="text-white font-medium">{{ lang.name }}</span>
+                  <span class="text-white font-medium">{{ lang.language }}</span>
                   
                   <!-- Star Rating Display -->
                   <div class="flex gap-1">
@@ -89,7 +84,7 @@ interface LanguageItem {
                         (click)="updateLanguageProficiency(lang, star)"
                         class="transition-all duration-200 hover:scale-110"
                       >
-                        <svg class="w-5 h-5" [class]="star <= lang.proficiency ? 'text-purple-500 fill-purple-500' : 'text-neutral-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" [class]="star <= lang.rating ? 'text-purple-500 fill-purple-500' : 'text-neutral-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                         </svg>
                       </button>
@@ -161,6 +156,24 @@ interface LanguageItem {
               autofocus
             />
             
+            <!-- Star Rating -->
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-neutral-400">Proficiency:</span>
+              <div class="flex gap-1">
+                @for (star of [1,2,3,4,5]; track star) {
+                  <button
+                    type="button"
+                    (click)="newSkillRating.set(star)"
+                    class="transition-all duration-200 hover:scale-110"
+                  >
+                    <svg class="w-6 h-6" [class]="star <= newSkillRating() ? 'text-purple-500 fill-purple-500' : 'text-neutral-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  </button>
+                }
+              </div>
+            </div>
+            
             <div class="flex gap-2">
               <button
                 type="button"
@@ -183,16 +196,35 @@ interface LanguageItem {
 
         <!-- Skills List -->
         @if (skills().length > 0) {
-          <div class="flex flex-wrap gap-3">
-            @for (skill of skills(); track skill) {
-              <div class="group flex items-center gap-2 px-4 py-2 bg-neutral-800/30 border border-neutral-700/50 rounded-full hover:border-neutral-600 transition-all">
-                <span class="text-white text-sm">{{ skill }}</span>
+          <div class="space-y-3">
+            @for (skill of skills(); track skill.skill) {
+              <div class="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700/50 flex items-center justify-between group hover:border-neutral-600 transition-all">
+                <div class="flex-1 flex items-center gap-4">
+                  <span class="text-white font-medium">{{ skill.skill }}</span>
+                  
+                  <!-- Star Rating Display -->
+                  <div class="flex gap-1">
+                    @for (star of [1,2,3,4,5]; track star) {
+                      <button
+                        type="button"
+                        (click)="updateSkillProficiency(skill, star)"
+                        class="transition-all duration-200 hover:scale-110"
+                      >
+                        <svg class="w-5 h-5" [class]="star <= skill.rating ? 'text-purple-500 fill-purple-500' : 'text-neutral-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Remove Button -->
                 <button
                   type="button"
                   (click)="removeSkill(skill)"
-                  class="p-1 rounded-full text-neutral-500 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                  class="p-2 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -249,8 +281,8 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
 
-  languages = signal<LanguageItem[]>([]);
-  skills = signal<string[]>([]);
+  languages = signal<Language[]>([]);
+  skills = signal<Skill[]>([]);
   
   isAddingLanguage = signal(false);
   isAddingSkill = signal(false);
@@ -260,6 +292,7 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   newLanguageName = signal('');
   newLanguageProficiency = signal(3);
   newSkillName = signal('');
+  newSkillRating = signal(3);
 
   ngOnInit() {
     this.populateData();
@@ -268,13 +301,17 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   populateData() {
     if (!this.profile?.actorProfile) return;
 
-    // For now, we'll use simple string arrays from the profile
-    // In a real implementation, you'd store proficiency data
     const langs = this.profile.actorProfile.languages || [];
-    this.languages.set(langs.map(lang => ({ name: lang, proficiency: 3 })));
+    this.languages.set(langs.map(lang => ({ 
+      language: typeof lang === 'string' ? lang : lang.language, 
+      rating: typeof lang === 'string' ? 3 : lang.rating 
+    })));
 
     const skillsList = this.profile.actorProfile.skills || [];
-    this.skills.set([...skillsList]);
+    this.skills.set(skillsList.map(skill => ({ 
+      skill: typeof skill === 'string' ? skill : skill.skill, 
+      rating: typeof skill === 'string' ? 3 : skill.rating 
+    })));
   }
 
   // Input handlers
@@ -300,12 +337,12 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     if (!name) return;
 
     const currentLangs = this.languages();
-    if (currentLangs.some(l => l.name.toLowerCase() === name.toLowerCase())) {
+    if (currentLangs.some(l => l.language.toLowerCase() === name.toLowerCase())) {
       alert('This language is already added');
       return;
     }
 
-    this.languages.set([...currentLangs, { name, proficiency: this.newLanguageProficiency() }]);
+    this.languages.set([...currentLangs, { language: name, rating: this.newLanguageProficiency() }]);
     this.hasChanges.set(true);
     this.cancelAddLanguage();
   }
@@ -315,18 +352,18 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     this.newLanguageName.set('');
   }
 
-  updateLanguageProficiency(lang: LanguageItem, proficiency: number) {
+  updateLanguageProficiency(lang: Language, rating: number) {
     const currentLangs = this.languages();
     const updated = currentLangs.map(l => 
-      l.name === lang.name ? { ...l, proficiency } : l
+      l.language === lang.language ? { ...l, rating } : l
     );
     this.languages.set(updated);
     this.hasChanges.set(true);
   }
 
-  removeLanguage(lang: LanguageItem) {
+  removeLanguage(lang: Language) {
     const currentLangs = this.languages();
-    this.languages.set(currentLangs.filter(l => l.name !== lang.name));
+    this.languages.set(currentLangs.filter(l => l.language !== lang.language));
     this.hasChanges.set(true);
   }
 
@@ -334,6 +371,7 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   startAddSkill() {
     this.isAddingSkill.set(true);
     this.newSkillName.set('');
+    this.newSkillRating.set(3);
   }
 
   addSkill() {
@@ -341,12 +379,12 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     if (!name) return;
 
     const currentSkills = this.skills();
-    if (currentSkills.some(s => s.toLowerCase() === name.toLowerCase())) {
+    if (currentSkills.some(s => s.skill.toLowerCase() === name.toLowerCase())) {
       alert('This skill is already added');
       return;
     }
 
-    this.skills.set([...currentSkills, name]);
+    this.skills.set([...currentSkills, { skill: name, rating: this.newSkillRating() }]);
     this.hasChanges.set(true);
     this.cancelAddSkill();
   }
@@ -356,9 +394,18 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     this.newSkillName.set('');
   }
 
-  removeSkill(skill: string) {
+  updateSkillProficiency(skill: Skill, rating: number) {
     const currentSkills = this.skills();
-    this.skills.set(currentSkills.filter(s => s !== skill));
+    const updated = currentSkills.map(s => 
+      s.skill === skill.skill ? { ...s, rating } : s
+    );
+    this.skills.set(updated);
+    this.hasChanges.set(true);
+  }
+
+  removeSkill(skill: Skill) {
+    const currentSkills = this.skills();
+    this.skills.set(currentSkills.filter(s => s.skill !== skill.skill));
     this.hasChanges.set(true);
   }
 
@@ -366,7 +413,7 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     this.isSaving.set(true);
 
     this.save.emit({
-      languages: this.languages().map(l => l.name),
+      languages: this.languages(),
       skills: this.skills()
     });
 

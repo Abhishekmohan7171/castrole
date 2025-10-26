@@ -37,8 +37,8 @@ export interface ActorProfile {
   actorProfileImageUrl?: string;
   carouselImagesUrl?: string[]; // Carousel images of each actor
   voiceIntro?: string;
-  skills?: string[];
-  languages?: string[];
+  skills?: Skill[];
+  languages?: Language[];
   listEducation?: Education[];
   actorWorks?: Work[]; // Get the last from the list for recent work
   notifications?: Notification[];
@@ -50,6 +50,16 @@ export interface ActorProfile {
 
   // Payment related
   isSubscribed?: boolean; // Default false
+}
+
+export interface Language {
+  language: string;
+  rating: number;
+}
+
+export interface Skill {
+  skill: string;
+  rating: number; //1-5
 }
 
 export interface Notification {
