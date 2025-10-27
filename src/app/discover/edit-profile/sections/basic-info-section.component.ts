@@ -125,46 +125,119 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
           </div>
         }
 
-        <!-- Age and Gender Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <!-- Age -->
+        @if (isActor) {
+          <!-- Age and Gender Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <!-- Age -->
+            <div>
+              <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">age</label>
+              <div class="relative">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <input
+                  type="number"
+                  formControlName="age"
+                  min="1"
+                  max="120"
+                  class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                  placeholder="25"
+                />
+              </div>
+            </div>
+
+            <!-- Gender -->
+            <div>
+              <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">gender</label>
+              <div class="relative">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 z-10">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <select
+                  formControlName="gender"
+                  class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
+                >
+                  <option value="" disabled class="bg-neutral-900 text-neutral-500">Select gender</option>
+                  <option value="male" class="bg-neutral-900 text-white">male</option>
+                  <option value="female" class="bg-neutral-900 text-white">female</option>
+                  <option value="non-binary" class="bg-neutral-900 text-white">non-binary</option>
+                  <option value="prefer-not-to-say" class="bg-neutral-900 text-white">prefer not to say</option>
+                </select>
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (!isActor) {
+          <!-- Producer-specific fields -->
+          <!-- Designation -->
           <div>
-            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">age</label>
+            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">designation</label>
             <div class="relative">
               <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6" />
                 </svg>
               </div>
               <input
-                type="number"
-                formControlName="age"
-                min="1"
-                max="120"
+                type="text"
+                formControlName="designation"
                 class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                placeholder="25"
+                placeholder="director"
               />
             </div>
           </div>
 
-          <!-- Gender -->
+          <!-- Production House -->
           <div>
-            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">gender</label>
+            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">production house</label>
+            <div class="relative">
+              <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                formControlName="productionHouse"
+                class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                placeholder="dharma productions"
+              />
+            </div>
+          </div>
+
+          <!-- Industry Type -->
+          <div>
+            <label class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">industry type</label>
             <div class="relative">
               <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 z-10">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-8 0h8m-8 0V3a1 1 0 011-1h6a1 1 0 011 1v1M7 4L5.5 6m13-2L20 6m-2 0H6l-.5 2.5h13L18 6z" />
                 </svg>
               </div>
               <select
-                formControlName="gender"
+                formControlName="industryType"
                 class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
               >
-                <option value="" disabled class="bg-neutral-900 text-neutral-500">Select gender</option>
-                <option value="male" class="bg-neutral-900 text-white">male</option>
-                <option value="female" class="bg-neutral-900 text-white">female</option>
-                <option value="non-binary" class="bg-neutral-900 text-white">non-binary</option>
-                <option value="prefer-not-to-say" class="bg-neutral-900 text-white">prefer not to say</option>
+                <option value="" disabled class="bg-neutral-900 text-neutral-500">Select industry type</option>
+                <option value="film" class="bg-neutral-900 text-white">film</option>
+                <option value="television" class="bg-neutral-900 text-white">television</option>
+                <option value="web-series" class="bg-neutral-900 text-white">web series</option>
+                <option value="advertisement" class="bg-neutral-900 text-white">advertisement</option>
+                <option value="music-video" class="bg-neutral-900 text-white">music video</option>
+                <option value="documentary" class="bg-neutral-900 text-white">documentary</option>
+                <option value="short-film" class="bg-neutral-900 text-white">short film</option>
+                <option value="theater" class="bg-neutral-900 text-white">theater</option>
+                <option value="other" class="bg-neutral-900 text-white">other</option>
               </select>
               <div class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +246,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               </div>
             </div>
           </div>
-        </div>
+        }
 
         <!-- Location -->
         <div>
@@ -181,7 +254,8 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
           <div class="relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <input
@@ -240,8 +314,9 @@ export class BasicInfoSectionComponent implements OnInit {
     } else {
       this.form = this.fb.group({
         name: ['', Validators.required],
-        age: ['', [Validators.required, Validators.min(1), Validators.max(120)]],
-        gender: ['', Validators.required],
+        designation: [''],
+        productionHouse: [''],
+        industryType: [''],
         location: ['', Validators.required]
       });
     }
@@ -263,8 +338,9 @@ export class BasicInfoSectionComponent implements OnInit {
     } else if (this.profile.producerProfile) {
       this.form.patchValue({
         name: this.profile.producerProfile.name || '',
-        age: this.profile.age || '',
-        gender: this.profile.gender || '',
+        designation: this.profile.producerProfile.designation || '',
+        productionHouse: this.profile.producerProfile.productionHouse || '',
+        industryType: this.profile.producerProfile.industryType || '',
         location: this.profile.location || ''
       });
       this.profileImageUrl.set(this.profile.producerProfile.producerProfileImageUrl || null);
@@ -295,9 +371,9 @@ export class BasicInfoSectionComponent implements OnInit {
       // Compress image
       const compressedBlob = await this.compressImage(file);
       
-      // Upload to Firebase Storage
+      // Upload to Firebase Storage in users/:userid/images directory
       const timestamp = Date.now();
-      const fileName = `profile-images/${this.profile?.uid}/${timestamp}.jpg`;
+      const fileName = `users/${this.profile?.uid}/images/profile_${timestamp}.jpg`;
       const storageRef = ref(this.storage, fileName);
       
       await uploadBytes(storageRef, compressedBlob);
@@ -371,18 +447,21 @@ export class BasicInfoSectionComponent implements OnInit {
 
     const formValue = this.form.value;
     const data: any = {
-      age: formValue.age,
-      gender: formValue.gender,
       location: formValue.location,
       profileImageUrl: this.profileImageUrl()
     };
 
     if (this.isActor) {
+      data.age = formValue.age;
+      data.gender = formValue.gender;
       data.stageName = formValue.stageName;
       data.height = formValue.height;
       data.weight = formValue.weight;
     } else {
       data.name = formValue.name;
+      data.designation = formValue.designation;
+      data.productionHouse = formValue.productionHouse;
+      data.industryType = formValue.industryType;
     }
 
     this.save.emit(data);

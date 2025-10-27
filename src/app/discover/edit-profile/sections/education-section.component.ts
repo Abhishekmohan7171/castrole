@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
-import { Profile, Education } from '../../../../assets/interfaces/profile.interfaces';
+import { Profile, Education, Work } from '../../../../assets/interfaces/profile.interfaces';
 
 @Component({
   selector: 'app-education-section',
@@ -19,10 +19,16 @@ import { Profile, Education } from '../../../../assets/interfaces/profile.interf
               <div class="flex items-start justify-between">
                 <div class="flex-1">
                   <h3 class="text-lg font-medium text-white">
-                    {{ edu.get('schoolName')?.value || 'Education ' + ($index + 1) }}
+                    {{ isActor 
+                      ? (edu.get('schoolName')?.value || 'Education ' + ($index + 1))
+                      : (edu.get('projectName')?.value || 'Project ' + ($index + 1))
+                    }}
                   </h3>
                   <p class="text-sm text-neutral-400 mt-1">
-                    {{ edu.get('courseName')?.value || 'Course not specified' }}
+                    {{ isActor 
+                      ? (edu.get('courseName')?.value || 'Course not specified')
+                      : (edu.get('genre')?.value || 'Genre not specified')
+                    }}
                   </p>
                 </div>
                 <button
@@ -38,57 +44,69 @@ import { Profile, Education } from '../../../../assets/interfaces/profile.interf
 
               <!-- Edit Mode -->
               @if (editingIndex() === $index) {
-                <form [formGroup]="getEducationFormGroup($index)" class="space-y-4">
-                  <!-- School Name -->
-                  <div class="space-y-2">
-                    <label class="block text-sm font-medium text-neutral-300">school name</label>
-                    <div class="relative">
-                      <input
-                        type="text"
-                        formControlName="schoolName"
-                        placeholder="Swami Vivekananda Institute of film production"
-                        class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      />
-                      <button
-                        type="button"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-                      >
-                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
+                <form [formGroup]="getFormGroup($index)" class="space-y-4">
+                  @if (isActor) {
+                    <!-- School Name -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">school name</label>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          formControlName="schoolName"
+                          placeholder="Swami Vivekananda Institute of film production"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <!-- Course Name -->
-                  <div class="space-y-2">
-                    <label class="block text-sm font-medium text-neutral-300">name of course</label>
-                    <div class="relative">
-                      <input
-                        type="text"
-                        formControlName="courseName"
-                        placeholder="diploma in screen acting"
-                        class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      />
-                      <button
-                        type="button"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-                      >
-                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
+                    <!-- Course Name -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">name of course</label>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          formControlName="courseName"
+                          placeholder="diploma in screen acting"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  } @else {
+                    <!-- Project Name -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">project name</label>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          formControlName="projectName"
+                          placeholder="KGF Chapter 2"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Genre -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">genre</label>
+                      <div class="relative">
+                        <input
+                          type="text"
+                          formControlName="genre"
+                          placeholder="action thriller"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+                  }
 
                   <!-- Year and Certificate -->
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-2">
-                      <label class="block text-sm font-medium text-neutral-300">year</label>
+                      <label class="block text-sm font-medium text-neutral-300">{{ isActor ? 'year completed' : 'year' }}</label>
                       <div class="relative">
                         <input
                           type="text"
-                          formControlName="yearCompleted"
+                          [formControlName]="isActor ? 'yearCompleted' : 'year'"
                           placeholder="2021"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -103,38 +121,40 @@ import { Profile, Education } from '../../../../assets/interfaces/profile.interf
                       </div>
                     </div>
 
-                    <div class="space-y-2">
-                      <label class="block text-sm font-medium text-neutral-300">certificate</label>
-                      <div class="relative">
-                        <input
-                          type="text"
-                          [value]="edu.get('certificateUrl')?.value ? 'Certificate uploaded' : 'Upload here'"
-                          readonly
-                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-neutral-400 cursor-pointer focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                          (click)="certificateInput.click()"
-                        />
-                        <button
-                          type="button"
-                          (click)="certificateInput.click()"
-                          class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
-                        >
-                          <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <input
-                          #certificateInput
-                          type="file"
-                          accept="image/*,.pdf"
-                          (change)="onCertificateSelect($event, $index)"
-                          class="hidden"
-                        />
+                    @if (isActor) {
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-neutral-300">certificate</label>
+                        <div class="relative">
+                          <input
+                            type="text"
+                            [value]="edu.get('certificateUrl')?.value ? 'Certificate uploaded' : 'Upload here'"
+                            readonly
+                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-neutral-400 cursor-pointer focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            (click)="certificateInput.click()"
+                          />
+                          <button
+                            type="button"
+                            (click)="certificateInput.click()"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <input
+                            #certificateInput
+                            type="file"
+                            accept="image/*,.pdf"
+                            (change)="onCertificateSelect($event, $index)"
+                            class="hidden"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    }
                   </div>
 
                   <!-- View Certificate Link -->
-                  @if (edu.get('certificateUrl')?.value) {
+                  @if (isActor && edu.get('certificateUrl')?.value) {
                     <a
                       [href]="edu.get('certificateUrl')?.value"
                       target="_blank"
@@ -152,10 +172,10 @@ import { Profile, Education } from '../../../../assets/interfaces/profile.interf
                     <button
                       type="button"
                       (click)="saveEducation($index)"
-                      [disabled]="getEducationFormGroup($index).invalid || isUploading()"
+                      [disabled]="getFormGroup($index).invalid || isUploading()"
                       class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200"
                     >
-                      {{ isUploading() ? 'Uploading...' : 'save education' }}
+                      {{ isUploading() ? 'Uploading...' : (isActor ? 'save education' : 'save work') }}
                     </button>
                     <button
                       type="button"
@@ -198,7 +218,7 @@ import { Profile, Education } from '../../../../assets/interfaces/profile.interf
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        add education
+        {{ isActor ? 'add education' : 'add project' }}
       </button>
 
       <!-- Save All Button -->
@@ -238,30 +258,39 @@ export class EducationSectionComponent implements OnInit {
 
   initializeForm() {
     this.form = this.fb.group({
-      education: this.fb.array([])
+      items: this.fb.array([])
     });
   }
 
   get educationArray(): FormArray {
-    return this.form.get('education') as FormArray;
+    return this.form.get('items') as FormArray;
   }
 
-  getEducationFormGroup(index: number): FormGroup {
+  getFormGroup(index: number): FormGroup {
     return this.educationArray.at(index) as FormGroup;
   }
 
   populateForm() {
-    if (!this.profile || !this.isActor) return;
+    if (!this.profile) return;
 
-    const educationList = this.profile.actorProfile?.listEducation || [];
-    
-    educationList.forEach(edu => {
-      this.educationArray.push(this.createEducationFormGroup(edu));
-    });
-
-    // Auto-expand first item if exists
-    if (educationList.length > 0) {
-      this.editingIndex.set(0);
+    if (this.isActor) {
+      const educationList = this.profile.actorProfile?.listEducation || [];
+      educationList.forEach(edu => {
+        this.educationArray.push(this.createEducationFormGroup(edu));
+      });
+      // Auto-expand first item if exists
+      if (educationList.length > 0) {
+        this.editingIndex.set(0);
+      }
+    } else {
+      const worksList = this.profile.producerProfile?.producerWorks || [];
+      worksList.forEach(work => {
+        this.educationArray.push(this.createWorkFormGroup(work));
+      });
+      // Auto-expand first item if exists
+      if (worksList.length > 0) {
+        this.editingIndex.set(0);
+      }
     }
   }
 
@@ -274,9 +303,17 @@ export class EducationSectionComponent implements OnInit {
     });
   }
 
+  createWorkFormGroup(work?: Work): FormGroup {
+    return this.fb.group({
+      projectName: [work?.projectName || '', Validators.required],
+      genre: [work?.genre || ''],
+      year: [work?.year || '', Validators.required]
+    });
+  }
+
   addEducation() {
-    const newEdu = this.createEducationFormGroup();
-    this.educationArray.push(newEdu);
+    const newItem = this.isActor ? this.createEducationFormGroup() : this.createWorkFormGroup();
+    this.educationArray.push(newItem);
     this.editingIndex.set(this.educationArray.length - 1);
   }
 
@@ -310,7 +347,7 @@ export class EducationSectionComponent implements OnInit {
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
       
-      this.getEducationFormGroup(index).patchValue({
+      this.getFormGroup(index).patchValue({
         certificateUrl: downloadURL
       });
     } catch (error) {
@@ -322,14 +359,15 @@ export class EducationSectionComponent implements OnInit {
   }
 
   saveEducation(index: number) {
-    const eduGroup = this.getEducationFormGroup(index);
-    if (eduGroup.invalid) return;
+    const itemGroup = this.getFormGroup(index);
+    if (itemGroup.invalid) return;
 
     this.editingIndex.set(null);
   }
 
   removeEducation(index: number) {
-    if (confirm('Are you sure you want to remove this education entry?')) {
+    const itemType = this.isActor ? 'education entry' : 'project';
+    if (confirm(`Are you sure you want to remove this ${itemType}?`)) {
       this.educationArray.removeAt(index);
       this.editingIndex.set(null);
     }
@@ -340,11 +378,17 @@ export class EducationSectionComponent implements OnInit {
 
     this.isSaving.set(true);
 
-    const educationData = this.educationArray.value.filter((edu: Education) => 
-      edu.schoolName && edu.courseName && edu.yearCompleted
-    );
-
-    this.save.emit({ education: educationData });
+    if (this.isActor) {
+      const educationData = this.educationArray.value.filter((edu: Education) => 
+        edu.schoolName && edu.courseName && edu.yearCompleted
+      );
+      this.save.emit({ education: educationData });
+    } else {
+      const worksData = this.educationArray.value.filter((work: Work) => 
+        work.projectName && work.year
+      );
+      this.save.emit({ works: worksData });
+    }
 
     setTimeout(() => this.isSaving.set(false), 1000);
   }
