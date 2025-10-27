@@ -28,14 +28,15 @@ interface ActorSearchResult {
 }
 
 interface SearchFilters {
-  characterType: string;
+  characterTypes: string[];  // Changed to array for multi-select
   minAge: number;
   maxAge: number;
   gender: string;
-  heightFt: string;
-  heightIn: string;
-  weight: string;
+  heightCm: string;  // Changed from heightFt/heightIn to single cm value
+  weightKg: string;  // Renamed for clarity
   languages: string[];
+  skills: string[];
+  location: string;
 }
 
 interface ParsedSearchQuery {
@@ -104,18 +105,21 @@ interface ParsedSearchQuery {
             <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-6">Filters</h2>
 
-              <!-- Character Type -->
+              <!-- Character Type (Multi-Select) -->
               <div class="mb-6">
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Character Type</label>
-                <select 
-                  [value]="filters().characterType"
-                  (change)="updateFilter('characterType', $any($event.target).value)"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
-                  <option value="any">Any</option>
-                  <option value="lead">Lead</option>
-                  <option value="supporting">Supporting</option>
-                  <option value="extra">Extra</option>
-                </select>
+                <div class="space-y-2">
+                  @for (type of ['Lead', 'Supporting', 'Extra', 'Cameo']; track type) {
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        [checked]="filters().characterTypes.includes(type.toLowerCase())"
+                        (change)="toggleCharacterType(type.toLowerCase())"
+                        class="w-4 h-4 rounded border-neutral-600 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-neutral-900">
+                      <span class="text-neutral-300">{{ type }}</span>
+                    </label>
+                  }
+                </div>
               </div>
 
               <!-- Age Range -->
@@ -126,7 +130,7 @@ interface ParsedSearchQuery {
                     type="number" 
                     [value]="filters().minAge"
                     (input)="updateFilter('minAge', +$any($event.target).value)"
-                    min="18" 
+                    min="0" 
                     max="100"
                     class="w-20 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                   <div class="flex-1 relative">
@@ -134,7 +138,7 @@ interface ParsedSearchQuery {
                       type="range" 
                       [value]="filters().maxAge"
                       (input)="updateFilter('maxAge', +$any($event.target).value)"
-                      min="18" 
+                      min="0" 
                       max="100"
                       class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-fuchsia-500">
                   </div>
@@ -144,64 +148,52 @@ interface ParsedSearchQuery {
 
               <!-- Gender -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-3">Gender</label>
-                <div class="space-y-2">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="gender" 
-                      value="any"
-                      [checked]="filters().gender === 'any'"
-                      (change)="updateFilter('gender', 'any')"
-                      class="w-4 h-4 accent-fuchsia-500">
-                    <span class="text-neutral-300">Any</span>
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="gender" 
-                      value="male"
-                      [checked]="filters().gender === 'male'"
-                      (change)="updateFilter('gender', 'male')"
-                      class="w-4 h-4 accent-fuchsia-500">
-                    <span class="text-neutral-300">Male</span>
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="gender" 
-                      value="female"
-                      [checked]="filters().gender === 'female'"
-                      (change)="updateFilter('gender', 'female')"
-                      class="w-4 h-4 accent-fuchsia-500">
-                    <span class="text-neutral-300">Female</span>
-                  </label>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Gender</label>
+                <select 
+                  [value]="filters().gender"
+                  (change)="updateFilter('gender', $any($event.target).value)"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                  <option value="any">Any</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <!-- Height (cm) / Weight (kg) -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Height / Weight</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <input 
+                    type="number" 
+                    [value]="filters().heightCm"
+                    (input)="updateFilter('heightCm', $any($event.target).value)"
+                    placeholder="Height (cm)"
+                    min="0"
+                    max="250"
+                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
+                  <input 
+                    type="number" 
+                    [value]="filters().weightKg"
+                    (input)="updateFilter('weightKg', $any($event.target).value)"
+                    placeholder="Weight (kg)"
+                    min="0"
+                    max="200"
+                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
                 </div>
               </div>
 
-              <!-- Height / Weight -->
+              <!-- Skills -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Height / Weight</label>
-                <div class="grid grid-cols-3 gap-2">
-                  <input 
-                    type="text" 
-                    [value]="filters().heightFt"
-                    (input)="updateFilter('heightFt', $any($event.target).value)"
-                    placeholder="ft"
-                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
-                  <input 
-                    type="text" 
-                    [value]="filters().heightIn"
-                    (input)="updateFilter('heightIn', $any($event.target).value)"
-                    placeholder="In"
-                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
-                  <input 
-                    type="text" 
-                    [value]="filters().weight"
-                    (input)="updateFilter('weight', $any($event.target).value)"
-                    placeholder="weight"
-                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
-                </div>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Skills</label>
+                <input 
+                  type="text" 
+                  [value]="skillsInput()"
+                  (input)="skillsInput.set($any($event.target).value)"
+                  (keyup.enter)="applyFilters()"
+                  placeholder="e.g., Acting, Dancing, Boxing"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                <p class="text-xs text-neutral-500 mt-1">Separate multiple skills with commas</p>
               </div>
 
               <!-- Languages -->
@@ -212,9 +204,20 @@ interface ParsedSearchQuery {
                   [value]="languageInput()"
                   (input)="languageInput.set($any($event.target).value)"
                   (keyup.enter)="applyFilters()"
-                  placeholder="e.g., English, Hindi"
+                  placeholder="e.g., English, Hindi, Tamil"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
                 <p class="text-xs text-neutral-500 mt-1">Separate multiple languages with commas</p>
+              </div>
+
+              <!-- Location -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Location</label>
+                <input 
+                  type="text" 
+                  [value]="filters().location"
+                  (input)="updateFilter('location', $any($event.target).value)"
+                  placeholder="e.g., Mumbai, Chennai"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
               </div>
 
               <!-- Filter Actions -->
@@ -259,6 +262,17 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
+                @if (filters().characterTypes.length > 0) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Types: {{ filters().characterTypes.join(', ') }}
+                    <button (click)="updateFilter('characterTypes', [])" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
                 @if (filters().gender !== 'any') {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
                     Gender: {{ filters().gender }}
@@ -270,10 +284,43 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().minAge !== 18 || filters().maxAge !== 50) {
+                @if (filters().minAge !== 0 || filters().maxAge !== 100) {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
                     Age: {{ filters().minAge }}-{{ filters().maxAge }}
-                    <button (click)="updateFilter('minAge', 18); updateFilter('maxAge', 50)" class="hover:text-neutral-100">
+                    <button (click)="updateFilter('minAge', 0); updateFilter('maxAge', 100)" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().heightCm) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Height: {{ filters().heightCm }}cm
+                    <button (click)="updateFilter('heightCm', '')" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().weightKg) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Weight: {{ filters().weightKg }}kg
+                    <button (click)="updateFilter('weightKg', '')" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().skills.length > 0) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Skills: {{ filters().skills.join(', ') }}
+                    <button (click)="updateFilter('skills', []); skillsInput.set('')" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -285,6 +332,17 @@ interface ParsedSearchQuery {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
                     Languages: {{ filters().languages.join(', ') }}
                     <button (click)="updateFilter('languages', []); languageInput.set('')" class="hover:text-neutral-100">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                }
+                
+                @if (filters().location) {
+                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
+                    Location: {{ filters().location }}
+                    <button (click)="updateFilter('location', '')" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -441,7 +499,9 @@ interface ParsedSearchQuery {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                   <p class="text-sm text-neutral-500 mb-1">No actors in wishlist</p>
-                  <p class="text-xs text-neutral-600">Click the heart icon to add actors</p>
+                  <p class="text-xs text-neutral-600">
+                    Click the heart icon to add actors
+                  </p>
                 </div>
               }
             </div>
@@ -494,18 +554,20 @@ export class SearchComponent implements OnInit, OnDestroy {
   
   // Filters
   filters = signal<SearchFilters>({
-    characterType: 'any',
-    minAge: 18,
-    maxAge: 50,
+    characterTypes: [],  // Empty array means 'any'
+    minAge: 0,  // Changed from 18 to 0
+    maxAge: 100,  // Changed from 50 to 100
     gender: 'any',
-    heightFt: '',
-    heightIn: '',
-    weight: '',
-    languages: []
+    heightCm: '',  // Single height value in cm
+    weightKg: '',  // Weight in kg
+    languages: [],
+    skills: [],
+    location: ''
   });
   
-  // Temporary language input
+  // Temporary inputs for comma-separated fields
   languageInput = signal('');
+  skillsInput = signal('');
 
   // Wishlist
   wishlist = signal<ActorSearchResult[]>([]);
@@ -520,13 +582,15 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Don't show results if no search query and default filters
     const hasSearchQuery = searchText.trim().length > 0;
     const hasNonDefaultFilters = 
+      currentFilters.characterTypes.length > 0 ||
       currentFilters.gender !== 'any' ||
-      currentFilters.minAge !== 18 ||
-      currentFilters.maxAge !== 50 ||
-      currentFilters.heightFt !== '' ||
-      currentFilters.heightIn !== '' ||
-      currentFilters.weight !== '' ||
-      currentFilters.languages.length > 0;
+      currentFilters.minAge !== 0 ||
+      currentFilters.maxAge !== 100 ||
+      currentFilters.heightCm !== '' ||
+      currentFilters.weightKg !== '' ||
+      currentFilters.languages.length > 0 ||
+      currentFilters.skills.length > 0 ||
+      currentFilters.location !== '';
 
     if (!hasSearchQuery && !hasNonDefaultFilters) {
       this.logger.log('No search query or filters active');
@@ -574,7 +638,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     }
 
     // Apply age range filter (only if changed from defaults)
-    const hasAgeFilter = currentFilters.minAge !== 18 || currentFilters.maxAge !== 50;
+    const hasAgeFilter = currentFilters.minAge !== 0 || currentFilters.maxAge !== 100;
     if (hasAgeFilter) {
       const beforeCount = actors.length;
       actors = actors.filter(actor => {
@@ -584,26 +648,23 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.logger.log(`Age filter (${currentFilters.minAge}-${currentFilters.maxAge}): ${beforeCount} → ${actors.length} actors`);
     }
 
-    // Apply height filter if specified
-    if (currentFilters.heightFt || currentFilters.heightIn) {
-      const targetHeightInches = this.convertToInches(
-        currentFilters.heightFt, 
-        currentFilters.heightIn
-      );
-      if (targetHeightInches > 0) {
+    // Apply height filter if specified (in cm)
+    if (currentFilters.heightCm) {
+      const targetHeightCm = parseInt(currentFilters.heightCm);
+      if (targetHeightCm > 0) {
         const beforeCount = actors.length;
         actors = actors.filter(actor => {
-          const actorHeight = this.parseHeight(actor.height || '');
-          // Allow ±2 inches tolerance
-          return Math.abs(actorHeight - targetHeightInches) <= 2;
+          const actorHeightCm = this.parseHeightToCm(actor.height || '');
+          // Allow ±5 cm tolerance
+          return Math.abs(actorHeightCm - targetHeightCm) <= 5;
         });
-        this.logger.log(`Height filter (${currentFilters.heightFt}'${currentFilters.heightIn}"): ${beforeCount} → ${actors.length} actors`);
+        this.logger.log(`Height filter (${currentFilters.heightCm}cm ±5): ${beforeCount} → ${actors.length} actors`);
       }
     }
 
-    // Apply weight filter if specified
-    if (currentFilters.weight) {
-      const targetWeight = parseInt(currentFilters.weight);
+    // Apply weight filter if specified (in kg)
+    if (currentFilters.weightKg) {
+      const targetWeight = parseInt(currentFilters.weightKg);
       if (targetWeight > 0) {
         const beforeCount = actors.length;
         actors = actors.filter(actor => {
@@ -611,8 +672,22 @@ export class SearchComponent implements OnInit, OnDestroy {
           // Allow ±5 kg tolerance
           return Math.abs(actorWeight - targetWeight) <= 5;
         });
-        this.logger.log(`Weight filter (${currentFilters.weight}kg ±5): ${beforeCount} → ${actors.length} actors`);
+        this.logger.log(`Weight filter (${currentFilters.weightKg}kg ±5): ${beforeCount} → ${actors.length} actors`);
       }
+    }
+
+    // Apply skills filter
+    if (currentFilters.skills.length > 0) {
+      const beforeCount = actors.length;
+      actors = actors.filter(actor => {
+        return currentFilters.skills.some(skill => 
+          actor.skills?.some(actorSkill => 
+            typeof actorSkill === 'string' && typeof skill === 'string' &&
+            actorSkill.toLowerCase().includes(skill.toLowerCase())
+          )
+        );
+      });
+      this.logger.log(`Skills filter (${currentFilters.skills.join(', ')}): ${beforeCount} → ${actors.length} actors`);
     }
 
     // Apply languages filter
@@ -627,6 +702,16 @@ export class SearchComponent implements OnInit, OnDestroy {
         );
       });
       this.logger.log(`Languages filter (${currentFilters.languages.join(', ')}): ${beforeCount} → ${actors.length} actors`);
+    }
+
+    // Apply location filter
+    if (currentFilters.location) {
+      const beforeCount = actors.length;
+      const locationQuery = currentFilters.location.toLowerCase();
+      actors = actors.filter(actor => 
+        actor.location?.toLowerCase().includes(locationQuery)
+      );
+      this.logger.log(`Location filter (${currentFilters.location}): ${beforeCount} → ${actors.length} actors`);
     }
 
     this.logger.log(`Filtered results: ${actors.length} actors found`);
@@ -920,30 +1005,43 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Convert height to inches for comparison
+   * Parse height string to cm (e.g., "5'8\"", "5 feet 8 inches", "173cm", "173")
    */
-  private convertToInches(feet: string, inches: string): number {
-    const ft = parseInt(feet) || 0;
-    const inch = parseInt(inches) || 0;
-    return ft * 12 + inch;
-  }
-
-  /**
-   * Parse height string (e.g., "5'8\"", "5 feet 8 inches", "173cm")
-   */
-  private parseHeight(height: string): number {
+  private parseHeightToCm(height: string): number {
     if (!height) return 0;
 
-    // Try feet'inches" format
-    const feetInchesMatch = height.match(/(\d+)'\s*(\d+)/);
-    if (feetInchesMatch) {
-      return parseInt(feetInchesMatch[1]) * 12 + parseInt(feetInchesMatch[2]);
-    }
-
-    // Try cm format
+    // Try cm format first (e.g., "173cm" or "173")
     const cmMatch = height.match(/(\d+)\s*cm/i);
     if (cmMatch) {
-      return Math.round(parseInt(cmMatch[1]) / 2.54); // Convert cm to inches
+      return parseInt(cmMatch[1]);
+    }
+
+    // Try pure number (assume cm)
+    const numberMatch = height.match(/^(\d+)$/);
+    if (numberMatch) {
+      const value = parseInt(numberMatch[1]);
+      // If value is reasonable for cm (100-250), use it
+      if (value >= 100 && value <= 250) {
+        return value;
+      }
+    }
+
+    // Try feet'inches" format (e.g., "5'8\"" or "5'8")
+    const feetInchesMatch = height.match(/(\d+)'\s*(\d+)/);
+    if (feetInchesMatch) {
+      const feet = parseInt(feetInchesMatch[1]);
+      const inches = parseInt(feetInchesMatch[2]);
+      const totalInches = feet * 12 + inches;
+      return Math.round(totalInches * 2.54); // Convert inches to cm
+    }
+
+    // Try "X feet Y inches" format
+    const feetWordsMatch = height.match(/(\d+)\s*(?:feet|ft)\s*(\d+)\s*(?:inches|in)/i);
+    if (feetWordsMatch) {
+      const feet = parseInt(feetWordsMatch[1]);
+      const inches = parseInt(feetWordsMatch[2]);
+      const totalInches = feet * 12 + inches;
+      return Math.round(totalInches * 2.54); // Convert inches to cm
     }
 
     return 0;
@@ -965,13 +1063,15 @@ export class SearchComponent implements OnInit, OnDestroy {
   hasActiveFilters(): boolean {
     const currentFilters = this.filters();
     return (
+      currentFilters.characterTypes.length > 0 ||
       currentFilters.gender !== 'any' ||
-      currentFilters.minAge !== 18 ||
-      currentFilters.maxAge !== 50 ||
-      currentFilters.heightFt !== '' ||
-      currentFilters.heightIn !== '' ||
-      currentFilters.weight !== '' ||
-      currentFilters.languages.length > 0
+      currentFilters.minAge !== 0 ||
+      currentFilters.maxAge !== 100 ||
+      currentFilters.heightCm !== '' ||
+      currentFilters.weightKg !== '' ||
+      currentFilters.languages.length > 0 ||
+      currentFilters.skills.length > 0 ||
+      currentFilters.location !== ''
     );
   }
 
@@ -984,6 +1084,17 @@ export class SearchComponent implements OnInit, OnDestroy {
       [key]: value
     });
     this.logger.log(`Filter updated: ${key} = ${value}`);
+  }
+
+  /**
+   * Toggle character type in multi-select
+   */
+  toggleCharacterType(type: string): void {
+    const currentTypes = this.filters().characterTypes;
+    const newTypes = currentTypes.includes(type)
+      ? currentTypes.filter(t => t !== type)
+      : [...currentTypes, type];
+    this.updateFilter('characterTypes', newTypes);
   }
   
   /**
@@ -1002,11 +1113,27 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
   
   /**
+   * Parse and apply skills filter from comma-separated input
+   */
+  applySkillsFilter(): void {
+    const input = this.skillsInput().trim();
+    if (input) {
+      // Split by comma and clean up
+      const skills = input.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
+      this.updateFilter('skills', skills);
+      this.logger.log(`Skills filter applied: ${skills.join(', ')}`);
+    } else {
+      this.updateFilter('skills', []);
+    }
+  }
+  
+  /**
    * Apply all filters (triggered by Apply Filters button)
    */
   applyFilters(): void {
-    // Parse language input
+    // Parse comma-separated inputs
     this.applyLanguageFilter();
+    this.applySkillsFilter();
     
     // Log current filter state
     this.logger.log('Filters applied:', this.filters());
@@ -1020,16 +1147,18 @@ export class SearchComponent implements OnInit, OnDestroy {
    */
   clearFilters(): void {
     this.filters.set({
-      characterType: 'any',
-      minAge: 18,
-      maxAge: 50,
+      characterTypes: [],
+      minAge: 0,
+      maxAge: 100,
       gender: 'any',
-      heightFt: '',
-      heightIn: '',
-      weight: '',
-      languages: []
+      heightCm: '',
+      weightKg: '',
+      languages: [],
+      skills: [],
+      location: ''
     });
     this.languageInput.set('');
+    this.skillsInput.set('');
     this.logger.log('All filters cleared');
   }
   
@@ -1040,11 +1169,14 @@ export class SearchComponent implements OnInit, OnDestroy {
     const currentFilters = this.filters();
     let count = 0;
     
+    if (currentFilters.characterTypes.length > 0) count++;
     if (currentFilters.gender !== 'any') count++;
-    if (currentFilters.minAge !== 18 || currentFilters.maxAge !== 50) count++;
-    if (currentFilters.heightFt || currentFilters.heightIn) count++;
-    if (currentFilters.weight) count++;
+    if (currentFilters.minAge !== 0 || currentFilters.maxAge !== 100) count++;
+    if (currentFilters.heightCm) count++;
+    if (currentFilters.weightKg) count++;
     if (currentFilters.languages.length > 0) count++;
+    if (currentFilters.skills.length > 0) count++;
+    if (currentFilters.location) count++;
     
     return count;
   }
