@@ -66,7 +66,7 @@ import { SocialsSectionComponent } from './sections/socials-section.component';
 
             <!-- Navigation Items -->
             <nav class="space-y-1">
-              @for (item of navigationItems; track item.id) {
+              @for (item of navigationItems(); track item.id) {
                 <button
                   (click)="navigateToSection(item.id)"
                   [class]="activeSection() === item.id 
@@ -164,7 +164,7 @@ import { SocialsSectionComponent } from './sections/socials-section.component';
                   }
                   @case ('education') {
                     <div>
-                      <h2 class="text-2xl font-semibold text-white mb-6">Education & Experience</h2>
+                      <h2 class="text-2xl font-semibold text-white mb-6">{{ isActor() ? 'Education & Experience' : 'Works' }}</h2>
                       <app-education-section
                         [profile]="profile()"
                         [isActor]="isActor()"
@@ -173,22 +173,26 @@ import { SocialsSectionComponent } from './sections/socials-section.component';
                     </div>
                   }
                   @case ('voice-intro') {
-                    <div>
-                      <h2 class="text-2xl font-semibold text-white mb-6">Voice Introduction</h2>
-                      <app-voice-intro-section
-                        [profile]="profile()"
-                        (save)="onSectionSave($event, 'voice-intro')"
-                      />
-                    </div>
+                    @if (isActor()) {
+                      <div>
+                        <h2 class="text-2xl font-semibold text-white mb-6">Voice Introduction</h2>
+                        <app-voice-intro-section
+                          [profile]="profile()"
+                          (save)="onSectionSave($event, 'voice-intro')"
+                        />
+                      </div>
+                    }
                   }
                   @case ('languages-skills') {
-                    <div>
-                      <h2 class="text-2xl font-semibold text-white mb-6">Languages & Skills</h2>
-                      <app-languages-skills-section
-                        [profile]="profile()"
-                        (save)="onSectionSave($event, 'languages-skills')"
-                      />
-                    </div>
+                    @if (isActor()) {
+                      <div>
+                        <h2 class="text-2xl font-semibold text-white mb-6">Languages & Skills</h2>
+                        <app-languages-skills-section
+                          [profile]="profile()"
+                          (save)="onSectionSave($event, 'languages-skills')"
+                        />
+                      </div>
+                    }
                   }
                   @case ('socials') {
                     <div>
@@ -226,19 +230,22 @@ export class EditProfileComponent implements OnInit {
   activeSection = signal<EditSection>('basic-info');
   isMobileSidebarOpen = signal(false);
 
-  // Navigation items
-  navigationItems: NavigationItem[] = [
+  // All navigation items
+  private allNavigationItems: NavigationItem[] = [
     {
       id: 'basic-info',
       label: 'basic info',
       description: 'profile image, name, age, gender, height, weight, location',
-      icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`
+      icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`,
+      descriptionProducer: 'profile image, name, location, designation, production house'
     },
     {
       id: 'education',
       label: 'education & experience',
       description: 'education, previous experiences',
-      icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>`
+      icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>`,
+      labelProducer: 'works',
+      descriptionProducer: 'previous projects and works'
     },
     {
       id: 'voice-intro',
@@ -259,6 +266,31 @@ export class EditProfileComponent implements OnInit {
       icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>`
     }
   ];
+
+  // Computed navigation items based on role
+  navigationItems = computed(() => {
+    const items = this.isActor() 
+      ? this.allNavigationItems
+      : this.allNavigationItems.filter(item => 
+          item.id !== 'voice-intro' && item.id !== 'languages-skills'
+        );
+    
+    // Update labels and descriptions for producer-specific items
+    if (!this.isActor()) {
+      return items.map(item => {
+        if (item.labelProducer || item.descriptionProducer) {
+          return {
+            ...item,
+            label: item.labelProducer || item.label,
+            description: item.descriptionProducer || item.description
+          };
+        }
+        return item;
+      });
+    }
+    
+    return items;
+  });
 
   // Computed
   isActor = computed(() => {
@@ -353,7 +385,17 @@ export class EditProfileComponent implements OnInit {
   }
 
   private isValidSection(section: string): section is EditSection {
-    return ['basic-info', 'education', 'voice-intro', 'languages-skills', 'socials'].includes(section);
+    const allSections = ['basic-info', 'education', 'voice-intro', 'languages-skills', 'socials'];
+    if (!allSections.includes(section)) {
+      return false;
+    }
+    
+    // Additional role-based validation
+    if (!this.isActor() && (section === 'voice-intro' || section === 'languages-skills')) {
+      return false;
+    }
+    
+    return true;
   }
 
   async onSectionSave(data: any, section: EditSection) {
@@ -367,12 +409,12 @@ export class EditProfileComponent implements OnInit {
       switch (section) {
         case 'basic-info':
           // Update common fields
-          updatedProfile.age = data.age;
-          updatedProfile.gender = data.gender;
           updatedProfile.location = data.location;
 
           // Update role-specific fields
           if (this.isActor()) {
+            updatedProfile.age = data.age;
+            updatedProfile.gender = data.gender;
             updatedProfile.actorProfile = {
               ...currentProfile.actorProfile,
               stageName: data.stageName,
@@ -384,6 +426,9 @@ export class EditProfileComponent implements OnInit {
             updatedProfile.producerProfile = {
               ...currentProfile.producerProfile,
               name: data.name,
+              designation: data.designation,
+              productionHouse: data.productionHouse,
+              industryType: data.industryType,
               producerProfileImageUrl: data.profileImageUrl || currentProfile.producerProfile?.producerProfileImageUrl
             };
           }
@@ -394,6 +439,11 @@ export class EditProfileComponent implements OnInit {
             updatedProfile.actorProfile = {
               ...currentProfile.actorProfile,
               listEducation: data.education
+            };
+          } else {
+            updatedProfile.producerProfile = {
+              ...currentProfile.producerProfile,
+              producerWorks: data.works
             };
           }
           break;
@@ -424,7 +474,8 @@ export class EditProfileComponent implements OnInit {
 
       // Save to Firestore
       const profileRef = doc(this.firestore, 'profiles', currentProfile.uid);
-      await updateDoc(profileRef, updatedProfile);
+      const cleanedProfile = this.removeUndefinedFields(updatedProfile);
+      await updateDoc(profileRef, cleanedProfile);
 
       // Update local state
       this.profile.set(updatedProfile as Profile);
@@ -435,5 +486,30 @@ export class EditProfileComponent implements OnInit {
       console.error('Error saving profile:', error);
       alert('Failed to save profile. Please try again.');
     }
+  }
+
+  private removeUndefinedFields(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefinedFields(item));
+    }
+
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          const value = obj[key];
+          if (value !== undefined) {
+            cleaned[key] = this.removeUndefinedFields(value);
+          }
+        }
+      }
+      return cleaned;
+    }
+
+    return obj;
   }
 }

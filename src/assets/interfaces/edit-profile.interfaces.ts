@@ -28,4 +28,6 @@ export interface NavigationItem {
   label: string;
   icon: string;
   description: string;
+  labelProducer?: string;
+  descriptionProducer?: string;
 }
