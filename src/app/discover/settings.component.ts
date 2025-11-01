@@ -726,27 +726,222 @@ type SettingsTab =
             </div>
           </div>
           } @case ('subscriptions') {
-          <div class="space-y-6">
-            <div
-              class="text-xs font-medium uppercase tracking-wide mb-3"
-              [ngClass]="{
-                'text-purple-300/50': isActor(),
-                'text-neutral-500': !isActor()
-              }"
-            >
-              Subscription Management
-            </div>
-            <div class="space-y-3">
+          <div class="space-y-8">
+            <!-- Current Plan Section -->
+            <div class="space-y-6">
               <div
-                class="text-xs"
+                class="text-xs font-medium uppercase tracking-wide"
                 [ngClass]="{
-                  'text-purple-200/60': isActor(),
-                  'text-neutral-400': !isActor()
+                  'text-purple-300/50': isActor(),
+                  'text-neutral-500': !isActor()
                 }"
               >
-                @if (isActor()) { Current Plan, Billing, Payment Methods } @else
-                { Promo Codes, Manage Plan, History of Payments, Billing Address
-                }
+                Here's what you're currently paying:
+              </div>
+              
+              <!-- Current Plan Display -->
+              <div class="space-y-3 text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200': isActor(),
+                    'text-neutral-200': !isActor()
+                  }">
+                    Monthly Plan: ₹222 per month
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200': isActor(),
+                    'text-neutral-200': !isActor()
+                  }">
+                    Over a full year, that totals ₹2,664
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Better Option Section -->
+            <div class="space-y-6">
+              <div
+                class="text-xs font-medium uppercase tracking-wide"
+                [ngClass]="{
+                  'text-purple-300/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                Better Option – Yearly Plan:
+              </div>
+              
+              <!-- Yearly Plan Benefits -->
+              <div class="space-y-3 text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200': isActor(),
+                    'text-neutral-200': !isActor()
+                  }">
+                    Yearly Plan: ₹2,222 per year
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                  <span class="text-green-400 font-medium">
+                    That means you save ₹442 compared to paying monthly!
+                  </span>
+                </div>
+              </div>
+
+              <!-- Upgrade Button -->
+              <div class="pt-4">
+                <button
+                  (click)="upgradeSubscription()"
+                  class="w-full max-w-xs mx-auto block px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-600 hover:bg-purple-700 text-white': isActor(),
+                    'bg-neutral-600 hover:bg-neutral-700 text-white': !isActor()
+                  }"
+                >
+                  yearly ₹2222
+                </button>
+              </div>
+            </div>
+
+            <!-- Why Upgrade Section -->
+            <div class="space-y-6">
+              <div
+                class="text-xs font-medium uppercase tracking-wide"
+                [ngClass]="{
+                  'text-purple-300/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                Why Upgrade?
+              </div>
+              
+              <!-- Benefits List -->
+              <div class="space-y-4 text-sm">
+                <div class="flex items-start gap-3">
+                  <span class="w-1.5 h-1.5 rounded-full mt-2"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200/80': isActor(),
+                    'text-neutral-300': !isActor()
+                  }">
+                    Get all premium benefits for the whole year upfront.
+                  </span>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <span class="w-1.5 h-1.5 rounded-full mt-2"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200/80': isActor(),
+                    'text-neutral-300': !isActor()
+                  }">
+                    Enjoy high visibility, ad-free experience, upload up to 10 audition reels, and full analytics without worrying about monthly renewals.
+                  </span>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <span class="w-1.5 h-1.5 rounded-full mt-2"
+                        [ngClass]="{
+                          'bg-purple-400': isActor(),
+                          'bg-neutral-400': !isActor()
+                        }"></span>
+                  <span [ngClass]="{
+                    'text-purple-200/80': isActor(),
+                    'text-neutral-300': !isActor()
+                  }">
+                    One-time payment = peace of mind + savings.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subscription Management Section -->
+            <div class="pt-6 border-t space-y-4"
+                 [ngClass]="{
+                   'border-purple-900/20': isActor(),
+                   'border-neutral-700/50': !isActor()
+                 }">
+              <div
+                class="text-xs font-medium uppercase tracking-wide"
+                [ngClass]="{
+                  'text-purple-300/50': isActor(),
+                  'text-neutral-500': !isActor()
+                }"
+              >
+                Subscription Management
+              </div>
+
+              <!-- Management Options -->
+              <div class="space-y-3">
+                <!-- Manage Subscription -->
+                <button
+                  (click)="manageSubscription()"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">Manage Subscription</h3>
+                      <p class="text-xs opacity-70">Update plan, payment method, or cancel</p>
+                    </div>
+                  </div>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+
+                <!-- Payment History -->
+                <button
+                  (click)="viewPaymentHistory()"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">Payment History</h3>
+                      <p class="text-xs opacity-70">View past invoices and receipts</p>
+                    </div>
+                  </div>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -817,6 +1012,230 @@ type SettingsTab =
           } }
         </section>
       </div>
+
+      <!-- Blocked Users Modal -->
+      @if (showBlockedUsersModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div 
+            class="w-full max-w-md rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
+            [ngClass]="{
+              'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl': isActor(),
+              'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl': !isActor()
+            }"
+          >
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-lg font-semibold"
+                  [ngClass]="{
+                    'text-purple-100': isActor(),
+                    'text-neutral-100': !isActor()
+                  }">
+                Blocked Users
+              </h2>
+              <button
+                (click)="closeBlockedUsersModal()"
+                class="p-2 rounded-full transition-colors"
+                [ngClass]="{
+                  'hover:bg-purple-900/20 text-purple-300': isActor(),
+                  'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+                }"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto">
+              @if (blockedUsersList().length === 0) {
+                <div class="text-center py-8">
+                  <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
+                  </svg>
+                  <p class="text-sm"
+                     [ngClass]="{
+                       'text-purple-300/60': isActor(),
+                       'text-neutral-400': !isActor()
+                     }">
+                    No blocked users
+                  </p>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy) {
+                    <div class="flex items-center justify-between p-3 rounded-lg"
+                         [ngClass]="{
+                           'bg-purple-950/10 border border-purple-900/20': isActor(),
+                           'bg-neutral-800/50 border border-neutral-700/30': !isActor()
+                         }">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                             [ngClass]="{
+                               'bg-purple-900/30 text-purple-300': isActor(),
+                               'bg-neutral-700 text-neutral-300': !isActor()
+                             }">
+                          {{ getBlockedUserInitial(blockedUser) }}
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium"
+                             [ngClass]="{
+                               'text-purple-100': isActor(),
+                               'text-neutral-100': !isActor()
+                             }">
+                            {{ getBlockedUserName(blockedUser) }}
+                          </p>
+                          <p class="text-xs"
+                             [ngClass]="{
+                               'text-purple-300/60': isActor(),
+                               'text-neutral-400': !isActor()
+                             }">
+                            Blocked {{ formatBlockedDate(blockedUser.date) }}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        (click)="unblockUser(blockedUser)"
+                        class="px-3 py-1 text-xs rounded-full border transition-colors"
+                        [ngClass]="{
+                          'border-purple-600 text-purple-300 hover:bg-purple-600/20': isActor(),
+                          'border-neutral-600 text-neutral-300 hover:bg-neutral-600/20': !isActor()
+                        }"
+                      >
+                        Unblock
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Recent Logins Modal -->
+      @if (showRecentLoginsModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div 
+            class="w-full max-w-lg rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
+            [ngClass]="{
+              'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl': isActor(),
+              'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl': !isActor()
+            }"
+          >
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-lg font-semibold"
+                  [ngClass]="{
+                    'text-purple-100': isActor(),
+                    'text-neutral-100': !isActor()
+                  }">
+                Recent Logins
+              </h2>
+              <button
+                (click)="closeRecentLoginsModal()"
+                class="p-2 rounded-full transition-colors"
+                [ngClass]="{
+                  'hover:bg-purple-900/20 text-purple-300': isActor(),
+                  'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+                }"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto">
+              @if (recentLoginsList().length === 0) {
+                <div class="text-center py-8">
+                  <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  <p class="text-sm"
+                     [ngClass]="{
+                       'text-purple-300/60': isActor(),
+                       'text-neutral-400': !isActor()
+                     }">
+                    No login history available
+                  </p>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  @for (login of recentLoginsList(); track $index) {
+                    <div class="flex items-center justify-between p-4 rounded-lg"
+                         [ngClass]="{
+                           'bg-purple-950/10 border border-purple-900/20': isActor(),
+                           'bg-neutral-800/50 border border-neutral-700/30': !isActor()
+                         }">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                             [ngClass]="{
+                               'bg-purple-900/30 text-purple-300': isActor(),
+                               'bg-neutral-700 text-neutral-300': !isActor()
+                             }">
+                          {{ getDeviceIcon(login.platform) }}
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium"
+                             [ngClass]="{
+                               'text-purple-100': isActor(),
+                               'text-neutral-100': !isActor()
+                             }">
+                            {{ getDeviceDisplayName(login) }}
+                          </p>
+                          <p class="text-xs"
+                             [ngClass]="{
+                               'text-purple-300/60': isActor(),
+                               'text-neutral-400': !isActor()
+                             }">
+                            {{ login.platform | titlecase }}
+                            @if (login.version) {
+                              · {{ login.version }}
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <p class="text-xs"
+                           [ngClass]="{
+                             'text-purple-300/60': isActor(),
+                             'text-neutral-400': !isActor()
+                           }">
+                          Current Session
+                        </p>
+                        <div class="flex items-center gap-1 mt-1">
+                          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                          <span class="text-xs text-green-400">Active</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-6 pt-4 border-t"
+                 [ngClass]="{
+                   'border-purple-900/20': isActor(),
+                   'border-neutral-700/30': !isActor()
+                 }">
+              <button
+                (click)="logoutAllDevices(); closeRecentLoginsModal()"
+                class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                [ngClass]="{
+                  'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-600/30': isActor(),
+                  'bg-neutral-700/50 hover:bg-neutral-700/70 text-neutral-300 border border-neutral-600': !isActor()
+                }"
+              >
+                Logout All Devices
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -879,6 +1298,12 @@ export class SettingsComponent implements OnInit {
   lastSeenVisible = signal<boolean>(true);
   onlineStatusVisible = signal<boolean>(true);
   allowChatRequests = signal<boolean>(true);
+
+  // Modal state signals
+  showBlockedUsersModal = signal<boolean>(false);
+  showRecentLoginsModal = signal<boolean>(false);
+  blockedUsersList = signal<any[]>([]);
+  recentLoginsList = signal<any[]>([]);
 
   // Available tabs based on role
   availableTabs = computed(() => {
@@ -1211,20 +1636,23 @@ export class SettingsComponent implements OnInit {
   // Account management methods
   viewBlockedUsers() {
     const blockedUsers = this.userData()?.blocked || [];
-    if (blockedUsers.length === 0) {
-      console.log('No blocked users found');
-      // TODO: Show modal or navigate to blocked users page
-    } else {
-      console.log('Blocked users:', blockedUsers);
-      // TODO: Show modal with blocked users list
-    }
+    this.blockedUsersList.set(blockedUsers);
+    this.showBlockedUsersModal.set(true);
   }
 
   viewRecentLogins() {
     const devices = this.userData()?.device || [];
-    console.log('Recent login devices:', devices);
-    // TODO: Show modal with recent login history
-    // Could fetch from a separate login history collection
+    this.recentLoginsList.set(devices);
+    this.showRecentLoginsModal.set(true);
+  }
+
+  // Modal management methods
+  closeBlockedUsersModal() {
+    this.showBlockedUsersModal.set(false);
+  }
+
+  closeRecentLoginsModal() {
+    this.showRecentLoginsModal.set(false);
   }
 
   async logoutAllDevices() {
@@ -1260,5 +1688,144 @@ export class SettingsComponent implements OnInit {
     
     console.log('Delete account flow initiated');
     // For now, just log - this is a dangerous operation that needs careful implementation
+  }
+
+  // Helper methods for blocked users modal
+  getBlockedUserInitial(blockedUser: any): string {
+    // For now, return first letter of blockedBy ID
+    // In a real implementation, you'd fetch user details
+    return blockedUser.blockedBy?.[0]?.toUpperCase() || 'U';
+  }
+
+  getBlockedUserName(blockedUser: any): string {
+    // For now, return the ID
+    // In a real implementation, you'd fetch user details from user service
+    return blockedUser.blockedBy || 'Unknown User';
+  }
+
+  formatBlockedDate(date: any): string {
+    if (!date) return 'Unknown';
+    
+    try {
+      const blockedDate = date.toDate ? date.toDate() : new Date(date);
+      const now = new Date();
+      const diffTime = now.getTime() - blockedDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'today';
+      if (diffDays === 1) return 'yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+      return `${Math.floor(diffDays / 365)} years ago`;
+    } catch {
+      return 'Unknown';
+    }
+  }
+
+  async unblockUser(blockedUser: any) {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    try {
+      const currentUserData = this.userData();
+      if (!currentUserData) return;
+
+      // Remove the blocked user from the blocked list
+      const updatedBlocked = (currentUserData.blocked || []).filter(
+        (blocked: any) => blocked.blockedBy !== blockedUser.blockedBy
+      );
+
+      const userDocRef = doc(this.firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        blocked: updatedBlocked,
+      });
+
+      // Update local state
+      this.userData.set({
+        ...currentUserData,
+        blocked: updatedBlocked
+      });
+
+      // Update modal list
+      this.blockedUsersList.set(updatedBlocked);
+
+      console.log(`✓ Unblocked user: ${blockedUser.blockedBy}`);
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+    }
+  }
+
+  // Helper methods for recent logins modal
+  getDeviceIcon(platform: string): string {
+    switch (platform?.toLowerCase()) {
+      case 'web':
+      case 'browser':
+        return '🌐';
+      case 'ios':
+      case 'iphone':
+      case 'ipad':
+        return '📱';
+      case 'android':
+        return '📱';
+      case 'desktop':
+      case 'electron':
+        return '💻';
+      default:
+        return '📱';
+    }
+  }
+
+  getDeviceDisplayName(device: any): string {
+    if (device.model) {
+      return device.model;
+    }
+    
+    switch (device.platform?.toLowerCase()) {
+      case 'web':
+      case 'browser':
+        return 'Web Browser';
+      case 'ios':
+        return 'iPhone/iPad';
+      case 'android':
+        return 'Android Device';
+      case 'desktop':
+        return 'Desktop App';
+      default:
+        return 'Unknown Device';
+    }
+  }
+
+  // Subscription management methods
+  upgradeSubscription() {
+    // TODO: Implement subscription upgrade flow
+    // This would involve:
+    // 1. Redirecting to payment gateway
+    // 2. Processing payment
+    // 3. Updating user subscription status
+    console.log('✓ Upgrade subscription initiated');
+    // For now, just show success message
+  }
+
+  manageSubscription() {
+    // TODO: Implement subscription management
+    // This could show a modal or redirect to billing portal
+    // Features to include:
+    // - Change payment method
+    // - Update billing address
+    // - Cancel subscription
+    // - Download invoices
+    console.log('✓ Manage subscription opened');
+  }
+
+  viewPaymentHistory() {
+    // TODO: Implement payment history view
+    // This could show a modal with:
+    // - List of past payments
+    // - Invoice downloads
+    // - Receipt downloads
+    // - Payment method used
+    // - Status of each payment
+    console.log('✓ Payment history opened');
   }
 }
