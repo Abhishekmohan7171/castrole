@@ -1,6 +1,7 @@
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { Discover, PostType } from '../../assets/interfaces/discover.interface';
 
 @Component({
   selector: 'app-discover-feed',
@@ -66,7 +67,7 @@ import { ActivatedRoute } from '@angular/router';
               <!-- Image -->
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
                 <img 
-                  [src]="item.image" 
+                  [src]="item.imageUrl" 
                   [alt]="item.title"
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
@@ -90,7 +91,7 @@ import { ActivatedRoute } from '@angular/router';
                 <!-- Image section -->
                 <div class="relative aspect-video lg:aspect-auto lg:min-h-[400px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
                   <img 
-                    [src]="item.image" 
+                    [src]="item.imageUrl" 
                     [alt]="item.title"
                     class="w-full h-full object-cover"
                     loading="lazy"
@@ -117,7 +118,7 @@ import { ActivatedRoute } from '@angular/router';
                         {{ item.subtitle }}
                       </h2>
                       <p class="text-base text-neutral-300 leading-relaxed">
-                        {{ item.description }}
+                        {{ item.content }}
                       </p>
                     </div>
                   </div>
@@ -161,78 +162,147 @@ export class FeedComponent {
   search = '';
   expandedCardId: string | null = null;
 
-  private actorItems = [
+  private actorItems: Discover[] = [
     { 
-      id: 'a1', 
+      id: 'a1',
+      authorId: 'auth001',
+      authorName: 'Film News Daily',
+      postDate: new Date('2024-10-28'),
       title: 'director of Manache Shlok renaming the film after it was halted, actor anjali Sivaraman responding to trolls',
       subtitle: 'tiger shroff new film lion captured by zoo in luthiana',
-      description: 'Today\'s film news includes the Malayalam film Kalamkaval receiving a U/A 16+ certificate, the Hindi film Thamma continuing its box office run, and several celebrity updates including Priyanka Chopra\'s birthday wish for Parineeti Chopra and an apology from Lucky Ali to Javed Akhtar. In Hollywood, the Evil Dead Burn sequel has finished shooting and Tron: Ares debuted at the box office.',
-      image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800',
-      tag: 'news',
-      category: 'news'
+      content: 'Today\'s film news includes the Malayalam film Kalamkaval receiving a U/A 16+ certificate, the Hindi film Thamma continuing its box office run, and several celebrity updates including Priyanka Chopra\'s birthday wish for Parineeti Chopra and an apology from Lucky Ali to Javed Akhtar. In Hollywood, the Evil Dead Burn sequel has finished shooting and Tron: Ares debuted at the box office.',
+      imageUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400',
+      category: 'news',
+      tags: ['news', 'film', 'bollywood'],
+      type: PostType.article,
+      isFeatured: true,
+      isActive: true,
+      createdAt: new Date('2024-10-28'),
+      updatedAt: new Date('2024-10-28')
     },
     { 
-      id: 'a2', 
+      id: 'a2',
+      authorId: 'auth002',
+      authorName: 'Casting Director',
+      postDate: new Date('2024-10-25'),
       title: 'Web series supporting cast needed',
       subtitle: 'Female, 22-35 • Remote • Paid',
-      description: 'Looking for talented actors for a new web series. This is a paid opportunity with flexible shooting schedules. The role requires strong dramatic skills and comfort with emotional scenes.',
-      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800',
-      tag: 'audition',
-      category: 'all'
+      content: 'Looking for talented actors for a new web series. This is a paid opportunity with flexible shooting schedules. The role requires strong dramatic skills and comfort with emotional scenes.',
+      imageUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400',
+      category: 'all',
+      tags: ['audition', 'web-series', 'paid'],
+      type: PostType.text,
+      isFeatured: false,
+      location: 'Remote',
+      isActive: true,
+      createdAt: new Date('2024-10-25'),
+      updatedAt: new Date('2024-10-25')
     },
     { 
-      id: 'a3', 
+      id: 'a3',
+      authorId: 'auth003',
+      authorName: 'Ad Agency',
+      postDate: new Date('2024-10-26'),
       title: 'TV ad - fitness brand campaign',
       subtitle: 'All genders, 18-28 • Bangalore • Paid',
-      description: 'Major fitness brand looking for energetic talent for upcoming TV commercial. 2-day shoot in Bangalore. Competitive compensation and great exposure opportunity.',
-      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
-      tag: 'ad',
-      category: 'trending'
+      content: 'Major fitness brand looking for energetic talent for upcoming TV commercial. 2-day shoot in Bangalore. Competitive compensation and great exposure opportunity.',
+      imageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400',
+      category: 'trending',
+      tags: ['ad', 'fitness', 'commercial'],
+      type: PostType.ad,
+      isFeatured: true,
+      location: 'Bangalore',
+      isActive: true,
+      createdAt: new Date('2024-10-26'),
+      updatedAt: new Date('2024-10-26')
     },
     { 
-      id: 'a4', 
+      id: 'a4',
+      authorId: 'auth004',
+      authorName: 'Acting Academy',
+      postDate: new Date('2024-10-20'),
       title: 'Academic workshop on method acting',
       subtitle: 'All levels • Online • Free',
-      description: 'Join renowned acting coach for an intensive workshop on method acting techniques. Learn from industry professionals and enhance your craft.',
-      image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800',
-      tag: 'workshop',
-      category: 'academic'
+      content: 'Join renowned acting coach for an intensive workshop on method acting techniques. Learn from industry professionals and enhance your craft.',
+      imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400',
+      category: 'academic',
+      tags: ['workshop', 'training', 'method-acting'],
+      type: PostType.text,
+      isFeatured: false,
+      location: 'Online',
+      isActive: true,
+      createdAt: new Date('2024-10-20'),
+      updatedAt: new Date('2024-10-20')
     },
   ];
 
-  private producerItems = [
+  private producerItems: Discover[] = [
     { 
-      id: 'p1', 
+      id: 'p1',
+      authorId: 'actor001',
+      authorName: 'Arjun K',
+      postDate: new Date('2024-10-15'),
       title: 'Arjun K • 5y experience',
       subtitle: 'Action | Drama | Hindi, English',
-      description: 'Versatile actor with 5 years of experience in action and drama genres. Fluent in Hindi and English. Based in Mumbai with strong portfolio in commercial and independent films.',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-      tag: 'actor',
-      category: 'all'
+      content: 'Versatile actor with 5 years of experience in action and drama genres. Fluent in Hindi and English. Based in Mumbai with strong portfolio in commercial and independent films.',
+      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+      category: 'all',
+      tags: ['actor', 'action', 'drama'],
+      type: PostType.text,
+      isFeatured: false,
+      location: 'Mumbai',
+      isActive: true,
+      createdAt: new Date('2024-10-15'),
+      updatedAt: new Date('2024-10-15')
     },
     { 
-      id: 'p2', 
+      id: 'p2',
+      authorId: 'actor002',
+      authorName: 'Meera S',
+      postDate: new Date('2024-10-18'),
       title: 'Meera S • 3y experience',
       subtitle: 'Romance | Comedy | Tamil, Telugu',
-      description: 'Talented actress specializing in romantic comedies. 3 years of experience in Tamil and Telugu cinema. Known for natural acting style and strong screen presence.',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
-      tag: 'actor',
-      category: 'trending'
+      content: 'Talented actress specializing in romantic comedies. 3 years of experience in Tamil and Telugu cinema. Known for natural acting style and strong screen presence.',
+      imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+      category: 'trending',
+      tags: ['actor', 'romance', 'comedy'],
+      type: PostType.text,
+      isFeatured: true,
+      location: 'Chennai',
+      isActive: true,
+      createdAt: new Date('2024-10-18'),
+      updatedAt: new Date('2024-10-18')
     },
     { 
-      id: 'p3', 
+      id: 'p3',
+      authorId: 'actor003',
+      authorName: 'Ravi T',
+      postDate: new Date('2024-10-22'),
       title: 'Ravi T • Newcomer',
       subtitle: 'Theatre | Hindi',
-      description: 'Fresh talent from Delhi theatre scene. Strong foundation in classical acting techniques. Looking for breakthrough role in Hindi cinema.',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800',
-      tag: 'actor',
-      category: 'news'
+      content: 'Fresh talent from Delhi theatre scene. Strong foundation in classical acting techniques. Looking for breakthrough role in Hindi cinema.',
+      imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+      category: 'news',
+      tags: ['actor', 'theatre', 'newcomer'],
+      type: PostType.text,
+      isFeatured: false,
+      location: 'Delhi',
+      isActive: true,
+      createdAt: new Date('2024-10-22'),
+      updatedAt: new Date('2024-10-22')
     },
   ];
 
   get items() { return this.role === 'actor' ? this.actorItems : this.producerItems; }
 
-  get filteredItems() {
+  get filteredItems(): Discover[] {
     const q = this.search.trim().toLowerCase();
     let base = this.items;
     
@@ -243,7 +313,13 @@ export class FeedComponent {
     
     // Filter by search
     if (q) {
-      base = base.filter(i => [i.title, i.subtitle, i.description, i.tag].some(v => (v || '').toLowerCase().includes(q)));
+      base = base.filter(i => [
+        i.title,
+        i.subtitle,
+        i.content,
+        i.authorName,
+        ...(i.tags || [])
+      ].some(v => (v || '').toLowerCase().includes(q)));
     }
     
     return base;
@@ -261,7 +337,7 @@ export class FeedComponent {
 
   onSearch(q: string) { this.search = q; }
 
-  onPrimary(item: any) {
+  onPrimary(item: Discover) {
     if (this.role === 'actor') {
       // Apply logic
     } else {
