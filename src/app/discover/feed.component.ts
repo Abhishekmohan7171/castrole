@@ -8,7 +8,7 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen">
+    <div class="min-h-screen" (keydown)="onKeyDown($event)" tabindex="0">
       <!-- Tabs -->
       <section class="mb-8">
         <div class="flex flex-wrap items-center justify-center gap-3">
@@ -58,12 +58,10 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
       <!-- Content grid -->
       <section>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <ng-container *ngFor="let item of filteredItems">
-            <!-- Collapsed card -->
+          <ng-container *ngFor="let item of filteredItems; let i = index">
             <article 
-              *ngIf="!isExpanded(item.id)"
               class="group rounded-2xl bg-neutral-900/40 backdrop-blur-sm border border-white/5 overflow-hidden cursor-pointer transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-xl hover:shadow-black/20"
-              (click)="toggleCard(item.id)">
+              (click)="openModal(i)">
               <!-- Image -->
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
                 <img 
@@ -82,58 +80,6 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
                 </h3>
               </div>
             </article>
-
-            <!-- Expanded card -->
-            <article 
-              *ngIf="isExpanded(item.id)"
-              class="md:col-span-2 lg:col-span-3 rounded-2xl bg-neutral-900/60 backdrop-blur-sm border border-white/10 overflow-hidden shadow-2xl shadow-black/40 transition-all duration-300">
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                <!-- Image section -->
-                <div class="relative aspect-video lg:aspect-auto lg:min-h-[400px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
-                  <img 
-                    [src]="item.imageUrl" 
-                    [alt]="item.title"
-                    class="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-                  
-                  <!-- Close button -->
-                  <button 
-                    type="button"
-                    class="absolute top-4 right-4 p-2 rounded-full bg-black/60 backdrop-blur-sm text-neutral-300 hover:text-white hover:bg-black/80 transition-all duration-200 ring-1 ring-white/10"
-                    (click)="toggleCard(item.id); $event.stopPropagation()">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Content section -->
-                <div class="p-8 lg:p-10 flex flex-col justify-between">
-                  <div class="space-y-6">
-                    <div>
-                      <h2 class="text-2xl lg:text-3xl font-bold text-neutral-100 mb-3 leading-tight">
-                        {{ item.subtitle }}
-                      </h2>
-                      <p class="text-base text-neutral-300 leading-relaxed">
-                        {{ item.content }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div class="mt-8 flex items-center justify-end">
-                    <button 
-                      type="button"
-                      class="px-6 py-3 rounded-full bg-indigo-500/20 text-indigo-200 font-medium text-sm ring-2 ring-indigo-500/40 hover:bg-indigo-500/30 hover:ring-indigo-500/60 transition-all duration-200"
-                      (click)="$event.stopPropagation()">
-                      go to page
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
           </ng-container>
         </div>
 
@@ -149,9 +95,160 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
           <p class="text-neutral-600 text-sm mt-2">Try adjusting your filters</p>
         </div>
       </section>
+
+      <!-- Modal Overlay -->
+      <div 
+        *ngIf="isModalOpen && currentCard"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 lg:p-8"
+        (click)="closeModal()">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+
+        <!-- Modal Content -->
+        <div 
+          class="relative w-full max-w-6xl max-h-[90vh] rounded-2xl bg-neutral-900/95 backdrop-blur-md border border-white/10 overflow-hidden shadow-2xl shadow-black/60 animate-fadeIn"
+          (click)="$event.stopPropagation()">
+          
+          <!-- Close Button -->
+          <button 
+            type="button"
+            class="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/60 backdrop-blur-sm text-neutral-300 hover:text-white hover:bg-black/80 transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20"
+            (click)="closeModal()"
+            aria-label="Close modal">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Navigation Arrows -->
+          <button 
+            type="button"
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-black/60 backdrop-blur-sm text-neutral-300 hover:text-white hover:bg-black/80 transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+            (click)="previousCard()"
+            [disabled]="filteredItems.length <= 1"
+            aria-label="Previous card">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+
+          <button 
+            type="button"
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-black/60 backdrop-blur-sm text-neutral-300 hover:text-white hover:bg-black/80 transition-all duration-200 ring-1 ring-white/10 hover:ring-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+            (click)="nextCard()"
+            [disabled]="filteredItems.length <= 1"
+            aria-label="Next card">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+
+          <!-- Modal Body -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 max-h-[90vh] overflow-y-auto">
+            <!-- Image Section -->
+            <div class="relative aspect-video lg:aspect-auto lg:min-h-[500px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+              <img 
+                [src]="currentCard.imageUrl" 
+                [alt]="currentCard.title"
+                class="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+            </div>
+
+            <!-- Content Section -->
+            <div class="p-8 lg:p-12 flex flex-col justify-between">
+              <div class="space-y-6">
+                <!-- Author & Date -->
+                <div class="flex items-center gap-3 text-sm text-neutral-400">
+                  <span>{{ currentCard.authorName }}</span>
+                  <span class="h-1 w-1 rounded-full bg-neutral-600"></span>
+                  <span>{{ currentCard.postDate | date:'MMM d, y' }}</span>
+                </div>
+
+                <!-- Title & Content -->
+                <div>
+                  <h2 class="text-2xl lg:text-3xl font-bold text-neutral-100 mb-4 leading-tight">
+                    {{ currentCard.subtitle }}
+                  </h2>
+                  <p class="text-base text-neutral-300 leading-relaxed">
+                    {{ currentCard.content }}
+                  </p>
+                </div>
+
+                <!-- Tags -->
+                <div *ngIf="currentCard.tags && currentCard.tags.length > 0" class="flex flex-wrap gap-2">
+                  <span 
+                    *ngFor="let tag of currentCard.tags"
+                    class="px-3 py-1 text-xs rounded-full bg-neutral-800/60 text-neutral-300 ring-1 ring-white/10">
+                    {{ tag }}
+                  </span>
+                </div>
+
+                <!-- Location -->
+                <div *ngIf="currentCard.location" class="flex items-center gap-2 text-sm text-neutral-400">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>{{ currentCard.location }}</span>
+                </div>
+              </div>
+
+              <!-- Action Button -->
+              <div class="mt-8 flex items-center justify-end gap-4">
+                <button 
+                  type="button"
+                  class="px-6 py-3 rounded-full bg-indigo-500/20 text-indigo-200 font-medium text-sm ring-2 ring-indigo-500/40 hover:bg-indigo-500/30 hover:ring-indigo-500/60 transition-all duration-200">
+                  go to page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
-  styles: []
+  styles: [`
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    /* Smooth scroll for modal content */
+    .max-h-\\[90vh\\] {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .max-h-\\[90vh\\]::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .max-h-\\[90vh\\]::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .max-h-\\[90vh\\]::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .max-h-\\[90vh\\]::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+  `]
 })
 export class FeedComponent {
   private route = inject(ActivatedRoute);
@@ -160,7 +257,8 @@ export class FeedComponent {
   role: 'actor' | 'producer' = 'actor';
   tab: 'all' | 'academic' | 'news' | 'trending' = 'all';
   search = '';
-  expandedCardId: string | null = null;
+  currentModalIndex: number | null = null;
+  isModalOpen = false;
 
   private actorItems: Discover[] = [
     { 
@@ -345,11 +443,50 @@ export class FeedComponent {
     }
   }
 
-  toggleCard(itemId: string) {
-    this.expandedCardId = this.expandedCardId === itemId ? null : itemId;
+  openModal(index: number) {
+    this.currentModalIndex = index;
+    this.isModalOpen = true;
+    document.body.style.overflow = 'hidden'; // Prevent background scroll
   }
 
-  isExpanded(itemId: string): boolean {
-    return this.expandedCardId === itemId;
+  closeModal() {
+    this.isModalOpen = false;
+    this.currentModalIndex = null;
+    document.body.style.overflow = ''; // Restore scroll
+  }
+
+  nextCard() {
+    if (this.currentModalIndex === null) return;
+    const nextIndex = (this.currentModalIndex + 1) % this.filteredItems.length;
+    this.currentModalIndex = nextIndex;
+  }
+
+  previousCard() {
+    if (this.currentModalIndex === null) return;
+    const prevIndex = this.currentModalIndex === 0 
+      ? this.filteredItems.length - 1 
+      : this.currentModalIndex - 1;
+    this.currentModalIndex = prevIndex;
+  }
+
+  get currentCard(): Discover | null {
+    if (this.currentModalIndex === null) return null;
+    return this.filteredItems[this.currentModalIndex] || null;
+  }
+
+  onKeyDown(event: KeyboardEvent) {
+    if (!this.isModalOpen) return;
+    
+    switch(event.key) {
+      case 'Escape':
+        this.closeModal();
+        break;
+      case 'ArrowLeft':
+        this.previousCard();
+        break;
+      case 'ArrowRight':
+        this.nextCard();
+        break;
+    }
   }
 }
