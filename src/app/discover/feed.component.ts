@@ -1,88 +1,154 @@
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-discover-feed',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   template: `
-    <!-- Search + tabs -->
-    <section>
-      <div class="flex flex-col gap-4">
-        <!-- Search -->
-        <div class="relative max-w-xl w-full">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <div class="min-h-screen">
+      <!-- Tabs -->
+      <section class="mb-8">
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <button 
+            type="button" 
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            [ngClass]="{
+              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'all',
+              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'all'
+            }"
+            (click)="tab='all'">
+            all
+          </button>
+          <button 
+            type="button" 
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            [ngClass]="{
+              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'academic',
+              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'academic'
+            }"
+            (click)="tab='academic'">
+            academic
+          </button>
+          <button 
+            type="button" 
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            [ngClass]="{
+              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'news',
+              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'news'
+            }"
+            (click)="tab='news'">
+            news
+          </button>
+          <button 
+            type="button" 
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            [ngClass]="{
+              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'trending',
+              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'trending'
+            }"
+            (click)="tab='trending'">
+            trending
+          </button>
+        </div>
+      </section>
+
+      <!-- Content grid -->
+      <section>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ng-container *ngFor="let item of filteredItems">
+            <!-- Collapsed card -->
+            <article 
+              *ngIf="!isExpanded(item.id)"
+              class="group rounded-2xl bg-neutral-900/40 backdrop-blur-sm border border-white/5 overflow-hidden cursor-pointer transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-xl hover:shadow-black/20"
+              (click)="toggleCard(item.id)">
+              <!-- Image -->
+              <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+                <img 
+                  [src]="item.image" 
+                  [alt]="item.title"
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              </div>
+
+              <!-- Content -->
+              <div class="p-5">
+                <h3 class="text-sm font-medium text-neutral-200 line-clamp-2 leading-relaxed">
+                  {{ item.title }}
+                </h3>
+              </div>
+            </article>
+
+            <!-- Expanded card -->
+            <article 
+              *ngIf="isExpanded(item.id)"
+              class="md:col-span-2 lg:col-span-3 rounded-2xl bg-neutral-900/60 backdrop-blur-sm border border-white/10 overflow-hidden shadow-2xl shadow-black/40 transition-all duration-300">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                <!-- Image section -->
+                <div class="relative aspect-video lg:aspect-auto lg:min-h-[400px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+                  <img 
+                    [src]="item.image" 
+                    [alt]="item.title"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                  
+                  <!-- Close button -->
+                  <button 
+                    type="button"
+                    class="absolute top-4 right-4 p-2 rounded-full bg-black/60 backdrop-blur-sm text-neutral-300 hover:text-white hover:bg-black/80 transition-all duration-200 ring-1 ring-white/10"
+                    (click)="toggleCard(item.id); $event.stopPropagation()">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Content section -->
+                <div class="p-8 lg:p-10 flex flex-col justify-between">
+                  <div class="space-y-6">
+                    <div>
+                      <h2 class="text-2xl lg:text-3xl font-bold text-neutral-100 mb-3 leading-tight">
+                        {{ item.subtitle }}
+                      </h2>
+                      <p class="text-base text-neutral-300 leading-relaxed">
+                        {{ item.description }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="mt-8 flex items-center justify-end">
+                    <button 
+                      type="button"
+                      class="px-6 py-3 rounded-full bg-indigo-500/20 text-indigo-200 font-medium text-sm ring-2 ring-indigo-500/40 hover:bg-indigo-500/30 hover:ring-indigo-500/60 transition-all duration-200"
+                      (click)="$event.stopPropagation()">
+                      go to page
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </ng-container>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="filteredItems.length === 0" class="text-center py-20">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-neutral-800/50 ring-1 ring-white/10 mb-4">
+            <svg class="h-8 w-8 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-3.5-3.5" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
-          </span>
-          <input
-            type="search"
-            placeholder="search roles, projects, people..."
-            class="w-full bg-neutral-900/70 text-neutral-200 placeholder-neutral-500 rounded-full pl-11 pr-4 py-2 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/40 transition"
-            (input)="onSearch($any($event.target).value)"
-          />
+          </div>
+          <p class="text-neutral-400 text-lg">No results found</p>
+          <p class="text-neutral-600 text-sm mt-2">Try adjusting your filters</p>
         </div>
-
-        <!-- Tabs -->
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='foryou'}" (click)="tab='foryou'">for you</button>
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='trending'}" (click)="tab='trending'">trending</button>
-          <button type="button" class="px-4 py-2 rounded-full text-sm ring-1 ring-white/10" [ngClass]="{'bg-white/10': tab==='new'}" (click)="tab='new'">new</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Content grid -->
-    <section class="mt-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <ng-container *ngFor="let item of filteredItems">
-          <article class="group rounded-2xl bg-neutral-900/60 border border-white/5 p-4 flex flex-col gap-4 ring-1 ring-white/10 hover:ring-white/20 transition">
-            <!-- Thumbnail / avatar -->
-            <div class="aspect-video rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 ring-1 ring-white/10 flex items-center justify-center text-neutral-500">
-              <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8 6h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8" />
-                <path d="M6 18 2 12 6 6v12Z" />
-              </svg>
-            </div>
-
-            <div class="flex-1 flex flex-col gap-2">
-              <div class="flex items-start justify-between gap-3">
-                <h3 class="text-base font-semibold text-neutral-100 line-clamp-2">{{ item.title }}</h3>
-                <span class="text-xs px-2 py-1 rounded-full ring-1 ring-white/10"
-                      [ngClass]="{
-                        'bg-emerald-500/10 text-emerald-300': role==='actor',
-                        'bg-indigo-500/10 text-indigo-300': role==='producer'
-                      }">
-                  {{ item.tag }}
-                </span>
-              </div>
-
-              <p class="text-sm text-neutral-400 line-clamp-2">{{ item.subtitle }}</p>
-
-              <div class="mt-1 text-xs text-neutral-500 flex items-center gap-3">
-                <span class="truncate">{{ item.metaA }}</span>
-                <span class="h-1 w-1 rounded-full bg-neutral-700"></span>
-                <span class="truncate">{{ item.metaB }}</span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <button type="button" class="flex-1 rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition"
-                      (click)="onPrimary(item)">
-                {{ primaryCtaLabel }}
-              </button>
-              <a routerLink="/" class="rounded-full px-4 py-2 text-sm ring-1 ring-white/10 text-neutral-300 hover:text-white transition">details</a>
-            </div>
-          </article>
-        </ng-container>
-      </div>
-
-      <!-- Empty state -->
-      <div *ngIf="filteredItems.length === 0" class="text-center text-neutral-500 py-20">No results</div>
-    </section>
+      </section>
+    </div>
   `,
   styles: []
 })
@@ -91,28 +157,96 @@ export class FeedComponent {
   private platformId = inject(PLATFORM_ID);
 
   role: 'actor' | 'producer' = 'actor';
-  tab: 'foryou' | 'trending' | 'new' = 'foryou';
+  tab: 'all' | 'academic' | 'news' | 'trending' = 'all';
   search = '';
+  expandedCardId: string | null = null;
 
   private actorItems = [
-    { id: 'a1', title: 'Lead role in indie drama', subtitle: 'Male, 20-30 • Mumbai • Paid', tag: 'audition', metaA: 'Deadline: Sep 30', metaB: 'Applicants: 124' },
-    { id: 'a2', title: 'Web series supporting cast', subtitle: 'Female, 22-35 • Remote • Paid', tag: 'audition', metaA: 'Deadline: Oct 10', metaB: 'Applicants: 89' },
-    { id: 'a3', title: 'TV ad - fitness brand', subtitle: 'All genders, 18-28 • Bangalore • Paid', tag: 'ad', metaA: 'Shoot: 2 days', metaB: 'Applicants: 210' },
+    { 
+      id: 'a1', 
+      title: 'director of Manache Shlok renaming the film after it was halted, actor anjali Sivaraman responding to trolls',
+      subtitle: 'tiger shroff new film lion captured by zoo in luthiana',
+      description: 'Today\'s film news includes the Malayalam film Kalamkaval receiving a U/A 16+ certificate, the Hindi film Thamma continuing its box office run, and several celebrity updates including Priyanka Chopra\'s birthday wish for Parineeti Chopra and an apology from Lucky Ali to Javed Akhtar. In Hollywood, the Evil Dead Burn sequel has finished shooting and Tron: Ares debuted at the box office.',
+      image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800',
+      tag: 'news',
+      category: 'news'
+    },
+    { 
+      id: 'a2', 
+      title: 'Web series supporting cast needed',
+      subtitle: 'Female, 22-35 • Remote • Paid',
+      description: 'Looking for talented actors for a new web series. This is a paid opportunity with flexible shooting schedules. The role requires strong dramatic skills and comfort with emotional scenes.',
+      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800',
+      tag: 'audition',
+      category: 'all'
+    },
+    { 
+      id: 'a3', 
+      title: 'TV ad - fitness brand campaign',
+      subtitle: 'All genders, 18-28 • Bangalore • Paid',
+      description: 'Major fitness brand looking for energetic talent for upcoming TV commercial. 2-day shoot in Bangalore. Competitive compensation and great exposure opportunity.',
+      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
+      tag: 'ad',
+      category: 'trending'
+    },
+    { 
+      id: 'a4', 
+      title: 'Academic workshop on method acting',
+      subtitle: 'All levels • Online • Free',
+      description: 'Join renowned acting coach for an intensive workshop on method acting techniques. Learn from industry professionals and enhance your craft.',
+      image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800',
+      tag: 'workshop',
+      category: 'academic'
+    },
   ];
 
   private producerItems = [
-    { id: 'p1', title: 'Arjun K • 5y experience', subtitle: 'Action | Drama | Hindi, English', tag: 'actor', metaA: 'Mumbai', metaB: 'Shortlist score: 92' },
-    { id: 'p2', title: 'Meera S • 3y experience', subtitle: 'Romance | Comedy | Tamil, Telugu', tag: 'actor', metaA: 'Chennai', metaB: 'Shortlist score: 88' },
-    { id: 'p3', title: 'Ravi T • Newcomer', subtitle: 'Theatre | Hindi', tag: 'actor', metaA: 'Delhi', metaB: 'Shortlist score: 76' },
+    { 
+      id: 'p1', 
+      title: 'Arjun K • 5y experience',
+      subtitle: 'Action | Drama | Hindi, English',
+      description: 'Versatile actor with 5 years of experience in action and drama genres. Fluent in Hindi and English. Based in Mumbai with strong portfolio in commercial and independent films.',
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
+      tag: 'actor',
+      category: 'all'
+    },
+    { 
+      id: 'p2', 
+      title: 'Meera S • 3y experience',
+      subtitle: 'Romance | Comedy | Tamil, Telugu',
+      description: 'Talented actress specializing in romantic comedies. 3 years of experience in Tamil and Telugu cinema. Known for natural acting style and strong screen presence.',
+      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
+      tag: 'actor',
+      category: 'trending'
+    },
+    { 
+      id: 'p3', 
+      title: 'Ravi T • Newcomer',
+      subtitle: 'Theatre | Hindi',
+      description: 'Fresh talent from Delhi theatre scene. Strong foundation in classical acting techniques. Looking for breakthrough role in Hindi cinema.',
+      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800',
+      tag: 'actor',
+      category: 'news'
+    },
   ];
 
   get items() { return this.role === 'actor' ? this.actorItems : this.producerItems; }
 
   get filteredItems() {
     const q = this.search.trim().toLowerCase();
-    const base = this.items;
-    if (!q) return base;
-    return base.filter(i => [i.title, i.subtitle, i.tag, i.metaA, i.metaB].some(v => (v || '').toLowerCase().includes(q)));
+    let base = this.items;
+    
+    // Filter by tab
+    if (this.tab !== 'all') {
+      base = base.filter(i => i.category === this.tab);
+    }
+    
+    // Filter by search
+    if (q) {
+      base = base.filter(i => [i.title, i.subtitle, i.description, i.tag].some(v => (v || '').toLowerCase().includes(q)));
+    }
+    
+    return base;
   }
 
   get primaryCtaLabel() { return this.role === 'actor' ? 'apply' : 'shortlist'; }
@@ -129,9 +263,17 @@ export class FeedComponent {
 
   onPrimary(item: any) {
     if (this.role === 'actor') {
-      console.log('[discover] apply', item);
+      // Apply logic
     } else {
-      console.log('[discover] shortlist', item);
+      // Shortlist logic
     }
+  }
+
+  toggleCard(itemId: string) {
+    this.expandedCardId = this.expandedCardId === itemId ? null : itemId;
+  }
+
+  isExpanded(itemId: string): boolean {
+    return this.expandedCardId === itemId;
   }
 }
