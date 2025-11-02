@@ -8,6 +8,7 @@ import {
   doc,
   docData,
   getDoc,
+  getDocs,
   orderBy,
   query,
   serverTimestamp,
@@ -16,7 +17,8 @@ import {
   updateDoc,
   where,
   increment,
-  limit as firestoreLimit
+  limit as firestoreLimit,
+  writeBatch
 } from '@angular/fire/firestore';
 import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay, distinctUntilChanged } from 'rxjs';
 import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
@@ -90,6 +92,8 @@ export class ChatService {
       timestamp,
       read: false,
       messageType: 'text',
+      deliveredAt: null,
+      readAt: null,
     };
     const created = await addDoc(msgRef, message);
 
@@ -274,8 +278,117 @@ export class ChatService {
   async markMessagesAsRead(roomId: string, userId: string): Promise<void> {
     try {
       await this.markAllAsRead(roomId, userId);
+      // Also mark messages as seen (read receipts)
+      await this.markMessagesAsSeen(roomId, userId);
     } catch (error) {
       console.error('Error marking messages as read:', error);
+    }
+  }
+
+  // Mark messages as delivered (when receiver's app loads the messages)
+  async markMessagesAsDelivered(roomId: string, receiverId: string): Promise<void> {
+    try {
+      const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
+      // Get all messages for this receiver
+      const q = query(
+        msgsRef,
+        where('receiverId', '==', receiverId)
+      );
+      
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(this.db);
+      let updateCount = 0;
+      
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Only update if deliveredAt is not set
+        if (!data['deliveredAt']) {
+          batch.update(docSnap.ref, {
+            deliveredAt: serverTimestamp()
+          });
+          updateCount++;
+        }
+      });
+      
+      if (updateCount > 0) {
+        await batch.commit();
+        console.log(`✓ Marked ${updateCount} messages as delivered for receiver: ${receiverId} in room: ${roomId}`);
+      }
+    } catch (error) {
+      console.error('Error marking messages as delivered:', error);
+    }
+  }
+
+  // Mark messages as seen (when user opens the conversation)
+  // Simplified approach: Get all messages and filter in code
+  // Respects user's read receipts setting
+  async markMessagesAsSeen(roomId: string, receiverId: string): Promise<void> {
+    try {
+      // Check if user has read receipts enabled
+      const userRef = doc(this.db, 'users', receiverId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      
+      // Default to true if not set (backwards compatibility)
+      const readReceiptsEnabled = userData?.['readReceipts'] !== false;
+      
+      if (!readReceiptsEnabled) {
+        console.log(`ℹ️ Read receipts disabled for user: ${receiverId}`);
+        // Still mark as read for unread count, but don't set readAt timestamp
+        const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
+        const q = query(msgsRef, where('receiverId', '==', receiverId));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(this.db);
+        let updateCount = 0;
+        
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (!data['read']) {
+            batch.update(docSnap.ref, {
+              read: true,
+              // Don't set readAt - this prevents blue ticks
+              ...(!data['deliveredAt'] && { deliveredAt: serverTimestamp() })
+            });
+            updateCount++;
+          }
+        });
+        
+        if (updateCount > 0) {
+          await batch.commit();
+        }
+        return;
+      }
+      
+      // Read receipts enabled - normal behavior
+      const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
+      const q = query(msgsRef, where('receiverId', '==', receiverId));
+      
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(this.db);
+      let updateCount = 0;
+      
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Filter in code: only update if not already read
+        if (!data['read']) {
+          batch.update(docSnap.ref, {
+            read: true,
+            readAt: serverTimestamp(),
+            // Also mark as delivered if not already
+            ...(!data['deliveredAt'] && { deliveredAt: serverTimestamp() })
+          });
+          updateCount++;
+        }
+      });
+      
+      if (updateCount > 0) {
+        await batch.commit();
+        console.log(`✓ Marked ${updateCount} messages as seen for receiver: ${receiverId} in room: ${roomId}`);
+      } else {
+        console.log(`ℹ️ No unread messages to mark as seen for receiver: ${receiverId} in room: ${roomId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error marking messages as seen:', error);
     }
   }
 
@@ -369,16 +482,11 @@ export class ChatService {
       return this.messagesCache.get(roomId)!;
     }
     
-    // Try to get initial data from localStorage
-    const initialData = this.getCachedMessages(roomId);
-    
-    // If not in cache, create the observable and cache it
+    // Create the real-time observable
     const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
     const qMsgs = query(msgsRef, orderBy('timestamp', 'asc'), firestoreLimit(messageLimit));
     
     const result$ = collectionData(qMsgs, { idField: 'id' }).pipe(
-      // Cache the result with shareReplay
-      shareReplay(1),
       // Store data in localStorage for faster initial load
       tap((messages: any[]) => {
         try {
@@ -387,6 +495,8 @@ export class ChatService {
           // Ignore storage errors
         }
       }),
+      // Use shareReplay with refCount to allow re-subscription
+      shareReplay({ bufferSize: 1, refCount: true }),
       catchError(err => {
         console.error('Error fetching messages:', err);
         // Try to return cached messages if available
@@ -398,22 +508,10 @@ export class ChatService {
     // Store in cache
     this.messagesCache.set(roomId, result$);
 
-    // Set cache expiry
+    // Set cache expiry - shorter expiry for more real-time updates
     setTimeout(() => {
       this.messagesCache.delete(roomId);
     }, this.CACHE_EXPIRY);
-
-    // If we have initial data, return it immediately while the real data loads
-    if (initialData && initialData.length > 0) {
-      // Create a new observable that emits the cached data first, then switches to the real data
-      return of(initialData).pipe(
-        tap(() => {
-          // Subscribe to the real data in the background to update the cache
-          setTimeout(() => result$.subscribe(), 0);
-        }),
-        shareReplay(1)
-      );
-    }
 
     return result$;
   }

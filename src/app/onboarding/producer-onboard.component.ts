@@ -1,16 +1,17 @@
-import { Component, inject } from '@angular/core';
-import { OtpComponent } from '../common-components/otp/otp.component';
+import { Component, inject, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
+import { OtpVerificationService } from '../services/otp-verification.service';
+import { OtpComponent } from '../common-components/otp/otp.component';
 
 @Component({
   selector: 'app-producer-onboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, HttpClientModule, OtpComponent, LoaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule, LoaderComponent, OtpComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Loader -->
@@ -130,46 +131,85 @@ import { LoaderComponent } from '../common-components/loader/loader.component';
                   {{ c.flag }} {{ c.dialCode }} {{ c.name }}
                 </option>
               </select>
-              <div class="relative flex-1">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.12.9.33 1.77.62 2.6a2 2 0 0 1-.45 2.11l-.9.9a16 16 0 0 0 6 6l.9-.9a2 2 0 0 1 2.11-.45c.83.29 1.7.5 2.6.62A2 2 0 0 1 22 16.92Z" />
-                  </svg>
-                </span>
-                <input
-                  type="tel"
-                  formControlName="mobileNumber"
-                  inputmode="numeric"
-                  placeholder="mobile number"
-                  aria-label="mobile number"
-                  class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 transition"
-                />
+              <div class="relative flex-1 flex gap-2">
+                <div class="relative flex-1">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.12.9.33 1.77.62 2.6a2 2 0 0 1-.45 2.11l-.9.9a16 16 0 0 0 6 6l.9-.9a2 2 0 0 1 2.11-.45c.83.29 1.7.5 2.6.62A2 2 0 0 1 22 16.92Z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="tel"
+                    formControlName="mobileNumber"
+                    inputmode="numeric"
+                    placeholder="mobile number"
+                    aria-label="mobile number"
+                    class="w-full bg-neutral-800/80 text-neutral-200 placeholder-neutral-500 rounded-full pl-12 pr-4 py-3 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/50 transition"
+                  />
+                </div>
+                @if (isPhoneVerified) {
+                  <div class="flex items-center px-3 py-3 bg-green-600/20 border border-green-500/30 text-green-400 rounded-full text-sm">
+                    <svg class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    verified
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="onVerifyMobile()"
+                    [disabled]="!form.get('mobileNumber')?.value || !form.get('countryCode')?.value"
+                    class="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-neutral-600 disabled:cursor-not-allowed text-white font-medium rounded-full transition-colors text-sm whitespace-nowrap"
+                    aria-label="verify mobile number"
+                  >
+                    verify
+                  </button>
+                }
               </div>
             </div>
           </div>
 
-          <button type="button" [disabled]="form.invalid" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <!-- Error message -->
+          <div *ngIf="errorMsg" class="p-3 rounded-lg bg-red-900/20 border border-red-500/20 text-red-400 text-sm text-center">
+            {{ errorMsg }}
+          </div>
+
+          <button type="button" [disabled]="form.invalid || !isPhoneVerified" (click)="onNext()" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
             next
           </button>
         </form>
       </div>
+      
       <!-- OTP Modal -->
-      <app-otp [open]="otpOpen" (close)="otpOpen = false" (verify)="onOtpVerify($event)"></app-otp>
+      <app-otp 
+        #otpModal
+        [isOpen]="showOtpModal" 
+        [phone]="otpPhoneNumber"
+        (closeModal)="onCloseOtpModal()"
+        (otpVerified)="onOtpVerified()"
+      ></app-otp>
     </div>
   `,
   styles: []
 })
 export class ProducerOnboardComponent {
-  otpOpen = false;
   loading = false;
   showPassword = false;
+  showOtpModal = false;
+  otpPhoneNumber = '';
+  isPhoneVerified = false;
+  
+  @ViewChild('otpModal') otpModal!: OtpComponent;
+  
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private otpVerificationService = inject(OtpVerificationService);
 
   errorMsg = '';
+
 
   countryCodes: Array<{ name: string; dialCode: string; flag: string }> = [];
   // Location data and suggestions
@@ -228,10 +268,22 @@ export class ProducerOnboardComponent {
           this.locationSuggestions = [];
         },
       });
+
+    // Reset verification status when phone number changes
+    this.form.get('mobileNumber')?.valueChanges.subscribe(() => {
+      this.isPhoneVerified = false;
+    });
+    
+    this.form.get('countryCode')?.valueChanges.subscribe(() => {
+      this.isPhoneVerified = false;
+    });
   }
 
   onNext() {
-    if (this.form.invalid) return;
+    if (this.form.invalid || !this.isPhoneVerified) {
+      this.errorMsg = 'Please complete all fields and verify your phone number';
+      return;
+    }
     this.errorMsg = '';
     this.loading = true;
     const v = this.form.value as any;
@@ -249,11 +301,15 @@ export class ProducerOnboardComponent {
       productionHouse: v.productionHouse ?? '',
     };
 
+    // Check if phone number was verified via OTP
+    const isPhoneVerified = this.otpVerificationService.isPhoneVerified(phoneDisplay.replace('-', ''));
+
     if (current) {
       // Provider user is already authenticated: link email/password and upsert profile
       this.auth.onboardProviderUser({
         ...commonParams,
         password: v.password ?? '',
+        isPhoneVerified: isPhoneVerified,
       })
         .then(() => this.router.navigateByUrl('/discover'))
         .catch((err) => {
@@ -268,6 +324,7 @@ export class ProducerOnboardComponent {
       this.auth.registerWithEmail({
         ...commonParams,
         password: v.password ?? '',
+        isPhoneVerified: isPhoneVerified,
       })
         .then(() => this.router.navigateByUrl('/discover'))
         .catch((err) => {
@@ -280,10 +337,6 @@ export class ProducerOnboardComponent {
     }
   }
 
-  onOtpVerify(code: string) {
-    this.otpOpen = false;
-    // TODO: implement navigation after verification
-  }
 
   private updateLocationSuggestions(query: string) {
     const q = query.trim().toLowerCase();
@@ -299,5 +352,48 @@ export class ProducerOnboardComponent {
   onSelectLocationSuggestion(s: { district: string; state: string }) {
     this.form.get('location')?.setValue(`${s.district}, ${s.state}`);
     this.locationSuggestions = [];
+  }
+
+  onVerifyMobile() {
+    const countryCode = this.form.get('countryCode')?.value;
+    const mobileNumber = this.form.get('mobileNumber')?.value;
+    
+    if (!countryCode || !mobileNumber) {
+      this.errorMsg = 'Country code and mobile number are required';
+      return;
+    }
+
+    // Validate mobile number format
+    const mobilePattern = /^\d{6,12}$/;
+    if (!mobilePattern.test(mobileNumber)) {
+      this.errorMsg = 'Please enter a valid mobile number';
+      return;
+    }
+
+    // Format phone number for Firebase (international format)
+    const cleanCountryCode = countryCode.replace(/[^+\d]/g, ''); // Remove any non-digit except +
+    const cleanMobileNumber = mobileNumber.replace(/\D/g, ''); // Remove any non-digit
+    const phoneNumber = cleanCountryCode + cleanMobileNumber;
+
+    console.log('Opening OTP modal with phone:', phoneNumber);
+
+    // Open OTP modal with phone number
+    this.errorMsg = '';
+    this.otpModal.open(phoneNumber);
+  }
+
+  onCloseOtpModal() {
+    // Modal state will be managed by the OTP component itself
+    console.log('OTP modal closed');
+  }
+
+  onOtpVerified() {
+    console.log('OTP verified successfully in producer onboarding');
+    
+    // Simply set the verification status to true
+    this.isPhoneVerified = true;
+    console.log('Phone verification status set to:', this.isPhoneVerified);
+    
+    // Modal will be closed by the OTP component itself
   }
 }

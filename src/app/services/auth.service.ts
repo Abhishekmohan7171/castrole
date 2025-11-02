@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { UserOnboardingCacheService } from './user-onboarding-cache.service';
 import { BrowserDetectionService } from '../utils/browser-detection';
 import { PresenceService } from './presence.service';
 import {
@@ -17,6 +18,10 @@ import {
   sendPasswordResetEmail,
   confirmPasswordReset,
   verifyPasswordResetCode,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  PhoneAuthProvider,
 } from '@angular/fire/auth';
 import {
   Firestore,
@@ -40,6 +45,7 @@ export class AuthService {
   private db = inject(Firestore);
   private browserDetection = inject(BrowserDetectionService);
   private presence = inject(PresenceService);
+  private onboardingCache = inject(UserOnboardingCacheService);
 
   constructor() {
     // Auto-track presence based on auth state
@@ -49,6 +55,42 @@ export class AuthService {
       } else {
         this.presence.stopTracking();
       }
+    });
+  }
+
+  // =========================
+  // Phone Authentication
+  // =========================
+
+  /** Send OTP to phone number for verification */
+  async sendOTP(phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> {
+    try {
+      const confirmationResult = await signInWithPhoneNumber(this.auth, phoneNumber, recaptchaVerifier);
+      return confirmationResult;
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      throw error;
+    }
+  }
+
+  /** Verify OTP code */
+  async verifyOTP(confirmationResult: ConfirmationResult, code: string): Promise<User> {
+    try {
+      const credential = await confirmationResult.confirm(code);
+      return credential.user;
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      throw error;
+    }
+  }
+
+  /** Update user phone verification status */
+  async markPhoneAsVerified(uid: string, phoneNumber: string): Promise<void> {
+    const ref = doc(this.db, 'users', uid);
+    await updateDoc(ref, {
+      phone: phoneNumber,
+      isPhoneVerified: true,
+      updatedAt: serverTimestamp(),
     });
   }
 
@@ -317,7 +359,7 @@ export class AuthService {
 
   // --- Email/Password ---
 
-  /** Register a user with email/password and create a user profile document. */
+  /** Register a user with email/password and create both user and profile documents. */
   async registerWithEmail(params: {
     name: string;
     email: string;
@@ -326,8 +368,9 @@ export class AuthService {
     location: string;
     role: string; // e.g., 'actor', 'producer', 'user'
     productionHouse?: string; // For producer onboarding
+    isPhoneVerified?: boolean; // Whether phone was verified via OTP
   }): Promise<User> {
-    const { name, email, password, phone, location, role, productionHouse } =
+    const { name, email, password, phone, location, role, productionHouse, isPhoneVerified = false } =
       params;
     const cred = await createUserWithEmailAndPassword(
       this.auth,
@@ -354,7 +397,7 @@ export class AuthService {
       isLoggedIn: true,
       device: [currentDevice],
       loggedInTime: serverTimestamp(),
-      isPhoneVerified: false,
+      isPhoneVerified: isPhoneVerified,
       blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
@@ -362,6 +405,24 @@ export class AuthService {
     };
 
     await setDoc(ref, userDoc, { merge: true } as any);
+
+    // Create role-specific profile document
+    if (role === 'actor') {
+      await this.createActorProfile(cred.user.uid, {
+        stageName: name,
+        location: location,
+      });
+    } else if (role === 'producer') {
+      await this.createProducerProfile(cred.user.uid, {
+        name: name,
+        location: location,
+        productionHouse: productionHouse,
+      });
+    }
+
+    // Mark user as onboarded in cache
+    this.onboardingCache.markAsOnboarded(cred.user.uid);
+
     return cred.user;
   }
 
@@ -505,6 +566,7 @@ export class AuthService {
     location: string;
     role: string;
     productionHouse?: string; // For producer onboarding
+    isPhoneVerified?: boolean; // Whether phone was verified via OTP
   }): Promise<User> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No authenticated user found for onboarding');
@@ -545,7 +607,7 @@ export class AuthService {
       isLoggedIn: true,
       device: [currentDevice],
       loggedInTime: serverTimestamp(),
-      isPhoneVerified: !!user.phoneNumber,
+      isPhoneVerified: params.isPhoneVerified ?? !!user.phoneNumber,
       blocked: [],
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
@@ -567,6 +629,9 @@ export class AuthService {
         productionHouse: params.productionHouse,
       });
     }
+
+    // Mark user as onboarded in cache
+    this.onboardingCache.markAsOnboarded(user.uid);
 
     return user;
   }

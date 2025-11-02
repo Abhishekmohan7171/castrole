@@ -10,19 +10,40 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
   standalone: true,
   imports: [RouterLink, CommonModule, ReactiveFormsModule],
   template: `
-    <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
+    <div
+      class="min-h-screen bg-black text-neutral-300 flex flex-col items-center"
+    >
       <!-- Brand -->
-      <h1 class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">castrole</h1>
+      <h1
+        class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none"
+      >
+        castrole
+      </h1>
 
       <!-- Card -->
-      <div class="w-full max-w-xl rounded-3xl bg-neutral-900/60 border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">
+      <div
+        class="w-full max-w-xl rounded-3xl bg-neutral-900/60 border border-white/5 shadow-2xl shadow-black/60 px-8 py-10"
+      >
         <form class="space-y-5" [formGroup]="form" (ngSubmit)="onSubmit()">
           <!-- Email -->
           <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+            <span
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
+            >
               <!-- mail icon -->
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+              <svg
+                class="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"
+                />
                 <path d="m22 8-10 7L2 8" />
               </svg>
             </span>
@@ -37,11 +58,24 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 
           <!-- Password -->
           <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+            <span
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
+            >
               <!-- lock icon -->
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                class="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M16.5 10.5V7.5a4.5 4.5 0 0 0-9 0v3" />
-                <path d="M6.75 10.5h10.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75Z" />
+                <path
+                  d="M6.75 10.5h10.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75Z"
+                />
               </svg>
             </span>
             <input
@@ -56,7 +90,11 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
           <!-- Error -->
           <p *ngIf="error" class="text-sm text-red-400">{{ error }}</p>
 
-          <button type="submit" [disabled]="loading || form.invalid" class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition">
+          <button
+            type="submit"
+            [disabled]="loading || form.invalid"
+            class="w-full rounded-full bg-neutral-100/10 hover:bg-neutral-100/20 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-100 py-3 font-medium ring-1 ring-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] transition"
+          >
             create account
           </button>
         </form>
@@ -64,11 +102,16 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 
       <!-- Login link -->
       <div class="mt-6 text-sm text-neutral-500">
-        already have an account? <a routerLink="/login" class="text-neutral-300 font-semibold hover:text-white">sign in</a>
+        already have an account?
+        <a
+          routerLink="/login"
+          class="text-neutral-300 font-semibold hover:text-white"
+          >sign in</a
+        >
       </div>
     </div>
   `,
-  styles: []
+  styles: [],
 })
 export class SignupComponent {
   private fb = inject(FormBuilder);
@@ -91,12 +134,16 @@ export class SignupComponent {
     this.loading = true;
     this.error = '';
     try {
+      // Create Firebase Auth user only
+      // Profile creation happens in the onboarding flow
       await createUserWithEmailAndPassword(this.auth, email, password);
-      await this.router.navigateByUrl('/login');
-    } catch (e: any) {
-      const msg = e?.message || 'Failed to create account';
+      
+      // Redirect to onboarding to complete profile creation
+      await this.router.navigateByUrl('/onboarding');
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      const msg = error?.message || 'Failed to create account';
       this.error = msg;
-      console.error('[signup] error', e);
     } finally {
       this.loading = false;
     }

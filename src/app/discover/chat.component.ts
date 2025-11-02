@@ -311,8 +311,25 @@ import { PresenceService } from '../services/presence.service';
                   }"
                 >
                   <div>{{ m.text }}</div>
-                  <div class="mt-1 text-[10px] text-neutral-400">
-                    {{ m.time }}
+                  <div class="mt-1 text-[10px] text-neutral-400 flex items-center gap-1.5">
+                    <span>{{ m.time }}</span>
+                    <!-- Read receipt status for my messages -->
+                    <span *ngIf="m.from === 'me' && m.status" class="flex items-center">
+                      <!-- Sent: single checkmark -->
+                      <svg *ngIf="m.status === 'sent'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <!-- Delivered: double checkmark (gray) -->
+                      <svg *ngIf="m.status === 'delivered'" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                        <polyline points="4 12 9 17 20 6"></polyline>
+                        <polyline points="10 12 15 17 26 6"></polyline>
+                      </svg>
+                      <!-- Seen: double checkmark (blue) -->
+                      <svg *ngIf="m.status === 'seen'" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
+                        <polyline points="4 12 9 17 20 6"></polyline>
+                        <polyline points="10 12 15 17 26 6"></polyline>
+                      </svg>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -748,11 +765,13 @@ export class ChatComponent implements OnInit, OnDestroy {
           setTimeout(() => {
             this.processMessages(cachedMessages.map(m => {
               const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
+              const status = from === 'me' ? this.getMessageStatus(m) : undefined;
               return {
                 id: m.id!,
                 from,
                 text: m.text,
                 time: this.formatTime(m.timestamp),
+                status,
               } as Message;
             }));
             // Scroll to bottom immediately
@@ -763,13 +782,23 @@ export class ChatComponent implements OnInit, OnDestroy {
         // Return the real-time updates from Firestore
         return this.chat.observeMessages(c.id);
       }),
+      tap(async (msgs: (ChatMessage & { id: string })[]) => {
+        // Mark messages as delivered when they arrive
+        const activeConv = this.active();
+        if (activeConv && this.meUid) {
+          await this.chat.markMessagesAsDelivered(activeConv.id, this.meUid);
+        }
+      }),
       map((msgs: (ChatMessage & { id: string })[]) => msgs.map((m: ChatMessage & { id: string }) => {
         const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
+        // Calculate status for messages sent by me
+        const status = from === 'me' ? this.getMessageStatus(m) : undefined;
         return {
           id: m.id!,
           from,
           text: m.text,
           time: this.formatTime(m.timestamp),
+          status,
         } as Message;
       })),
       shareReplay(1)
@@ -1005,6 +1034,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       from: 'me',
       text: draftCopy,
       time: this.formatTime({ toDate: () => now }),
+      status: 'sent', // Optimistic status
     };
 
     // Add to active conversation
@@ -1054,6 +1084,22 @@ export class ChatComponent implements OnInit, OnDestroy {
       return `${hh}:${mm}`;
     } catch {
       return '';
+    }
+  }
+
+  private getMessageStatus(message: ChatMessage): 'sent' | 'delivered' | 'seen' {
+    // Check if message has been read
+    const hasReadAt = message.readAt && message.readAt !== null;
+    const hasDeliveredAt = message.deliveredAt && message.deliveredAt !== null;
+    
+    // Prioritize readAt timestamp for "seen" status
+    // If readAt exists, show blue ticks (seen)
+    if (hasReadAt) {
+      return 'seen';
+    } else if (hasDeliveredAt) {
+      return 'delivered';
+    } else {
+      return 'sent';
     }
   }
 
