@@ -220,12 +220,12 @@ type SettingsTab =
             >
               Basic Information
             </div>
-            
+
             <!-- Edit User Information -->
             <div class="space-y-4">
               <!-- Username -->
               <div class="space-y-2">
-                <label 
+                <label
                   class="text-sm font-medium"
                   [ngClass]="{
                     'text-purple-200/80': isActor(),
@@ -241,8 +241,10 @@ type SettingsTab =
                     [disabled]="!isEditingField('name')"
                     class="flex-1 px-3 py-2 text-sm rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20': isActor(),
-                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20': !isActor(),
+                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20':
+                        isActor(),
+                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20':
+                        !isActor(),
                       'opacity-60': !isEditingField('name')
                     }"
                   />
@@ -250,10 +252,14 @@ type SettingsTab =
                     (click)="toggleEditField('name')"
                     class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700': isActor() && isEditingField('name'),
-                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20': isActor() && !isEditingField('name'),
-                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700': !isActor() && isEditingField('name'),
-                      'border-neutral-700 text-neutral-300 hover:bg-black/20': !isActor() && !isEditingField('name')
+                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
+                        isActor() && isEditingField('name'),
+                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
+                        isActor() && !isEditingField('name'),
+                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
+                        !isActor() && isEditingField('name'),
+                      'border-neutral-700 text-neutral-300 hover:bg-black/20':
+                        !isActor() && !isEditingField('name')
                     }"
                   >
                     {{ isEditingField('name') ? 'Save' : 'Edit' }}
@@ -263,7 +269,7 @@ type SettingsTab =
 
               <!-- Email -->
               <div class="space-y-2">
-                <label 
+                <label
                   class="text-sm font-medium"
                   [ngClass]="{
                     'text-purple-200/80': isActor(),
@@ -279,8 +285,10 @@ type SettingsTab =
                     [disabled]="!isEditingField('email')"
                     class="flex-1 px-3 py-2 text-sm rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20': isActor(),
-                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20': !isActor(),
+                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20':
+                        isActor(),
+                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20':
+                        !isActor(),
                       'opacity-60': !isEditingField('email')
                     }"
                   />
@@ -288,10 +296,14 @@ type SettingsTab =
                     (click)="toggleEditField('email')"
                     class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700': isActor() && isEditingField('email'),
-                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20': isActor() && !isEditingField('email'),
-                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700': !isActor() && isEditingField('email'),
-                      'border-neutral-700 text-neutral-300 hover:bg-black/20': !isActor() && !isEditingField('email')
+                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
+                        isActor() && isEditingField('email'),
+                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
+                        isActor() && !isEditingField('email'),
+                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
+                        !isActor() && isEditingField('email'),
+                      'border-neutral-700 text-neutral-300 hover:bg-black/20':
+                        !isActor() && !isEditingField('email')
                     }"
                   >
                     {{ isEditingField('email') ? 'Save' : 'Edit' }}
@@ -301,7 +313,7 @@ type SettingsTab =
 
               <!-- Mobile Number -->
               <div class="space-y-2">
-                <label 
+                <label
                   class="text-sm font-medium"
                   [ngClass]="{
                     'text-purple-200/80': isActor(),
@@ -317,8 +329,10 @@ type SettingsTab =
                     [disabled]="!isEditingField('phone')"
                     class="flex-1 px-3 py-2 text-sm rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20': isActor(),
-                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20': !isActor(),
+                      'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20':
+                        isActor(),
+                      'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20':
+                        !isActor(),
                       'opacity-60': !isEditingField('phone')
                     }"
                   />
@@ -326,10 +340,14 @@ type SettingsTab =
                     (click)="toggleEditField('phone')"
                     class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
                     [ngClass]="{
-                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700': isActor() && isEditingField('phone'),
-                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20': isActor() && !isEditingField('phone'),
-                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700': !isActor() && isEditingField('phone'),
-                      'border-neutral-700 text-neutral-300 hover:bg-black/20': !isActor() && !isEditingField('phone')
+                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
+                        isActor() && isEditingField('phone'),
+                      'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
+                        isActor() && !isEditingField('phone'),
+                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
+                        !isActor() && isEditingField('phone'),
+                      'border-neutral-700 text-neutral-300 hover:bg-black/20':
+                        !isActor() && !isEditingField('phone')
                     }"
                   >
                     {{ isEditingField('phone') ? 'Save' : 'Edit' }}
@@ -339,11 +357,13 @@ type SettingsTab =
             </div>
 
             <!-- Account Type Section -->
-            <div class="pt-6 border-t"
-                 [ngClass]="{
-                   'border-purple-900/20': isActor(),
-                   'border-neutral-700/50': !isActor()
-                 }">
+            <div
+              class="pt-6 border-t"
+              [ngClass]="{
+                'border-purple-900/20': isActor(),
+                'border-neutral-700/50': !isActor()
+              }"
+            >
               <div
                 class="text-xs font-medium uppercase tracking-wide mb-4"
                 [ngClass]="{
@@ -353,38 +373,52 @@ type SettingsTab =
               >
                 Account Type
               </div>
-              
+
               <div class="space-y-3">
                 <!-- Current Roles Display -->
                 <div class="flex flex-wrap gap-2">
                   @for (role of userData()?.roles || []; track role) {
-                    <span 
-                      class="px-3 py-1 text-xs rounded-full"
-                      [ngClass]="{
-                        'bg-purple-600/20 text-purple-300 border border-purple-600/30': isActor(),
-                        'bg-neutral-600/20 text-neutral-300 border border-neutral-600/30': !isActor()
-                      }"
-                    >
-                      {{ role | titlecase }}
-                    </span>
+                  <span
+                    class="px-3 py-1 text-xs rounded-full"
+                    [ngClass]="{
+                      'bg-purple-600/20 text-purple-300 border border-purple-600/30':
+                        isActor(),
+                      'bg-neutral-600/20 text-neutral-300 border border-neutral-600/30':
+                        !isActor()
+                    }"
+                  >
+                    {{ role | titlecase }}
+                  </span>
                   }
                 </div>
 
                 <!-- Add Account Button -->
                 @if (canAddAccount()) {
-                  <button
-                    (click)="addAccount()"
-                    class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-600 border-purple-600 text-white hover:bg-purple-700': isActor(),
-                      'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700': !isActor()
-                    }"
+                <button
+                  (click)="addAccount()"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
+                      isActor(),
+                    'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
+                      !isActor()
+                  }"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
-                    Add {{ getMissingRole() | titlecase }} Account
-                  </button>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Add {{ getMissingRole() | titlecase }} Account
+                </button>
                 }
               </div>
             </div>
@@ -399,9 +433,11 @@ type SettingsTab =
               >
                 Profile Visibility
               </div>
-              
+
               <!-- Ghost Mode Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg bg-purple-950/10 border border-purple-900/20">
+              <div
+                class="flex items-center justify-between p-4 rounded-lg bg-purple-950/10 border border-purple-900/20"
+              >
                 <div class="flex-1">
                   <h3 class="text-sm font-medium text-purple-200">
                     Ghost Mode
@@ -441,26 +477,32 @@ type SettingsTab =
               >
                 Chat Settings
               </div>
-              
+
               <!-- Last Seen Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg"
-                   [ngClass]="{
-                     'bg-purple-950/10 border border-purple-900/20': isActor(),
-                     'bg-black/20 border border-neutral-700/50': !isActor()
-                   }">
+              <div
+                class="flex items-center justify-between p-4 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-black/20 border border-neutral-700/50': !isActor()
+                }"
+              >
                 <div class="flex-1">
-                  <h3 class="text-sm font-medium"
-                      [ngClass]="{
-                        'text-purple-200': isActor(),
-                        'text-neutral-200': !isActor()
-                      }">
+                  <h3
+                    class="text-sm font-medium"
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Last Seen
                   </h3>
-                  <p class="text-xs mt-1"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
+                  <p
+                    class="text-xs mt-1"
+                    [ngClass]="{
+                      'text-purple-300/60': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
                     Show when you were last active
                   </p>
                 </div>
@@ -468,10 +510,14 @@ type SettingsTab =
                   (click)="toggleLastSeenVisible()"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
                   [ngClass]="{
-                    'bg-purple-600 focus:ring-purple-500': isActor() && lastSeenVisible(),
-                    'bg-purple-900/30 focus:ring-purple-500': isActor() && !lastSeenVisible(),
-                    'bg-neutral-600 focus:ring-neutral-500': !isActor() && lastSeenVisible(),
-                    'bg-neutral-700/50 focus:ring-neutral-500': !isActor() && !lastSeenVisible()
+                    'bg-purple-600 focus:ring-purple-500':
+                      isActor() && lastSeenVisible(),
+                    'bg-purple-900/30 focus:ring-purple-500':
+                      isActor() && !lastSeenVisible(),
+                    'bg-neutral-600 focus:ring-neutral-500':
+                      !isActor() && lastSeenVisible(),
+                    'bg-neutral-700/50 focus:ring-neutral-500':
+                      !isActor() && !lastSeenVisible()
                   }"
                 >
                   <span
@@ -485,24 +531,30 @@ type SettingsTab =
               </div>
 
               <!-- Online Status Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg"
-                   [ngClass]="{
-                     'bg-purple-950/10 border border-purple-900/20': isActor(),
-                     'bg-black/20 border border-neutral-700/50': !isActor()
-                   }">
+              <div
+                class="flex items-center justify-between p-4 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-black/20 border border-neutral-700/50': !isActor()
+                }"
+              >
                 <div class="flex-1">
-                  <h3 class="text-sm font-medium"
-                      [ngClass]="{
-                        'text-purple-200': isActor(),
-                        'text-neutral-200': !isActor()
-                      }">
+                  <h3
+                    class="text-sm font-medium"
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Online Status
                   </h3>
-                  <p class="text-xs mt-1"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
+                  <p
+                    class="text-xs mt-1"
+                    [ngClass]="{
+                      'text-purple-300/60': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
                     Show when you're currently online
                   </p>
                 </div>
@@ -510,10 +562,14 @@ type SettingsTab =
                   (click)="toggleOnlineStatusVisible()"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
                   [ngClass]="{
-                    'bg-purple-600 focus:ring-purple-500': isActor() && onlineStatusVisible(),
-                    'bg-purple-900/30 focus:ring-purple-500': isActor() && !onlineStatusVisible(),
-                    'bg-neutral-600 focus:ring-neutral-500': !isActor() && onlineStatusVisible(),
-                    'bg-neutral-700/50 focus:ring-neutral-500': !isActor() && !onlineStatusVisible()
+                    'bg-purple-600 focus:ring-purple-500':
+                      isActor() && onlineStatusVisible(),
+                    'bg-purple-900/30 focus:ring-purple-500':
+                      isActor() && !onlineStatusVisible(),
+                    'bg-neutral-600 focus:ring-neutral-500':
+                      !isActor() && onlineStatusVisible(),
+                    'bg-neutral-700/50 focus:ring-neutral-500':
+                      !isActor() && !onlineStatusVisible()
                   }"
                 >
                   <span
@@ -527,24 +583,30 @@ type SettingsTab =
               </div>
 
               <!-- Read Receipts Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg"
-                   [ngClass]="{
-                     'bg-purple-950/10 border border-purple-900/20': isActor(),
-                     'bg-black/20 border border-neutral-700/50': !isActor()
-                   }">
+              <div
+                class="flex items-center justify-between p-4 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-black/20 border border-neutral-700/50': !isActor()
+                }"
+              >
                 <div class="flex-1">
-                  <h3 class="text-sm font-medium"
-                      [ngClass]="{
-                        'text-purple-200': isActor(),
-                        'text-neutral-200': !isActor()
-                      }">
+                  <h3
+                    class="text-sm font-medium"
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Read Receipts
                   </h3>
-                  <p class="text-xs mt-1"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
+                  <p
+                    class="text-xs mt-1"
+                    [ngClass]="{
+                      'text-purple-300/60': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
                     Send read receipts when you view messages
                   </p>
                 </div>
@@ -552,10 +614,14 @@ type SettingsTab =
                   (click)="toggleReadReceipts()"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
                   [ngClass]="{
-                    'bg-purple-600 focus:ring-purple-500': isActor() && readReceipts(),
-                    'bg-purple-900/30 focus:ring-purple-500': isActor() && !readReceipts(),
-                    'bg-neutral-600 focus:ring-neutral-500': !isActor() && readReceipts(),
-                    'bg-neutral-700/50 focus:ring-neutral-500': !isActor() && !readReceipts()
+                    'bg-purple-600 focus:ring-purple-500':
+                      isActor() && readReceipts(),
+                    'bg-purple-900/30 focus:ring-purple-500':
+                      isActor() && !readReceipts(),
+                    'bg-neutral-600 focus:ring-neutral-500':
+                      !isActor() && readReceipts(),
+                    'bg-neutral-700/50 focus:ring-neutral-500':
+                      !isActor() && !readReceipts()
                   }"
                 >
                   <span
@@ -570,44 +636,51 @@ type SettingsTab =
 
               <!-- Chat Requests Toggle (for actors) -->
               @if (isActor()) {
-                <div class="flex items-center justify-between p-4 rounded-lg"
-                     [ngClass]="{
-                       'bg-purple-950/10 border border-purple-900/20': isActor(),
-                       'bg-black/20 border border-neutral-700/50': !isActor()
-                     }">
-                  <div class="flex-1">
-                    <h3 class="text-sm font-medium"
-                        [ngClass]="{
-                          'text-purple-200': isActor(),
-                          'text-neutral-200': !isActor()
-                        }">
-                      Allow Chat Requests
-                    </h3>
-                    <p class="text-xs mt-1"
-                       [ngClass]="{
-                         'text-purple-300/60': isActor(),
-                         'text-neutral-400': !isActor()
-                       }">
-                      Allow producers to send you chat requests
-                    </p>
-                  </div>
-                  <button
-                    (click)="toggleAllowChatRequests()"
-                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+              <div
+                class="flex items-center justify-between p-4 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-black/20 border border-neutral-700/50': !isActor()
+                }"
+              >
+                <div class="flex-1">
+                  <h3
+                    class="text-sm font-medium"
                     [ngClass]="{
-                      'bg-purple-600 focus:ring-purple-500': allowChatRequests(),
-                      'bg-purple-900/30 focus:ring-purple-500': !allowChatRequests()
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
                     }"
                   >
-                    <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                      [ngClass]="{
-                        'translate-x-6': allowChatRequests(),
-                        'translate-x-1': !allowChatRequests()
-                      }"
-                    ></span>
-                  </button>
+                    Allow Chat Requests
+                  </h3>
+                  <p
+                    class="text-xs mt-1"
+                    [ngClass]="{
+                      'text-purple-300/60': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Allow producers to send you chat requests
+                  </p>
                 </div>
+                <button
+                  (click)="toggleAllowChatRequests()"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  [ngClass]="{
+                    'bg-purple-600 focus:ring-purple-500': allowChatRequests(),
+                    'bg-purple-900/30 focus:ring-purple-500':
+                      !allowChatRequests()
+                  }"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    [ngClass]="{
+                      'translate-x-6': allowChatRequests(),
+                      'translate-x-1': !allowChatRequests()
+                    }"
+                  ></span>
+                </button>
+              </div>
               }
             </div>
 
@@ -622,27 +695,51 @@ type SettingsTab =
               >
                 Account Management
               </div>
-              
+
               <!-- View Blocked Users -->
               <button
                 (click)="viewBlockedUsers()"
                 class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
                 [ngClass]="{
-                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                    isActor(),
+                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                    !isActor()
                 }"
               >
                 <div class="flex items-center gap-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
+                    />
                   </svg>
                   <div class="text-left">
                     <h3 class="text-sm font-medium">Blocked Users</h3>
-                    <p class="text-xs opacity-70">View and manage blocked users</p>
+                    <p class="text-xs opacity-70">
+                      View and manage blocked users
+                    </p>
                   </div>
                 </div>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
 
@@ -651,21 +748,45 @@ type SettingsTab =
                 (click)="viewRecentLogins()"
                 class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
                 [ngClass]="{
-                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                    isActor(),
+                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                    !isActor()
                 }"
               >
                 <div class="flex items-center gap-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   <div class="text-left">
                     <h3 class="text-sm font-medium">Recent Logins</h3>
-                    <p class="text-xs opacity-70">View login history and active sessions</p>
+                    <p class="text-xs opacity-70">
+                      View login history and active sessions
+                    </p>
                   </div>
                 </div>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
 
@@ -674,13 +795,25 @@ type SettingsTab =
                 (click)="logoutAllDevices()"
                 class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
                 [ngClass]="{
-                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                  'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                    isActor(),
+                  'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                    !isActor()
                 }"
               >
                 <div class="flex items-center gap-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
                   </svg>
                   <div class="text-left">
                     <h3 class="text-sm font-medium">Logout All Devices</h3>
@@ -695,16 +828,38 @@ type SettingsTab =
                 class="w-full flex items-center justify-between p-4 rounded-lg border border-red-600/30 bg-red-600/10 hover:bg-red-600/20 text-red-400 transition-all duration-200"
               >
                 <div class="flex items-center gap-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                   <div class="text-left">
                     <h3 class="text-sm font-medium">Delete Account</h3>
-                    <p class="text-xs opacity-70">Permanently delete your account</p>
+                    <p class="text-xs opacity-70">
+                      Permanently delete your account
+                    </p>
                   </div>
                 </div>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
             </div>
@@ -722,32 +877,40 @@ type SettingsTab =
               >
                 Here's what you're currently paying:
               </div>
-              
+
               <!-- Current Plan Display -->
               <div class="space-y-3 text-sm">
                 <div class="flex items-center gap-2">
-                  <span class="w-1.5 h-1.5 rounded-full"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200': isActor(),
-                    'text-neutral-200': !isActor()
-                  }">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Monthly Plan: ₹222 per month
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="w-1.5 h-1.5 rounded-full"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200': isActor(),
-                    'text-neutral-200': !isActor()
-                  }">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Over a full year, that totals ₹2,664
                   </span>
                 </div>
@@ -765,19 +928,23 @@ type SettingsTab =
               >
                 Better Option – Yearly Plan:
               </div>
-              
+
               <!-- Yearly Plan Benefits -->
               <div class="space-y-3 text-sm">
                 <div class="flex items-center gap-2">
-                  <span class="w-1.5 h-1.5 rounded-full"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200': isActor(),
-                    'text-neutral-200': !isActor()
-                  }">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200': isActor(),
+                      'text-neutral-200': !isActor()
+                    }"
+                  >
                     Yearly Plan: ₹2,222 per year
                   </span>
                 </div>
@@ -815,47 +982,61 @@ type SettingsTab =
               >
                 Why Upgrade?
               </div>
-              
+
               <!-- Benefits List -->
               <div class="space-y-4 text-sm">
                 <div class="flex items-start gap-3">
-                  <span class="w-1.5 h-1.5 rounded-full mt-2"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200/80': isActor(),
-                    'text-neutral-300': !isActor()
-                  }">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full mt-2"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200/80': isActor(),
+                      'text-neutral-300': !isActor()
+                    }"
+                  >
                     Get all premium benefits for the whole year upfront.
                   </span>
                 </div>
-                
+
                 <div class="flex items-start gap-3">
-                  <span class="w-1.5 h-1.5 rounded-full mt-2"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200/80': isActor(),
-                    'text-neutral-300': !isActor()
-                  }">
-                    Enjoy high visibility, ad-free experience, upload up to 10 audition reels, and full analytics without worrying about monthly renewals.
+                  <span
+                    class="w-1.5 h-1.5 rounded-full mt-2"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200/80': isActor(),
+                      'text-neutral-300': !isActor()
+                    }"
+                  >
+                    Enjoy high visibility, ad-free experience, upload up to 10
+                    audition reels, and full analytics without worrying about
+                    monthly renewals.
                   </span>
                 </div>
-                
+
                 <div class="flex items-start gap-3">
-                  <span class="w-1.5 h-1.5 rounded-full mt-2"
-                        [ngClass]="{
-                          'bg-purple-400': isActor(),
-                          'bg-neutral-400': !isActor()
-                        }"></span>
-                  <span [ngClass]="{
-                    'text-purple-200/80': isActor(),
-                    'text-neutral-300': !isActor()
-                  }">
+                  <span
+                    class="w-1.5 h-1.5 rounded-full mt-2"
+                    [ngClass]="{
+                      'bg-purple-400': isActor(),
+                      'bg-neutral-400': !isActor()
+                    }"
+                  ></span>
+                  <span
+                    [ngClass]="{
+                      'text-purple-200/80': isActor(),
+                      'text-neutral-300': !isActor()
+                    }"
+                  >
                     One-time payment = peace of mind + savings.
                   </span>
                 </div>
@@ -863,11 +1044,13 @@ type SettingsTab =
             </div>
 
             <!-- Subscription Management Section -->
-            <div class="pt-6 border-t space-y-4"
-                 [ngClass]="{
-                   'border-purple-900/20': isActor(),
-                   'border-neutral-700/50': !isActor()
-                 }">
+            <div
+              class="pt-6 border-t space-y-4"
+              [ngClass]="{
+                'border-purple-900/20': isActor(),
+                'border-neutral-700/50': !isActor()
+              }"
+            >
               <div
                 class="text-xs font-medium uppercase tracking-wide"
                 [ngClass]="{
@@ -885,22 +1068,51 @@ type SettingsTab =
                   (click)="manageSubscription()"
                   class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
                   [ngClass]="{
-                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
                   }"
                 >
                   <div class="flex items-center gap-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
                     </svg>
                     <div class="text-left">
                       <h3 class="text-sm font-medium">Manage Subscription</h3>
-                      <p class="text-xs opacity-70">Update plan, payment method, or cancel</p>
+                      <p class="text-xs opacity-70">
+                        Update plan, payment method, or cancel
+                      </p>
                     </div>
                   </div>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </button>
 
@@ -909,21 +1121,45 @@ type SettingsTab =
                   (click)="viewPaymentHistory()"
                   class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
                   [ngClass]="{
-                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
                   }"
                 >
                   <div class="flex items-center gap-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                     <div class="text-left">
                       <h3 class="text-sm font-medium">Payment History</h3>
-                      <p class="text-xs opacity-70">View past invoices and receipts</p>
+                      <p class="text-xs opacity-70">
+                        View past invoices and receipts
+                      </p>
                     </div>
                   </div>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </button>
               </div>
@@ -956,12 +1192,15 @@ type SettingsTab =
               >
                 Support & Feedback
               </div>
-              <p class="text-sm"
-                 [ngClass]="{
-                   'text-purple-200/70': isActor(),
-                   'text-neutral-300': !isActor()
-                 }">
-                Have a question, found a bug, or want to share feedback? We're here to help!
+              <p
+                class="text-sm"
+                [ngClass]="{
+                  'text-purple-200/70': isActor(),
+                  'text-neutral-300': !isActor()
+                }"
+              >
+                Have a question, found a bug, or want to share feedback? We're
+                here to help!
               </p>
             </div>
 
@@ -969,7 +1208,7 @@ type SettingsTab =
             <form (ngSubmit)="submitSupportForm()" class="space-y-6">
               <!-- Subject Field -->
               <div class="space-y-2">
-                <label 
+                <label
                   for="supportSubject"
                   class="text-sm font-medium"
                   [ngClass]="{
@@ -988,15 +1227,17 @@ type SettingsTab =
                   required
                   class="w-full px-4 py-3 text-sm rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2"
                   [ngClass]="{
-                    'bg-purple-950/20 border-purple-900/30 text-purple-100 placeholder:text-purple-300/40 focus:border-purple-500 focus:ring-purple-500/20': isActor(),
-                    'bg-black/20 border-neutral-700 text-neutral-200 placeholder:text-neutral-400 focus:border-neutral-500 focus:ring-neutral-500/20': !isActor()
+                    'bg-purple-950/20 border-purple-900/30 text-purple-100 placeholder:text-purple-300/40 focus:border-purple-500 focus:ring-purple-500/20':
+                      isActor(),
+                    'bg-black/20 border-neutral-700 text-neutral-200 placeholder:text-neutral-400 focus:border-neutral-500 focus:ring-neutral-500/20':
+                      !isActor()
                   }"
                 />
               </div>
 
               <!-- Concern/Description Field -->
               <div class="space-y-2">
-                <label 
+                <label
                   for="supportConcern"
                   class="text-sm font-medium"
                   [ngClass]="{
@@ -1015,16 +1256,21 @@ type SettingsTab =
                   required
                   class="w-full px-4 py-3 text-sm rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2 resize-none"
                   [ngClass]="{
-                    'bg-purple-950/20 border-purple-900/30 text-purple-100 placeholder:text-purple-300/40 focus:border-purple-500 focus:ring-purple-500/20': isActor(),
-                    'bg-black/20 border-neutral-700 text-neutral-200 placeholder:text-neutral-400 focus:border-neutral-500 focus:ring-neutral-500/20': !isActor()
+                    'bg-purple-950/20 border-purple-900/30 text-purple-100 placeholder:text-purple-300/40 focus:border-purple-500 focus:ring-purple-500/20':
+                      isActor(),
+                    'bg-black/20 border-neutral-700 text-neutral-200 placeholder:text-neutral-400 focus:border-neutral-500 focus:ring-neutral-500/20':
+                      !isActor()
                   }"
                 ></textarea>
-                <p class="text-xs"
-                   [ngClass]="{
-                     'text-purple-300/50': isActor(),
-                     'text-neutral-400': !isActor()
-                   }">
-                  Include steps to reproduce if reporting a bug, or specific suggestions if providing feedback.
+                <p
+                  class="text-xs"
+                  [ngClass]="{
+                    'text-purple-300/50': isActor(),
+                    'text-neutral-400': !isActor()
+                  }"
+                >
+                  Include steps to reproduce if reporting a bug, or specific
+                  suggestions if providing feedback.
                 </p>
               </div>
 
@@ -1032,34 +1278,55 @@ type SettingsTab =
               <div class="pt-4">
                 <button
                   type="submit"
-                  [disabled]="!supportSubject().trim() || !supportConcern().trim() || isSubmittingSupport()"
+                  [disabled]="
+                    !supportSubject().trim() ||
+                    !supportConcern().trim() ||
+                    isSubmittingSupport()
+                  "
                   class="w-full sm:w-auto px-8 py-3 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   [ngClass]="{
-                    'bg-purple-600 hover:bg-purple-700 text-white disabled:hover:bg-purple-600': isActor(),
-                    'bg-neutral-600 hover:bg-neutral-700 text-white disabled:hover:bg-neutral-600': !isActor()
+                    'bg-purple-600 hover:bg-purple-700 text-white disabled:hover:bg-purple-600':
+                      isActor(),
+                    'bg-neutral-600 hover:bg-neutral-700 text-white disabled:hover:bg-neutral-600':
+                      !isActor()
                   }"
                 >
                   @if (isSubmittingSupport()) {
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Submitting...
-                    </div>
-                  } @else {
-                    Submit Feedback
-                  }
+                  <div class="flex items-center gap-2">
+                    <svg
+                      class="w-4 h-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Submitting...
+                  </div>
+                  } @else { Submit Feedback }
                 </button>
               </div>
             </form>
 
             <!-- Additional Help -->
-            <div class="pt-6 border-t space-y-4"
-                 [ngClass]="{
-                   'border-purple-900/20': isActor(),
-                   'border-neutral-700/50': !isActor()
-                 }">
+            <div
+              class="pt-6 border-t space-y-4"
+              [ngClass]="{
+                'border-purple-900/20': isActor(),
+                'border-neutral-700/50': !isActor()
+              }"
+            >
               <div
                 class="text-xs font-medium uppercase tracking-wide"
                 [ngClass]="{
@@ -1069,19 +1336,31 @@ type SettingsTab =
               >
                 Other Ways to Get Help
               </div>
-              
+
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <!-- FAQ/Documentation -->
-                <a 
-                  href="#" 
+                <a
+                  href="#"
                   class="flex items-center gap-3 p-3 rounded-lg border transition-all duration-200"
                   [ngClass]="{
-                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
                   }"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                   <div>
                     <h3 class="text-sm font-medium">Documentation</h3>
@@ -1090,16 +1369,28 @@ type SettingsTab =
                 </a>
 
                 <!-- Contact -->
-                <a 
-                  href="mailto:support@castrole.com" 
+                <a
+                  href="mailto:support&#64;castrole.com"
                   class="flex items-center gap-3 p-3 rounded-lg border transition-all duration-200"
                   [ngClass]="{
-                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200': isActor(),
-                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200': !isActor()
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
                   }"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
                   </svg>
                   <div>
                     <h3 class="text-sm font-medium">Email Support</h3>
@@ -1111,28 +1402,616 @@ type SettingsTab =
           </div>
           } @case ('legal') {
           <div class="space-y-6">
-            <div
-              class="text-xs font-medium uppercase tracking-wide mb-3"
-              [ngClass]="{
-                'text-purple-300/50': isActor(),
-                'text-neutral-500': !isActor()
-              }"
-            >
-              Legal Documents
-            </div>
-            <div class="space-y-3">
+            @switch (legalActiveView()) { @case ('menu') {
+            <!-- Legal Menu -->
+            <div class="space-y-6">
               <div
-                class="text-xs"
+                class="text-xs font-medium uppercase tracking-wide"
                 [ngClass]="{
-                  'text-purple-200/60': isActor(),
-                  'text-neutral-400': !isActor()
+                  'text-purple-300/50': isActor(),
+                  'text-neutral-500': !isActor()
                 }"
               >
-                @if (isActor()) { Terms of Service, Privacy Policy, Community
-                Guidelines, Cookie Policy } @else { Community Guidelines,
-                Privacy Policy, Terms & Conditions, Licenses and Open Software }
+                Legal Documents
+              </div>
+
+              <div class="space-y-3">
+                <!-- Terms & Conditions -->
+                <button
+                  (click)="setLegalView('terms')"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">Terms & Conditions</h3>
+                      <p class="text-xs opacity-70">
+                        Terms of service and usage
+                      </p>
+                    </div>
+                  </div>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Privacy Policy -->
+                <button
+                  (click)="setLegalView('privacy')"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">Privacy Policy</h3>
+                      <p class="text-xs opacity-70">How we handle your data</p>
+                    </div>
+                  </div>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+
+                <!-- Community Guidelines -->
+                <button
+                  (click)="setLegalView('guidelines')"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">Community Guidelines</h3>
+                      <p class="text-xs opacity-70">
+                        Rules and conduct standards
+                      </p>
+                    </div>
+                  </div>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+
+                <!-- About Us -->
+                <button
+                  (click)="setLegalView('about')"
+                  class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
+                  [ngClass]="{
+                    'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
+                      isActor(),
+                    'bg-black/20 border-neutral-700/50 hover:bg-black/30 text-neutral-200':
+                      !isActor()
+                  }"
+                >
+                  <div class="flex items-center gap-3">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <div class="text-left">
+                      <h3 class="text-sm font-medium">About Us</h3>
+                      <p class="text-xs opacity-70">Company information</p>
+                    </div>
+                  </div>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
+            } @case ('terms') {
+            <!-- Terms & Conditions Content -->
+            <div class="space-y-6">
+              <!-- Header with Back Button -->
+              <div class="flex items-center gap-3">
+                <button
+                  (click)="setLegalView('menu')"
+                  class="p-2 rounded-lg transition-colors"
+                  [ngClass]="{
+                    'hover:bg-purple-950/20 text-purple-300': isActor(),
+                    'hover:bg-black/30 text-neutral-300': !isActor()
+                  }"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <div>
+                  <h2
+                    class="text-lg font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    Terms & Conditions
+                  </h2>
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-300/50': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Last updated: January 2025
+                  </p>
+                </div>
+              </div>
+
+              <!-- Terms Content -->
+              <div
+                class="space-y-4 text-sm max-h-screen overflow-y-auto"
+                [ngClass]="{
+                  'text-purple-200/80': isActor(),
+                  'text-neutral-300': !isActor()
+                }"
+              >
+                <div>
+                  <h3 class="font-medium mb-2">1. Acceptance of Terms</h3>
+                  <p>
+                    By accessing and using Castrole, you accept and agree to be
+                    bound by the terms and provision of this agreement.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">2. User Accounts</h3>
+                  <p>
+                    You are responsible for maintaining the confidentiality of
+                    your account and password. You agree to accept
+                    responsibility for all activities that occur under your
+                    account.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">3. Platform Usage</h3>
+                  <p>
+                    Castrole provides a platform connecting actors and
+                    producers. Users must use the service in accordance with
+                    applicable laws and these terms.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">4. Content Guidelines</h3>
+                  <p>
+                    All content uploaded must be appropriate and comply with our
+                    community guidelines. We reserve the right to remove content
+                    that violates these terms.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">5. Limitation of Liability</h3>
+                  <p>
+                    Castrole shall not be liable for any direct, indirect,
+                    incidental, special, or consequential damages resulting from
+                    your use of the platform.
+                  </p>
+                </div>
+              </div>
+            </div>
+            } @case ('privacy') {
+            <!-- Privacy Policy Content -->
+            <div class="space-y-6">
+              <!-- Header with Back Button -->
+              <div class="flex items-center gap-3">
+                <button
+                  (click)="setLegalView('menu')"
+                  class="p-2 rounded-lg transition-colors"
+                  [ngClass]="{
+                    'hover:bg-purple-950/20 text-purple-300': isActor(),
+                    'hover:bg-black/30 text-neutral-300': !isActor()
+                  }"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <div>
+                  <h2
+                    class="text-lg font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    Privacy Policy
+                  </h2>
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-300/50': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Last updated: January 2025
+                  </p>
+                </div>
+              </div>
+
+              <!-- Privacy Content -->
+              <div
+                class="space-y-4 text-sm max-h-screen overflow-y-auto"
+                [ngClass]="{
+                  'text-purple-200/80': isActor(),
+                  'text-neutral-300': !isActor()
+                }"
+              >
+                <div>
+                  <h3 class="font-medium mb-2">Information We Collect</h3>
+                  <p>
+                    We collect information you provide directly to us, such as
+                    when you create an account, update your profile, or contact
+                    us for support.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">How We Use Your Information</h3>
+                  <p>
+                    We use the information we collect to provide, maintain, and
+                    improve our services, process transactions, and communicate
+                    with you.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Information Sharing</h3>
+                  <p>
+                    We do not sell, trade, or rent your personal information to
+                    third parties. We may share your information in certain
+                    limited circumstances as outlined in this policy.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Data Security</h3>
+                  <p>
+                    We implement appropriate security measures to protect your
+                    personal information against unauthorized access,
+                    alteration, disclosure, or destruction.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Your Rights</h3>
+                  <p>
+                    You have the right to access, update, or delete your
+                    personal information. You may also opt out of certain
+                    communications from us.
+                  </p>
+                </div>
+              </div>
+            </div>
+            } @case ('guidelines') {
+            <!-- Community Guidelines Content -->
+            <div class="space-y-6">
+              <!-- Header with Back Button -->
+              <div class="flex items-center gap-3">
+                <button
+                  (click)="setLegalView('menu')"
+                  class="p-2 rounded-lg transition-colors"
+                  [ngClass]="{
+                    'hover:bg-purple-950/20 text-purple-300': isActor(),
+                    'hover:bg-black/30 text-neutral-300': !isActor()
+                  }"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <div>
+                  <h2
+                    class="text-lg font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    Community Guidelines
+                  </h2>
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-300/50': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Last updated: January 2025
+                  </p>
+                </div>
+              </div>
+
+              <!-- Guidelines Content -->
+              <div
+                class="space-y-4 text-sm max-h-screen overflow-y-auto"
+                [ngClass]="{
+                  'text-purple-200/80': isActor(),
+                  'text-neutral-300': !isActor()
+                }"
+              >
+                <div>
+                  <h3 class="font-medium mb-2">Respectful Communication</h3>
+                  <p>
+                    Treat all community members with respect and
+                    professionalism. Harassment, discrimination, or abusive
+                    behavior is not tolerated.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Authentic Content</h3>
+                  <p>
+                    Share only authentic content that accurately represents your
+                    work and capabilities. Misleading information or
+                    impersonation is prohibited.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Professional Conduct</h3>
+                  <p>
+                    Maintain professional standards in all interactions. This
+                    includes timely communication and honoring commitments made
+                    through the platform.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Content Standards</h3>
+                  <p>
+                    All uploaded content must be appropriate for a professional
+                    environment. Explicit, offensive, or inappropriate material
+                    will be removed.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Reporting Violations</h3>
+                  <p>
+                    If you encounter behavior that violates these guidelines,
+                    please report it through our support system. We take all
+                    reports seriously.
+                  </p>
+                </div>
+              </div>
+            </div>
+            } @case ('about') {
+            <!-- About Us Content -->
+            <div class="space-y-6">
+              <!-- Header with Back Button -->
+              <div class="flex items-center gap-3">
+                <button
+                  (click)="setLegalView('menu')"
+                  class="p-2 rounded-lg transition-colors"
+                  [ngClass]="{
+                    'hover:bg-purple-950/20 text-purple-300': isActor(),
+                    'hover:bg-black/30 text-neutral-300': !isActor()
+                  }"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <div>
+                  <h2
+                    class="text-lg font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    About Us
+                  </h2>
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-300/50': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Learn more about Castrole
+                  </p>
+                </div>
+              </div>
+
+              <!-- About Content -->
+              <div
+                class="space-y-4 text-sm max-h-screen overflow-y-auto"
+                [ngClass]="{
+                  'text-purple-200/80': isActor(),
+                  'text-neutral-300': !isActor()
+                }"
+              >
+                <div>
+                  <h3 class="font-medium mb-2">Our Mission</h3>
+                  <p>
+                    Castrole is dedicated to connecting talented actors with
+                    visionary producers, creating opportunities in the
+                    entertainment industry.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">What We Do</h3>
+                  <p>
+                    We provide a platform where actors can showcase their
+                    talents and producers can discover the perfect talent for
+                    their projects.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Our Values</h3>
+                  <p>
+                    We believe in fostering creativity, promoting diversity, and
+                    supporting the dreams of entertainment professionals
+                    worldwide.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Company Information</h3>
+                  <p>
+                    Founded in 2024, Castrole is committed to revolutionizing
+                    how the entertainment industry connects and collaborates.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 class="font-medium mb-2">Contact Us</h3>
+                  <p>
+                    Have questions? Reach out to us at support&#64;castrole.com
+                    or through our support form in the settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+            } }
           </div>
           } }
         </section>
@@ -1140,226 +2019,306 @@ type SettingsTab =
 
       <!-- Blocked Users Modal -->
       @if (showBlockedUsersModal()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div 
-            class="w-full max-w-md rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
-            [ngClass]="{
-              'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl': isActor(),
-              'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl': !isActor()
-            }"
-          >
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-semibold"
-                  [ngClass]="{
-                    'text-purple-100': isActor(),
-                    'text-neutral-100': !isActor()
-                  }">
-                Blocked Users
-              </h2>
-              <button
-                (click)="closeBlockedUsersModal()"
-                class="p-2 rounded-full transition-colors"
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      >
+        <div
+          class="w-full max-w-md rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
+          [ngClass]="{
+            'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl':
+              isActor(),
+            'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl':
+              !isActor()
+          }"
+        >
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-6">
+            <h2
+              class="text-lg font-semibold"
+              [ngClass]="{
+                'text-purple-100': isActor(),
+                'text-neutral-100': !isActor()
+              }"
+            >
+              Blocked Users
+            </h2>
+            <button
+              (click)="closeBlockedUsersModal()"
+              class="p-2 rounded-full transition-colors"
+              [ngClass]="{
+                'hover:bg-purple-900/20 text-purple-300': isActor(),
+                'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+              }"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 overflow-y-auto">
+            @if (blockedUsersList().length === 0) {
+            <div class="text-center py-8">
+              <svg
+                class="w-16 h-16 mx-auto mb-4 opacity-50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
+                />
+              </svg>
+              <p
+                class="text-sm"
                 [ngClass]="{
-                  'hover:bg-purple-900/20 text-purple-300': isActor(),
-                  'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+                  'text-purple-300/60': isActor(),
+                  'text-neutral-400': !isActor()
                 }"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+                No blocked users
+              </p>
             </div>
-
-            <!-- Content -->
-            <div class="flex-1 overflow-y-auto">
-              @if (blockedUsersList().length === 0) {
-                <div class="text-center py-8">
-                  <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
-                  </svg>
-                  <p class="text-sm"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
-                    No blocked users
-                  </p>
+            } @else {
+            <div class="space-y-3">
+              @for (blockedUser of blockedUsersList(); track
+              blockedUser.blockedBy) {
+              <div
+                class="flex items-center justify-between p-3 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-neutral-800/50 border border-neutral-700/30': !isActor()
+                }"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center"
+                    [ngClass]="{
+                      'bg-purple-900/30 text-purple-300': isActor(),
+                      'bg-neutral-700 text-neutral-300': !isActor()
+                    }"
+                  >
+                    {{ getBlockedUserInitial(blockedUser) }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-medium"
+                      [ngClass]="{
+                        'text-purple-100': isActor(),
+                        'text-neutral-100': !isActor()
+                      }"
+                    >
+                      {{ getBlockedUserName(blockedUser) }}
+                    </p>
+                    <p
+                      class="text-xs"
+                      [ngClass]="{
+                        'text-purple-300/60': isActor(),
+                        'text-neutral-400': !isActor()
+                      }"
+                    >
+                      Blocked {{ formatBlockedDate(blockedUser.date) }}
+                    </p>
+                  </div>
                 </div>
-              } @else {
-                <div class="space-y-3">
-                  @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy) {
-                    <div class="flex items-center justify-between p-3 rounded-lg"
-                         [ngClass]="{
-                           'bg-purple-950/10 border border-purple-900/20': isActor(),
-                           'bg-neutral-800/50 border border-neutral-700/30': !isActor()
-                         }">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center"
-                             [ngClass]="{
-                               'bg-purple-900/30 text-purple-300': isActor(),
-                               'bg-neutral-700 text-neutral-300': !isActor()
-                             }">
-                          {{ getBlockedUserInitial(blockedUser) }}
-                        </div>
-                        <div>
-                          <p class="text-sm font-medium"
-                             [ngClass]="{
-                               'text-purple-100': isActor(),
-                               'text-neutral-100': !isActor()
-                             }">
-                            {{ getBlockedUserName(blockedUser) }}
-                          </p>
-                          <p class="text-xs"
-                             [ngClass]="{
-                               'text-purple-300/60': isActor(),
-                               'text-neutral-400': !isActor()
-                             }">
-                            Blocked {{ formatBlockedDate(blockedUser.date) }}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        (click)="unblockUser(blockedUser)"
-                        class="px-3 py-1 text-xs rounded-full border transition-colors"
-                        [ngClass]="{
-                          'border-purple-600 text-purple-300 hover:bg-purple-600/20': isActor(),
-                          'border-neutral-600 text-neutral-300 hover:bg-neutral-600/20': !isActor()
-                        }"
-                      >
-                        Unblock
-                      </button>
-                    </div>
-                  }
-                </div>
+                <button
+                  (click)="unblockUser(blockedUser)"
+                  class="px-3 py-1 text-xs rounded-full border transition-colors"
+                  [ngClass]="{
+                    'border-purple-600 text-purple-300 hover:bg-purple-600/20':
+                      isActor(),
+                    'border-neutral-600 text-neutral-300 hover:bg-neutral-600/20':
+                      !isActor()
+                  }"
+                >
+                  Unblock
+                </button>
+              </div>
               }
             </div>
+            }
           </div>
         </div>
+      </div>
       }
 
       <!-- Recent Logins Modal -->
       @if (showRecentLoginsModal()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div 
-            class="w-full max-w-lg rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
-            [ngClass]="{
-              'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl': isActor(),
-              'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl': !isActor()
-            }"
-          >
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-semibold"
-                  [ngClass]="{
-                    'text-purple-100': isActor(),
-                    'text-neutral-100': !isActor()
-                  }">
-                Recent Logins
-              </h2>
-              <button
-                (click)="closeRecentLoginsModal()"
-                class="p-2 rounded-full transition-colors"
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      >
+        <div
+          class="w-full max-w-lg rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col"
+          [ngClass]="{
+            'bg-purple-950/20 border border-purple-900/30 backdrop-blur-xl':
+              isActor(),
+            'bg-neutral-900/90 border border-neutral-700/50 backdrop-blur-xl':
+              !isActor()
+          }"
+        >
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-6">
+            <h2
+              class="text-lg font-semibold"
+              [ngClass]="{
+                'text-purple-100': isActor(),
+                'text-neutral-100': !isActor()
+              }"
+            >
+              Recent Logins
+            </h2>
+            <button
+              (click)="closeRecentLoginsModal()"
+              class="p-2 rounded-full transition-colors"
+              [ngClass]="{
+                'hover:bg-purple-900/20 text-purple-300': isActor(),
+                'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+              }"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 overflow-y-auto">
+            @if (recentLoginsList().length === 0) {
+            <div class="text-center py-8">
+              <svg
+                class="w-16 h-16 mx-auto mb-4 opacity-50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              <p
+                class="text-sm"
                 [ngClass]="{
-                  'hover:bg-purple-900/20 text-purple-300': isActor(),
-                  'hover:bg-neutral-700/50 text-neutral-300': !isActor()
+                  'text-purple-300/60': isActor(),
+                  'text-neutral-400': !isActor()
                 }"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+                No login history available
+              </p>
             </div>
-
-            <!-- Content -->
-            <div class="flex-1 overflow-y-auto">
-              @if (recentLoginsList().length === 0) {
-                <div class="text-center py-8">
-                  <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                  </svg>
-                  <p class="text-sm"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
-                    No login history available
+            } @else {
+            <div class="space-y-3">
+              @for (login of recentLoginsList(); track $index) {
+              <div
+                class="flex items-center justify-between p-4 rounded-lg"
+                [ngClass]="{
+                  'bg-purple-950/10 border border-purple-900/20': isActor(),
+                  'bg-neutral-800/50 border border-neutral-700/30': !isActor()
+                }"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center"
+                    [ngClass]="{
+                      'bg-purple-900/30 text-purple-300': isActor(),
+                      'bg-neutral-700 text-neutral-300': !isActor()
+                    }"
+                  >
+                    {{ getDeviceIcon(login.platform) }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-medium"
+                      [ngClass]="{
+                        'text-purple-100': isActor(),
+                        'text-neutral-100': !isActor()
+                      }"
+                    >
+                      {{ getDeviceDisplayName(login) }}
+                    </p>
+                    <p
+                      class="text-xs"
+                      [ngClass]="{
+                        'text-purple-300/60': isActor(),
+                        'text-neutral-400': !isActor()
+                      }"
+                    >
+                      {{ login.platform | titlecase }}
+                      @if (login.version) { · {{ login.version }}
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-300/60': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    Current Session
                   </p>
+                  <div class="flex items-center gap-1 mt-1">
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span class="text-xs text-green-400">Active</span>
+                  </div>
                 </div>
-              } @else {
-                <div class="space-y-3">
-                  @for (login of recentLoginsList(); track $index) {
-                    <div class="flex items-center justify-between p-4 rounded-lg"
-                         [ngClass]="{
-                           'bg-purple-950/10 border border-purple-900/20': isActor(),
-                           'bg-neutral-800/50 border border-neutral-700/30': !isActor()
-                         }">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center"
-                             [ngClass]="{
-                               'bg-purple-900/30 text-purple-300': isActor(),
-                               'bg-neutral-700 text-neutral-300': !isActor()
-                             }">
-                          {{ getDeviceIcon(login.platform) }}
-                        </div>
-                        <div>
-                          <p class="text-sm font-medium"
-                             [ngClass]="{
-                               'text-purple-100': isActor(),
-                               'text-neutral-100': !isActor()
-                             }">
-                            {{ getDeviceDisplayName(login) }}
-                          </p>
-                          <p class="text-xs"
-                             [ngClass]="{
-                               'text-purple-300/60': isActor(),
-                               'text-neutral-400': !isActor()
-                             }">
-                            {{ login.platform | titlecase }}
-                            @if (login.version) {
-                              · {{ login.version }}
-                            }
-                          </p>
-                        </div>
-                      </div>
-                      <div class="text-right">
-                        <p class="text-xs"
-                           [ngClass]="{
-                             'text-purple-300/60': isActor(),
-                             'text-neutral-400': !isActor()
-                           }">
-                          Current Session
-                        </p>
-                        <div class="flex items-center gap-1 mt-1">
-                          <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                          <span class="text-xs text-green-400">Active</span>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                </div>
+              </div>
               }
             </div>
+            }
+          </div>
 
-            <!-- Footer -->
-            <div class="mt-6 pt-4 border-t"
-                 [ngClass]="{
-                   'border-purple-900/20': isActor(),
-                   'border-neutral-700/30': !isActor()
-                 }">
-              <button
-                (click)="logoutAllDevices(); closeRecentLoginsModal()"
-                class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-                [ngClass]="{
-                  'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-600/30': isActor(),
-                  'bg-neutral-700/50 hover:bg-neutral-700/70 text-neutral-300 border border-neutral-600': !isActor()
-                }"
-              >
-                Logout All Devices
-              </button>
-            </div>
+          <!-- Footer -->
+          <div
+            class="mt-6 pt-4 border-t"
+            [ngClass]="{
+              'border-purple-900/20': isActor(),
+              'border-neutral-700/30': !isActor()
+            }"
+          >
+            <button
+              (click)="logoutAllDevices(); closeRecentLoginsModal()"
+              class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+              [ngClass]="{
+                'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-600/30':
+                  isActor(),
+                'bg-neutral-700/50 hover:bg-neutral-700/70 text-neutral-300 border border-neutral-600':
+                  !isActor()
+              }"
+            >
+              Logout All Devices
+            </button>
           </div>
         </div>
+      </div>
       }
     </div>
   `,
@@ -1411,10 +2370,10 @@ export class SettingsComponent implements OnInit {
 
   // User data signals
   userData = signal<UserDoc | null>(null);
-  editableUserData = signal<{ name: string; email: string; phone: string }>({ 
-    name: '', 
-    email: '', 
-    phone: '' 
+  editableUserData = signal<{ name: string; email: string; phone: string }>({
+    name: '',
+    email: '',
+    phone: '',
   });
   editingFields = signal<Set<string>>(new Set());
 
@@ -1434,6 +2393,11 @@ export class SettingsComponent implements OnInit {
   supportSubject = signal<string>('');
   supportConcern = signal<string>('');
   isSubmittingSupport = signal<boolean>(false);
+
+  // Legal section signals
+  legalActiveView = signal<
+    'menu' | 'terms' | 'privacy' | 'guidelines' | 'about'
+  >('menu');
 
   // Available tabs based on role
   availableTabs = computed(() => {
@@ -1456,6 +2420,10 @@ export class SettingsComponent implements OnInit {
 
   setActiveTab(tab: SettingsTab) {
     this.activeTab.set(tab);
+    // Reset legal view to menu when switching to legal tab
+    if (tab === 'legal') {
+      this.legalActiveView.set('menu');
+    }
   }
 
   getTabLabel(tab: SettingsTab): string {
@@ -1483,11 +2451,11 @@ export class SettingsComponent implements OnInit {
           this.editableUserData.set({
             name: userData.name || '',
             email: userData.email || '',
-            phone: userData.phone || ''
+            phone: userData.phone || '',
           });
           // Default to true if not set
           this.readReceipts.set(userData.readReceipts !== false);
-          
+
           // Load privacy settings
           this.ghostMode.set(userData.ghost || false);
           this.lastSeenVisible.set(userData.lastSeen !== undefined); // If lastSeen exists, it's visible
@@ -1501,7 +2469,6 @@ export class SettingsComponent implements OnInit {
       }
     }
   }
-
 
   async toggleReadReceipts() {
     const user = this.auth.getCurrentUser();
@@ -1531,7 +2498,7 @@ export class SettingsComponent implements OnInit {
 
   async toggleEditField(field: 'name' | 'email' | 'phone') {
     const currentlyEditing = this.isEditingField(field);
-    
+
     if (currentlyEditing) {
       // Save the field
       await this.saveField(field);
@@ -1589,7 +2556,7 @@ export class SettingsComponent implements OnInit {
         this.editableUserData.set({
           name: currentUserData.name || '',
           email: currentUserData.email || '',
-          phone: currentUserData.phone || ''
+          phone: currentUserData.phone || '',
         });
       }
     }
@@ -1632,14 +2599,14 @@ export class SettingsComponent implements OnInit {
       const userDocRef = doc(this.firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
         roles: updatedRoles,
-        currentRole: missingRole // Switch to the newly added role
+        currentRole: missingRole, // Switch to the newly added role
       });
 
       // Update local state
       this.userData.set({
         ...currentUserData,
         roles: updatedRoles,
-        currentRole: missingRole
+        currentRole: missingRole,
       });
       this.userRole.set(missingRole);
 
@@ -1686,7 +2653,7 @@ export class SettingsComponent implements OnInit {
       this.lastSeenVisible.set(newValue);
 
       const userDocRef = doc(this.firestore, 'users', user.uid);
-      
+
       // If disabling, set lastSeen to null, if enabling, set to current timestamp
       const updateData: any = {};
       if (newValue) {
@@ -1700,10 +2667,15 @@ export class SettingsComponent implements OnInit {
       // Update userData signal
       const currentUserData = this.userData();
       if (currentUserData) {
-        this.userData.set({ ...currentUserData, lastSeen: updateData.lastSeen });
+        this.userData.set({
+          ...currentUserData,
+          lastSeen: updateData.lastSeen,
+        });
       }
 
-      console.log(`✓ Last seen visibility ${newValue ? 'enabled' : 'disabled'}`);
+      console.log(
+        `✓ Last seen visibility ${newValue ? 'enabled' : 'disabled'}`
+      );
     } catch (error) {
       console.error('Error updating last seen visibility:', error);
       // Revert on error
@@ -1720,7 +2692,7 @@ export class SettingsComponent implements OnInit {
       this.onlineStatusVisible.set(newValue);
 
       const userDocRef = doc(this.firestore, 'users', user.uid);
-      
+
       // If disabling, set isOnline to null, if enabling, set based on current state
       const updateData: any = {};
       if (newValue) {
@@ -1734,10 +2706,15 @@ export class SettingsComponent implements OnInit {
       // Update userData signal
       const currentUserData = this.userData();
       if (currentUserData) {
-        this.userData.set({ ...currentUserData, isOnline: updateData.isOnline });
+        this.userData.set({
+          ...currentUserData,
+          isOnline: updateData.isOnline,
+        });
       }
 
-      console.log(`✓ Online status visibility ${newValue ? 'enabled' : 'disabled'}`);
+      console.log(
+        `✓ Online status visibility ${newValue ? 'enabled' : 'disabled'}`
+      );
     } catch (error) {
       console.error('Error updating online status visibility:', error);
       // Revert on error
@@ -1815,7 +2792,7 @@ export class SettingsComponent implements OnInit {
     // 2. Required confirmation input
     // 3. Password verification
     // 4. Final confirmation button
-    
+
     console.log('Delete account flow initiated');
     // For now, just log - this is a dangerous operation that needs careful implementation
   }
@@ -1835,13 +2812,13 @@ export class SettingsComponent implements OnInit {
 
   formatBlockedDate(date: any): string {
     if (!date) return 'Unknown';
-    
+
     try {
       const blockedDate = date.toDate ? date.toDate() : new Date(date);
       const now = new Date();
       const diffTime = now.getTime() - blockedDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 0) return 'today';
       if (diffDays === 1) return 'yesterday';
       if (diffDays < 7) return `${diffDays} days ago`;
@@ -1874,7 +2851,7 @@ export class SettingsComponent implements OnInit {
       // Update local state
       this.userData.set({
         ...currentUserData,
-        blocked: updatedBlocked
+        blocked: updatedBlocked,
       });
 
       // Update modal list
@@ -1910,7 +2887,7 @@ export class SettingsComponent implements OnInit {
     if (device.model) {
       return device.model;
     }
-    
+
     switch (device.platform?.toLowerCase()) {
       case 'web':
       case 'browser':
@@ -1974,7 +2951,7 @@ export class SettingsComponent implements OnInit {
         subject: this.supportSubject(),
         concern: this.supportConcern(),
         user: this.userData()?.uid,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Reset form and show success state
@@ -1983,7 +2960,12 @@ export class SettingsComponent implements OnInit {
       this.isSubmittingSupport.set(false);
 
       // Could show a success message here
-      alert('Thank you for your feedback! We\'ll get back to you soon.');
+      alert("Thank you for your feedback! We'll get back to you soon.");
     }, 2000);
+  }
+
+  // Legal section methods
+  setLegalView(view: 'menu' | 'terms' | 'privacy' | 'guidelines' | 'about') {
+    this.legalActiveView.set(view);
   }
 }
