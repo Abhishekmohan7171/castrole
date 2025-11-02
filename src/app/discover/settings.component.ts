@@ -391,37 +391,22 @@ type SettingsTab =
           </div>
           } @case ('privacy') {
           <div class="space-y-8">
-            <!-- Profile Visibility Section -->
+            <!-- Profile Visibility Section (Actors Only) -->
+            @if (isActor()) {
             <div class="space-y-4">
               <div
-                class="text-xs font-medium uppercase tracking-wide"
-                [ngClass]="{
-                  'text-purple-300/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
+                class="text-xs font-medium uppercase tracking-wide text-purple-300/50"
               >
                 Profile Visibility
               </div>
               
               <!-- Ghost Mode Toggle -->
-              <div class="flex items-center justify-between p-4 rounded-lg"
-                   [ngClass]="{
-                     'bg-purple-950/10 border border-purple-900/20': isActor(),
-                     'bg-black/20 border border-neutral-700/50': !isActor()
-                   }">
+              <div class="flex items-center justify-between p-4 rounded-lg bg-purple-950/10 border border-purple-900/20">
                 <div class="flex-1">
-                  <h3 class="text-sm font-medium"
-                      [ngClass]="{
-                        'text-purple-200': isActor(),
-                        'text-neutral-200': !isActor()
-                      }">
+                  <h3 class="text-sm font-medium text-purple-200">
                     Ghost Mode
                   </h3>
-                  <p class="text-xs mt-1"
-                     [ngClass]="{
-                       'text-purple-300/60': isActor(),
-                       'text-neutral-400': !isActor()
-                     }">
+                  <p class="text-xs mt-1 text-purple-300/60">
                     Hide your profile from search results and discovery
                   </p>
                 </div>
@@ -429,10 +414,8 @@ type SettingsTab =
                   (click)="toggleGhostMode()"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
                   [ngClass]="{
-                    'bg-purple-600 focus:ring-purple-500': isActor() && ghostMode(),
-                    'bg-purple-900/30 focus:ring-purple-500': isActor() && !ghostMode(),
-                    'bg-neutral-600 focus:ring-neutral-500': !isActor() && ghostMode(),
-                    'bg-neutral-700/50 focus:ring-neutral-500': !isActor() && !ghostMode()
+                    'bg-purple-600 focus:ring-purple-500': ghostMode(),
+                    'bg-purple-900/30 focus:ring-purple-500': !ghostMode()
                   }"
                 >
                   <span
@@ -445,6 +428,7 @@ type SettingsTab =
                 </button>
               </div>
             </div>
+            }
 
             <!-- Chat Settings Section -->
             <div class="space-y-4">

@@ -1,8 +1,8 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
   Storage,
   ref,
@@ -190,6 +190,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   </div>
                   }
 
+                  @if (isViewingOwnProfile()) {
                   <button
                     class="h-6 w-6 grid place-items-center rounded-full ring-1 transition-all duration-200"
                     [ngClass]="{
@@ -214,6 +215,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                       />
                     </svg>
                   </button>
+                  }
                 </div>
 
                 <!-- Basic info grid - different for Actor vs Producer -->
@@ -1362,6 +1364,7 @@ export class ProfileComponent implements OnInit {
   private firestore = inject(Firestore);
   private storage = inject(Storage);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -1369,6 +1372,11 @@ export class ProfileComponent implements OnInit {
   userRole = signal<string>('actor');
   profileData = signal<Profile | null>(null);
   isActor = computed(() => this.userRole() === 'actor');
+  userData = signal<UserDoc | null>(null);
+  
+  // Profile viewing signals
+  isViewingOwnProfile = signal<boolean>(true);
+  targetUsername = signal<string | null>(null);
 
   // Media signals
   videoUrls = signal<string[]>([]);
@@ -1380,7 +1388,7 @@ export class ProfileComponent implements OnInit {
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
-  profileTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
+  profileTheme = computed(() => 'actor-theme'); // Always use actor theme for profile pages
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1461,7 +1469,62 @@ export class ProfileComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.loadUserProfile();
+    // Check if we have a username parameter (viewing someone else's profile)
+    const username = this.route.snapshot.paramMap.get('username');
+    
+    if (username) {
+      // Viewing someone else's profile
+      this.isViewingOwnProfile.set(false);
+      this.targetUsername.set(username);
+      this.loadUserProfileByUsername(username);
+    } else {
+      // Viewing own profile
+      this.isViewingOwnProfile.set(true);
+      this.loadUserProfile();
+    }
+  }
+
+  private async loadUserProfileByUsername(username: string) {
+    try {
+      // Query Firestore to find user by name
+      const usersRef = collection(this.firestore, 'users');
+      const userQuery = query(
+        usersRef, 
+        where('name', '==', username),
+        limit(1)
+      );
+
+      const querySnapshot = await getDocs(userQuery);
+      
+      if (querySnapshot.empty) {
+        console.error('User not found');
+        this.router.navigate(['/discover']);
+        return;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data() as UserDoc;
+      
+      // Set user data
+      this.userData.set(userData);
+      this.userRole.set(userData.currentRole || 'actor');
+
+      // Load profile data
+      const profileDocRef = doc(this.firestore, 'profiles', userDoc.id);
+      const profileDoc = await getDoc(profileDocRef);
+      
+      if (profileDoc.exists()) {
+        const profileData = profileDoc.data() as Profile;
+        this.profileData.set(profileData);
+      }
+
+      // Load media from storage
+      this.loadMediaFromStorage(userDoc.id);
+
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      this.router.navigate(['/discover']);
+    }
   }
 
   private async loadMediaFromStorage(userId: string) {
