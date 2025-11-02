@@ -4,15 +4,19 @@ import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } fro
 import { Observable, Subscription, map, of, shareReplay, switchMap, filter, take } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ChatService } from '../services/chat.service';
+import { LoggerService } from '../services/logger.service';
 import { Auth, onAuthStateChanged, User } from '@angular/fire/auth';
 import { Firestore, doc, getDoc, onSnapshot, DocumentData } from '@angular/fire/firestore';
+import { Storage, ref, getDownloadURL } from '@angular/fire/storage';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
+import { Profile } from '../../assets/interfaces/profile.interfaces';
+import { NotificationDrawerComponent, Notification } from './notification-drawer/notification-drawer.component';
 
 @Component({
   selector: 'app-discover',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ClickOutsideDirective, LoaderComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ClickOutsideDirective, LoaderComponent, NotificationDrawerComponent],
   template: `
     <div class="min-h-screen bg-black text-neutral-200" [ngClass]="navTheme()">
       <!-- Loader -->
@@ -84,65 +88,125 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
               </ng-container>
             </a>
 
+            <!-- Notification Bell -->
+            <button (click)="toggleNotificationDrawer()"
+                    class="relative p-2 rounded-full transition-colors duration-200 focus:outline-none"
+                    [ngClass]="{
+                      'hover:bg-purple-900/20 text-purple-300': isActor(),
+                      'hover:bg-neutral-800/30 text-neutral-400': !isActor()
+                    }">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <!-- Notification badge -->
+              <span *ngIf="unreadNotificationCount() > 0"
+                    class="absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full text-white text-xs font-medium animate-pulse"
+                    [ngClass]="{
+                      'bg-purple-500': isActor(),
+                      'bg-fuchsia-600': !isActor()
+                    }">
+                {{ unreadNotificationCount() > 9 ? '9+' : unreadNotificationCount() }}
+              </span>
+            </button>
+
             <!-- User profile dropdown -->
             <div class="relative" clickOutside (clickOutside)="closeDropdown()">
               <button
                 (click)="toggleDropdown()"
-                class="flex items-center gap-2 transition-colors duration-200 focus:outline-none"
-                [ngClass]="{
-                  'text-purple-300 hover:text-purple-200': isProfileActive && isActor(),
-                  'text-purple-300/60 hover:text-purple-200': !isProfileActive && isActor(),
-                  'text-neutral-100 font-semibold': isProfileActive && !isActor(),
-                  'text-neutral-400 hover:text-neutral-200': !isProfileActive && !isActor()
-                }">
-                <ng-container *ngIf="userNameLoaded; else loadingName">
-                  <span>{{ userName }}</span>
+                class="flex items-center gap-2 transition-colors duration-200 focus:outline-none">
+                <ng-container *ngIf="userNameLoaded; else loadingAvatar">
+                  <!-- Profile photo or default avatar -->
+                  <div class="w-8 h-8 rounded-full overflow-hidden ring-2 transition-all duration-200"
+                       [ngClass]="{
+                         'ring-purple-400/50': isActor(),
+                         'ring-neutral-400/50': !isActor()
+                       }">
+                    <img *ngIf="profilePhotoUrl(); else defaultAvatar"
+                         [src]="profilePhotoUrl()"
+                         [alt]="userName"
+                         class="w-full h-full object-cover"
+                         (error)="onImageError()">
+                    <ng-template #defaultAvatar>
+                      <div class="w-full h-full flex items-center justify-center text-xs font-semibold"
+                           [ngClass]="{
+                             'bg-purple-600 text-purple-100': isActor(),
+                             'bg-neutral-600 text-neutral-100': !isActor()
+                           }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    </ng-template>
+                  </div>
                 </ng-container>
-                <ng-template #loadingName>
-                  <span class="inline-flex items-center">
-                    <span class="inline-block h-2.5 w-20 bg-neutral-700/50 rounded animate-pulse"></span>
-                  </span>
+                <ng-template #loadingAvatar>
+                  <div class="w-8 h-8 rounded-full bg-neutral-700/50 animate-pulse"></div>
                 </ng-template>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                     [ngClass]="{
+                       'text-purple-300': isActor(),
+                       'text-neutral-400': !isActor()
+                     }">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               <!-- Dropdown menu -->
               <div *ngIf="showDropdown"
-                   class="absolute right-0 mt-2 w-48 rounded-md shadow-lg ring-1 py-1 z-50 transition-all duration-200"
+                   class="absolute right-0 mt-2 w-56 rounded-md shadow-lg ring-1 z-50 transition-all duration-200 overflow-hidden"
                    [ngClass]="{
                      'bg-purple-950/40 ring-purple-900/10 backdrop-blur-xl': isActor(),
                      'bg-neutral-800/95 ring-neutral-700/50 backdrop-blur-sm': !isActor()
                    }">
-                <a routerLink="/discover/profile"
-                   (click)="closeDropdown()"
-                   [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
-                   class="block px-4 py-2 text-sm transition-colors duration-200"
-                   [ngClass]="{
-                     'text-purple-200/90 hover:bg-purple-900/15': isActor(),
-                     'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
-                   }">
-                  Profile
-                </a>
-                <a routerLink="/discover/settings"
-                   (click)="closeDropdown()"
-                   [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
-                   class="block px-4 py-2 text-sm transition-colors duration-200"
-                   [ngClass]="{
-                     'text-purple-200/90 hover:bg-purple-900/15': isActor(),
-                     'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
-                   }">
-                  Settings
-                </a>
-                <button (click)="logout()"
-                        class="w-full text-left block px-4 py-2 text-sm transition-colors duration-200"
-                        [ngClass]="{
-                          'text-purple-200/90 hover:bg-purple-900/25': isActor(),
-                          'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
-                        }">
-                  Logout
-                </button>
+                <!-- User name header -->
+                <div class="px-4 py-3 border-b"
+                     [ngClass]="{
+                       'border-purple-900/30': isActor(),
+                       'border-neutral-700/50': !isActor()
+                     }">
+                  <p class="text-sm font-semibold truncate"
+                     [ngClass]="{
+                       'text-purple-100': isActor(),
+                       'text-neutral-100': !isActor()
+                     }">{{ userName }}</p>
+                  <p class="text-xs mt-0.5"
+                     [ngClass]="{
+                       'text-purple-300/60': isActor(),
+                       'text-neutral-400': !isActor()
+                     }">{{ isActor() ? 'Actor' : 'Producer' }}</p>
+                </div>
+                
+                <!-- Menu items -->
+                <div class="py-1">
+                  <a routerLink="/discover/profile"
+                     (click)="closeDropdown()"
+                     [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
+                     class="block px-4 py-2 text-sm transition-colors duration-200"
+                     [ngClass]="{
+                       'text-purple-200/90 hover:bg-purple-900/15': isActor(),
+                       'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                     }">
+                    Profile
+                  </a>
+                  <a routerLink="/discover/settings"
+                     (click)="closeDropdown()"
+                     [routerLinkActive]="isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'"
+                     class="block px-4 py-2 text-sm transition-colors duration-200"
+                     [ngClass]="{
+                       'text-purple-200/90 hover:bg-purple-900/15': isActor(),
+                       'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                     }">
+                    Settings
+                  </a>
+                  <button (click)="logout()"
+                          class="w-full text-left block px-4 py-2 text-sm transition-colors duration-200"
+                          [ngClass]="{
+                            'text-purple-200/90 hover:bg-purple-900/25': isActor(),
+                            'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                          }">
+                    Logout
+                  </button>
+                </div>
               </div>
             </div>
           </nav>
@@ -153,6 +217,17 @@ import { ClickOutsideDirective } from '../common-components/directives/click-out
       <main class="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         <router-outlet></router-outlet>
       </main>
+
+      <!-- Notification Drawer -->
+      <app-notification-drawer
+        [isOpen]="showNotificationDrawer()"
+        [isActor]="isActor()"
+        [notifications]="notifications()"
+        (closeDrawer)="closeNotificationDrawer()"
+        (notificationClick)="handleNotificationClick($event)"
+        (markAsReadEvent)="markNotificationAsRead($event)"
+        (markAllAsReadEvent)="markAllNotificationsAsRead()">
+      </app-notification-drawer>
     </div>
   `,
   styles: [`
@@ -192,11 +267,19 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   isProfileActive = false;
   userName = '';
   userNameLoaded = false;
+  profilePhotoUrl = signal<string | undefined>(undefined);
 
   // User role signals
   userRole = signal<string>('actor');
   isActor = computed(() => this.userRole() === 'actor');
   navTheme = computed(() => this.isActor() ? 'actor-theme' : '');
+
+  // Notification drawer
+  showNotificationDrawer = signal<boolean>(false);
+  notifications = signal<Notification[]>([]);
+  unreadNotificationCount = computed(() => {
+    return this.notifications().filter(n => !n.read).length;
+  });
 
   // Chat notification count for the header
   chatNotificationCount$: Observable<number>;
@@ -205,16 +288,19 @@ export class DiscoverComponent implements OnInit, OnDestroy {
 
   private firebaseAuth: Auth;
   private firestore: Firestore;
+  private storage: Storage;
 
   constructor(
     private auth: AuthService,
     private router: Router,
-    private chatService: ChatService
+    private chatService: ChatService,
+    private logger: LoggerService
   ) {
     // Initialize with empty observable
     this.chatNotificationCount$ = of(0);
     this.firebaseAuth = inject(Auth);
     this.firestore = inject(Firestore);
+    this.storage = inject(Storage);
   }
 
   ngOnInit(): void {
@@ -243,6 +329,9 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                 this.uid = user.uid;
                 // Set user role for theming
                 this.userRole.set(userData['currentRole'] || 'actor');
+                
+                // Fetch profile photo
+                this.fetchProfilePhoto(user.uid);
 
                 // Initialize chat notification count
                 if (userData['currentRole'] === 'actor') {
@@ -298,7 +387,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
           }
         },
         (error) => {
-          console.error('Error fetching user document:', error);
+          this.logger.error('Error fetching user document:', error);
           observer.error(error);
         }
       );
@@ -313,7 +402,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     this.auth.logout().then(() => {
       this.router.navigate(['/login']);
     }).catch((error: Error) => {
-      console.error('Logout error:', error);
+      this.logger.error('Logout error:', error);
       this.isLoggingOut = false;
     }).finally(() => {
       this.isLoggingOut = false;
@@ -354,5 +443,97 @@ export class DiscoverComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  // Fetch profile photo from Firestore
+  private async fetchProfilePhoto(uid: string): Promise<void> {
+    try {
+      const profileDocRef = doc(this.firestore, 'profiles', uid);
+      const profileDocSnap = await getDoc(profileDocRef);
+      if (profileDocSnap.exists()) {
+        const profileData = profileDocSnap.data() as Profile;
+        const photoUrl = profileData.actorProfile?.actorProfileImageUrl || 
+                       profileData.producerProfile?.producerProfileImageUrl;
+        this.profilePhotoUrl.set(photoUrl);
+      }
+    } catch (error) {
+      this.logger.error('Error fetching profile photo:', error);
+    }
+  }
+
+  // Handle image loading errors
+  onImageError(): void {
+    this.profilePhotoUrl.set(undefined);
+  }
+
+  // Notification drawer methods
+  toggleNotificationDrawer(): void {
+    this.showNotificationDrawer.set(!this.showNotificationDrawer());
+    // Load mock notifications for demo (replace with real data later)
+    if (this.showNotificationDrawer() && this.notifications().length === 0) {
+      this.loadMockNotifications();
+    }
+  }
+
+  closeNotificationDrawer(): void {
+    this.showNotificationDrawer.set(false);
+  }
+
+  handleNotificationClick(notification: Notification): void {
+    if (notification.actionUrl) {
+      this.router.navigate([notification.actionUrl]);
+      this.closeNotificationDrawer();
+    }
+  }
+
+  markNotificationAsRead(notification: Notification): void {
+    const updatedNotifications = this.notifications().map(n =>
+      n.id === notification.id ? { ...n, read: true } : n
+    );
+    this.notifications.set(updatedNotifications);
+  }
+
+  markAllNotificationsAsRead(): void {
+    const updatedNotifications = this.notifications().map(n => ({ ...n, read: true }));
+    this.notifications.set(updatedNotifications);
+  }
+
+  // Load mock notifications (replace with real Firebase data)
+  private loadMockNotifications(): void {
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        type: 'message',
+        title: 'New message from Producer',
+        message: 'Hey! I saw your profile and would love to discuss a project opportunity.',
+        timestamp: new Date(Date.now() - 5 * 60000),
+        read: false
+      },
+      {
+        id: '2',
+        type: 'request',
+        title: 'New chat request',
+        message: 'John Doe wants to connect with you',
+        timestamp: new Date(Date.now() - 30 * 60000),
+        read: false
+      },
+      {
+        id: '3',
+        type: 'system',
+        title: 'Profile updated',
+        message: 'Your profile has been successfully updated',
+        timestamp: new Date(Date.now() - 2 * 3600000),
+        read: true
+      },
+      {
+        id: '4',
+        type: 'message',
+        title: 'Message from Sarah',
+        message: 'Thanks for your interest! Let\'s schedule a call.',
+        timestamp: new Date(Date.now() - 24 * 3600000),
+        read: true
+      }
+    ];
+    this.notifications.set(mockNotifications);
   }
 }
