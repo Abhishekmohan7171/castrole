@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
+import { ProfileService } from '../services/profile.service';
 import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
@@ -43,149 +44,52 @@ type SettingsTab =
           >
             settings
           </h2>
-          <nav class="space-y-1 text-sm">
+          <nav class="space-y-2 text-sm">
+            @for (tab of availableTabs(); track tab) {
             <button
-              (click)="setActiveTab('account')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
+              (click)="setActiveTab(tab)"
+              class="w-full text-left rounded-xl px-4 py-4 transition-all duration-200 flex items-start gap-3"
               [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  isActor() && activeTab() === 'account',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  isActor() && activeTab() !== 'account',
-                'ring-white/10 bg-white/5 text-neutral-200':
-                  !isActor() && activeTab() === 'account',
-                'ring-white/10 text-neutral-300 hover:bg-white/5':
-                  !isActor() && activeTab() !== 'account'
+                'bg-purple-900/20 text-purple-100/80':
+                  isActor() && activeTab() === tab,
+                'text-purple-300/60 hover:bg-purple-950/10':
+                  isActor() && activeTab() !== tab,
+                'bg-white/5 text-neutral-200':
+                  !isActor() && activeTab() === tab,
+                'text-neutral-300 hover:bg-white/5':
+                  !isActor() && activeTab() !== tab
               }"
             >
-              account
-              <div
-                class="text-[11px]"
-                [ngClass]="{
-                  'text-purple-200/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                username, phone number, email, account type
+              <!-- Icon -->
+              <div class="flex-shrink-0 mt-0.5">
+                <svg
+                  class="w-5 h-5"
+                  [ngClass]="{
+                    'text-purple-300': isActor(),
+                    'text-neutral-400': !isActor()
+                  }"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  [innerHTML]="getTabIcon(tab)"
+                ></svg>
               </div>
-            </button>
-            <button
-              (click)="setActiveTab('privacy')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-              [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  isActor() && activeTab() === 'privacy',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  isActor() && activeTab() !== 'privacy',
-                'ring-white/10 bg-white/5 text-neutral-200':
-                  !isActor() && activeTab() === 'privacy',
-                'ring-white/10 text-neutral-300 hover:bg-white/5':
-                  !isActor() && activeTab() !== 'privacy'
-              }"
-            >
-              privacy & security
-              <div
-                class="text-[11px]"
-                [ngClass]="{
-                  'text-purple-200/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                visibility, password, activity status, blocked users
-              </div>
-            </button>
-            <button
-              (click)="setActiveTab('subscriptions')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-              [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  isActor() && activeTab() === 'subscriptions',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  isActor() && activeTab() !== 'subscriptions',
-                'ring-white/10 bg-white/5 text-neutral-200':
-                  !isActor() && activeTab() === 'subscriptions',
-                'ring-white/10 text-neutral-300 hover:bg-white/5':
-                  !isActor() && activeTab() !== 'subscriptions'
-              }"
-            >
-              subscriptions
-              <div
-                class="text-[11px]"
-                [ngClass]="{
-                  'text-purple-200/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                manage subscription, plans, payments, history
-              </div>
-            </button>
-            @if (isActor()) {
-            <button
-              (click)="setActiveTab('analytics')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-              [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  activeTab() === 'analytics',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  activeTab() !== 'analytics'
-              }"
-            >
-              analytics
-              <div class="text-[11px] text-purple-200/50">
-                profile views, reach, media library insights
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">{{ getTabLabel(tab) }}</div>
+                <div
+                  class="text-xs mt-1 leading-relaxed"
+                  [ngClass]="{
+                    'text-purple-200/60': isActor(),
+                    'text-neutral-500': !isActor()
+                  }"
+                >
+                  {{ getTabDescription(tab) }}
+                </div>
               </div>
             </button>
             }
-            <button
-              (click)="setActiveTab('support')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-              [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  isActor() && activeTab() === 'support',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  isActor() && activeTab() !== 'support',
-                'ring-white/10 bg-white/5 text-neutral-200':
-                  !isActor() && activeTab() === 'support',
-                'ring-white/10 text-neutral-300 hover:bg-white/5':
-                  !isActor() && activeTab() !== 'support'
-              }"
-            >
-              support & feedback
-              <div
-                class="text-[11px]"
-                [ngClass]="{
-                  'text-purple-200/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                help, bugs, feedback, contact
-              </div>
-            </button>
-            <button
-              (click)="setActiveTab('legal')"
-              class="w-full text-left rounded-xl px-3 py-3 ring-1 transition-all duration-200"
-              [ngClass]="{
-                'ring-purple-900/15 bg-purple-900/20 text-purple-100/80':
-                  isActor() && activeTab() === 'legal',
-                'ring-purple-900/15 text-purple-300/60 hover:bg-purple-950/10':
-                  isActor() && activeTab() !== 'legal',
-                'ring-white/10 bg-white/5 text-neutral-200':
-                  !isActor() && activeTab() === 'legal',
-                'ring-white/10 text-neutral-300 hover:bg-white/5':
-                  !isActor() && activeTab() !== 'legal'
-              }"
-            >
-              legal
-              <div
-                class="text-[11px]"
-                [ngClass]="{
-                  'text-purple-200/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                terms & conditions, privacy policy, guidelines
-              </div>
-            </button>
           </nav>
         </aside>
 
@@ -1166,19 +1070,225 @@ type SettingsTab =
             </div>
           </div>
           } @case ('analytics') {
-          <div class="space-y-6">
-            <div
-              class="text-xs font-medium uppercase tracking-wide mb-3 text-purple-300/50"
-            >
-              Analytics & Insights
+          @if (isSubscribed()) {
+          <div class="space-y-8">
+            <!-- Profile Overview -->
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-purple-200">Profile Overview</h3>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Profile Views -->
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                  <div class="text-xs text-purple-300/60 mb-1">Profile Views</div>
+                  <div class="text-xs text-purple-300/60 mb-2">by Producers</div>
+                  <div class="text-2xl font-bold text-purple-100">{{ analyticsData().profileOverview.profileViews.toLocaleString() }}</div>
+                </div>
+                
+                <!-- Wishlist Count -->
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                  <div class="text-xs text-purple-300/60 mb-1">Wishlist Count</div>
+                  <div class="text-2xl font-bold text-purple-100 mt-4">{{ analyticsData().profileOverview.wishlistCount }}</div>
+                </div>
+                
+                <!-- Avg Time on Profile -->
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                  <div class="text-xs text-purple-300/60 mb-1">Avg. Time</div>
+                  <div class="text-xs text-purple-300/60 mb-2">on Profile</div>
+                  <div class="text-2xl font-bold text-purple-100">{{ analyticsData().profileOverview.avgTimeOnProfile }}</div>
+                </div>
+                
+                <!-- Visibility Score -->
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20 flex flex-col items-center justify-center">
+                  <!-- Circular progress indicator with centered content -->
+                  <div class="relative w-24 h-24 mb-4">
+                    <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                      <path
+                        class="stroke-purple-900/30"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke-width="2"
+                      />
+                      <path
+                        class="stroke-purple-400"
+                        [attr.stroke-dasharray]="analyticsData().profileOverview.visibilityScore + ', 100'"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <!-- Centered content inside circle -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <div class="text-xs text-purple-300/60 font-medium tracking-wide">VISIBILITY</div>
+                      <div class="text-xs text-purple-300/60 font-medium tracking-wide mb-1">SCORE</div>
+                      <div class="text-xl font-bold text-purple-100">{{ analyticsData().profileOverview.visibilityScore }}</div>
+                    </div>
+                  </div>
+                  
+                  <div class="text-xs text-purple-300/50 text-center">
+                    View your opportunity
+                    <br>compared to your
+                    <br>current talent segment
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="space-y-3">
-              <div class="text-xs text-purple-200/60">
-                Profile Views, Search Appearances, Portfolio Views, Video Views,
-                Business Card Scans
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <!-- Search Appearances -->
+              <div class="space-y-4">
+                <h3 class="text-sm font-medium text-purple-200">Search Appearances</h3>
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                  <div class="flex items-start justify-between mb-4">
+                    <div>
+                      <div class="text-2xl font-bold text-purple-100">{{ analyticsData().searchAppearances.count }}</div>
+                      <div class="text-xs text-purple-300/60">Times your profile appeared in producer searches</div>
+                    </div>
+                  </div>
+                  
+                  <!-- Mock chart area -->
+                  <div class="h-20 bg-purple-900/30 rounded-lg mb-4 flex items-end justify-center">
+                    <svg class="w-full h-full p-2" viewBox="0 0 200 60">
+                      <polyline
+                        points="10,50 30,40 50,35 70,30 90,25 110,20 130,25 150,20 170,15 190,10"
+                        fill="none"
+                        stroke="#a855f7"
+                        stroke-width="2"
+                        class="drop-shadow-sm"
+                      />
+                    </svg>
+                  </div>
+                  
+                  <!-- Videos they saw -->
+                  <div class="space-y-2">
+                    @for (video of analyticsData().searchAppearances.videos; track video.title) {
+                    <div class="flex items-center gap-3 p-2 bg-purple-900/20 rounded-lg">
+                      <div class="w-8 h-6 bg-purple-800/40 rounded flex items-center justify-center">
+                        <svg class="w-3 h-3 text-purple-300" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                      <span class="text-xs text-purple-200">{{ video.title }}</span>
+                    </div>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top Performing Video -->
+              <div class="space-y-4">
+                <h3 class="text-sm font-medium text-purple-200">Top Performing Video</h3>
+                <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                  <div class="space-y-4">
+                    <div>
+                      <div class="text-sm font-medium text-purple-100 mb-1">{{ analyticsData().topPerformingVideo.title }}</div>
+                      <div class="text-xs text-purple-300/60">{{ analyticsData().topPerformingVideo.views }}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div class="text-xs text-purple-300/60">Views</div>
+                        <div class="text-sm font-medium text-purple-100">{{ analyticsData().topPerformingVideo.views }}</div>
+                      </div>
+                      <div>
+                        <div class="text-xs text-purple-300/60">Average</div>
+                        <div class="text-xs text-purple-300/60">Watch Time</div>
+                        <div class="text-sm font-medium text-purple-100">{{ analyticsData().topPerformingVideo.avgWatchTime }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tag Insights -->
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-purple-200">Tag Insights</h3>
+              <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20 space-y-3">
+                @for (tag of analyticsData().tagInsights; track tag.tag) {
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-purple-200">{{ tag.tag }}</span>
+                    <span class="text-xs text-purple-300/60">{{ tag.percentage }}%</span>
+                  </div>
+                  <div class="w-full bg-purple-900/30 rounded-full h-2">
+                    <div 
+                      class="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                      [style.width.%]="tag.percentage"
+                    ></div>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Engagement Overview -->
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-purple-200">Engagement Overview <span class="text-xs text-purple-300/50 font-normal">Past 7 days</span></h3>
+              <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
+                <!-- Chart area -->
+                <div class="h-32 bg-purple-900/30 rounded-lg mb-4 flex items-end justify-center">
+                  <svg class="w-full h-full p-4" viewBox="0 0 300 100">
+                    <polyline
+                      points="20,80 60,70 100,65 140,60 180,55 220,50 260,45"
+                      fill="none"
+                      stroke="#a855f7"
+                      stroke-width="2"
+                      class="drop-shadow-sm"
+                    />
+                    <!-- Area fill -->
+                    <polygon
+                      points="20,80 60,70 100,65 140,60 180,55 220,50 260,45 260,90 20,90"
+                      fill="url(#gradient)"
+                      opacity="0.3"
+                    />
+                    <defs>
+                      <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.8" />
+                        <stop offset="100%" style="stop-color:#a855f7;stop-opacity:0" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+                <div class="text-center">
+                  <div class="text-xs text-purple-300/60">Your analytics will appear once engagement begins</div>
+                </div>
               </div>
             </div>
           </div>
+          } @else {
+          <!-- Premium Upgrade Screen -->
+          <div class="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <!-- Lock Icon -->
+            <div class="mb-8">
+              <svg 
+                class="w-16 h-16 text-purple-400 mx-auto" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                viewBox="0 0 24 24"
+              >
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            
+            <!-- Upgrade Message -->
+            <h3 class="text-lg font-medium text-purple-200 mb-8 max-w-md">
+              Upgrade to premium for detailed analytics
+            </h3>
+            
+            <!-- Go Premium Button -->
+            <button 
+              class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-full transition-colors duration-200"
+              (click)="setActiveTab('subscriptions')"
+            >
+              go premium
+            </button>
+          </div>
+          }
           } @case ('support') {
           <div class="space-y-8">
             <!-- Header -->
@@ -2357,11 +2467,22 @@ type SettingsTab =
 export class SettingsComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
+  private profileService = inject(ProfileService);
 
   // User role signals
   userRole = signal<string>('actor');
   isActor = computed(() => this.userRole() === 'actor');
   settingsTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
+  
+  // Subscription status for actors
+  isSubscribed = computed(() => {
+    if (!this.isActor()) {
+      return false;
+    }
+    
+    const profileData = this.profileService.profileData();
+    return profileData?.actorProfile?.isSubscribed ?? false;
+  });
 
   readReceipts = signal<boolean>(true);
 
@@ -2369,13 +2490,39 @@ export class SettingsComponent implements OnInit {
   activeTab = signal<SettingsTab>('account');
 
   // User data signals
-  userData = signal<UserDoc | null>(null);
+  userData = signal<(UserDoc & Profile) | null>(null);
   editableUserData = signal<{ name: string; email: string; phone: string }>({
     name: '',
     email: '',
     phone: '',
   });
   editingFields = signal<Set<string>>(new Set());
+  
+  // Analytics mock data
+  analyticsData = signal({
+    profileOverview: {
+      profileViews: 1250,
+      wishlistCount: 82,
+      avgTimeOnProfile: '3m 12s',
+      visibilityScore: 76
+    },
+    searchAppearances: {
+      count: 186,
+      videos: [
+        { title: 'Video 1', thumbnail: '' },
+        { title: 'Video 2', thumbnail: '' }
+      ]
+    },
+    topPerformingVideo: {
+      title: 'Video Title',
+      views: '1.3M views',
+      avgWatchTime: '3m 20s'
+    },
+    tagInsights: [
+      { tag: 'Comedy', percentage: 85 },
+      { tag: 'Drama', percentage: 65 }
+    ]
+  });
 
   // Privacy settings signals
   ghostMode = signal<boolean>(false);
@@ -2408,14 +2555,16 @@ export class SettingsComponent implements OnInit {
       'support',
       'legal',
     ];
+    // Show analytics for all actors (premium content gated inside)
     if (this.isActor()) {
       tabs.splice(3, 0, 'analytics'); // Insert analytics before support for actors
     }
     return tabs;
   });
 
-  ngOnInit() {
-    this.loadUserData();
+  async ngOnInit() {
+    await this.loadUserData();
+    await this.profileService.loadProfileData();
   }
 
   setActiveTab(tab: SettingsTab) {
@@ -2438,6 +2587,36 @@ export class SettingsComponent implements OnInit {
     return labels[tab];
   }
 
+  getTabIcon(tab: SettingsTab): string {
+    const icons: Record<SettingsTab, string> = {
+      account:
+        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      privacy:
+        '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      subscriptions:
+        '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+      analytics:
+        '<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M2 12h20"/>',
+      support:
+        '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+      legal:
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>',
+    };
+    return icons[tab];
+  }
+
+  getTabDescription(tab: SettingsTab): string {
+    const descriptions: Record<SettingsTab, string> = {
+      account: 'email, phone number, account type',
+      privacy: 'visibility, password, activity status, 2fa, blocked users',
+      subscriptions: 'manage subscription, plans, payments, history',
+      analytics: 'profile views, reach, media library insights',
+      support: 'help, bugs, feedback, contact',
+      legal: 'terms & conditions, privacy policy, guidelines, about us',
+    };
+    return descriptions[tab];
+  }
+
   private async loadUserData() {
     const user = this.auth.getCurrentUser();
     if (user) {
@@ -2445,7 +2624,7 @@ export class SettingsComponent implements OnInit {
         const userDocRef = doc(this.firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          const userData = userDoc.data() as UserDoc;
+          const userData = userDoc.data() as (UserDoc & Profile);
           this.userData.set(userData);
           this.userRole.set(userData.currentRole || 'actor');
           this.editableUserData.set({
@@ -2968,4 +3147,5 @@ export class SettingsComponent implements OnInit {
   setLegalView(view: 'menu' | 'terms' | 'privacy' | 'guidelines' | 'about') {
     this.legalActiveView.set(view);
   }
+
 }
