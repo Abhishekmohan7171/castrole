@@ -1,17 +1,34 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
 import { SettingsSidebarComponent, SettingsTab } from './components/settings-sidebar.component';
+import { AccountSectionComponent } from './sections/account-section.component';
+import { AnalyticsSectionComponent } from './sections/analytics-section.component';
+import { PrivacySectionComponent } from './sections/privacy-section.component';
+import { SubscriptionsSectionComponent } from './sections/subscriptions-section.component';
+import { SupportSectionComponent } from './sections/support-section.component';
+import { LegalSectionComponent } from './sections/legal-section.component';
 
 @Component({
   selector: 'app-discover-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, SettingsSidebarComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SettingsSidebarComponent,
+    AccountSectionComponent,
+    AnalyticsSectionComponent,
+    PrivacySectionComponent,
+    SubscriptionsSectionComponent,
+    SupportSectionComponent,
+    LegalSectionComponent
+  ],
   templateUrl: './settings.component.html',
   styles: [
     `
@@ -49,6 +66,7 @@ export class SettingsComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
   private profileService = inject(ProfileService);
+  private router = inject(Router);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -123,10 +141,9 @@ export class SettingsComponent implements OnInit {
   supportConcern = signal<string>('');
   isSubmittingSupport = signal<boolean>(false);
 
-  // Legal section signals
-  legalActiveView = signal<
-    'menu' | 'terms' | 'privacy' | 'guidelines' | 'about'
-  >('menu');
+  // Mobile sidebar state
+  isMobileSidebarOpen = signal(false);
+
 
   // Available tabs based on role
   availableTabs = computed(() => {
@@ -144,6 +161,20 @@ export class SettingsComponent implements OnInit {
     return tabs;
   });
 
+  // Sidebar classes for mobile/desktop
+  sidebarClasses = computed(() => {
+    const base = 'fixed lg:sticky top-0 lg:top-0 left-0 h-screen z-50 transition-transform duration-300';
+    const width = 'w-72 lg:w-64';
+    const mobile = this.isMobileSidebarOpen() 
+      ? 'translate-x-0' 
+      : '-translate-x-full lg:translate-x-0';
+    const backdrop = this.isMobileSidebarOpen() 
+      ? 'lg:bg-transparent bg-black/60 backdrop-blur-sm' 
+      : '';
+    
+    return `${base} ${width} ${mobile} ${backdrop}`;
+  });
+
   async ngOnInit() {
     await this.loadUserData();
     await this.profileService.loadProfileData();
@@ -151,15 +182,12 @@ export class SettingsComponent implements OnInit {
 
   setActiveTab(tab: SettingsTab) {
     this.activeTab.set(tab);
-    // Reset legal view to menu when switching to legal tab
-    if (tab === 'legal') {
-      this.legalActiveView.set('menu');
-    }
   }
 
   // Tab change handler
   onTabChange(tab: SettingsTab): void {
     this.setActiveTab(tab);
+    this.isMobileSidebarOpen.set(false);
   }
 
   // Get tab label for content header
@@ -173,6 +201,53 @@ export class SettingsComponent implements OnInit {
       legal: 'legal',
     };
     return labels[tab];
+  }
+
+  // Get tab icon SVG
+  getTabIcon(tab: SettingsTab): string {
+    const icons: Record<SettingsTab, string> = {
+      account: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      privacy: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      subscriptions: '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+      analytics: '<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M2 12h20"/>',
+      support: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+      legal: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>',
+    };
+    return icons[tab];
+  }
+
+  // Get tab description
+  getTabDescription(tab: SettingsTab): string {
+    const descriptions: Record<SettingsTab, string> = {
+      account: 'email, phone number, account type',
+      privacy: 'visibility, password, activity status, 2fa, blocked users',
+      subscriptions: 'manage subscription, plans, payments, history',
+      analytics: 'profile views, reach, media library insights',
+      support: 'help, bugs, feedback, contact',
+      legal: 'terms & conditions, privacy policy, guidelines, about us',
+    };
+    return descriptions[tab];
+  }
+
+  // Mobile sidebar methods
+  toggleMobileSidebar() {
+    this.isMobileSidebarOpen.update(v => !v);
+  }
+
+  onSidebarBackdropClick(event: Event) {
+    if (event.target === event.currentTarget) {
+      this.isMobileSidebarOpen.set(false);
+    }
+  }
+
+  // Navigation methods
+  navigateBack() {
+    this.router.navigate(['/discover']);
+  }
+
+  // Handle data changes from account section
+  onEditableDataChange(data: { name: string; email: string; phone: string }) {
+    this.editableUserData.set(data);
   }
 
   private async loadUserData() {
@@ -306,12 +381,16 @@ export class SettingsComponent implements OnInit {
 
   // Role management methods
   canAddAccount(): boolean {
-    const roles = this.userData()?.roles || [];
+    const userData = this.userData();
+    if (!userData) return false;
+    const roles = userData.roles || [];
     return !roles.includes('actor') || !roles.includes('producer');
   }
 
   getMissingRole(): string {
-    const roles = this.userData()?.roles || [];
+    const userData = this.userData();
+    if (!userData) return '';
+    const roles = userData.roles || [];
     if (!roles.includes('actor')) return 'actor';
     if (!roles.includes('producer')) return 'producer';
     return '';
@@ -701,8 +780,4 @@ export class SettingsComponent implements OnInit {
     }, 2000);
   }
 
-  // Legal section methods
-  setLegalView(view: 'menu' | 'terms' | 'privacy' | 'guidelines' | 'about') {
-    this.legalActiveView.set(view);
-  }
 }
