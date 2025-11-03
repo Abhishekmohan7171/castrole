@@ -89,7 +89,7 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () =>
-          import('./discover/settings.component').then(
+          import('./discover/settings/settings.component').then(
             (m) => m.SettingsComponent
           ),
       },
