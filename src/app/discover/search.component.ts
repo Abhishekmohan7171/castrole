@@ -813,10 +813,36 @@ export class SearchComponent implements OnInit, OnDestroy {
 
     const actor = profile.actorProfile;
     
-    // Ensure skills and languages are always string arrays
-    const ensureStringArray = (arr: any[] | undefined): string[] => {
-      if (!Array.isArray(arr)) return [];
-      return arr.filter(item => typeof item === 'string') as string[];
+    // Extract skill names from Skill[] objects: { skill: string, rating: number }
+    const extractSkills = (skills: any[] | undefined): string[] => {
+      if (!Array.isArray(skills)) return [];
+      return skills
+        .map(item => {
+          if (typeof item === 'object' && item !== null && 'skill' in item) {
+            return item.skill;
+          }
+          if (typeof item === 'string') {
+            return item;
+          }
+          return null;
+        })
+        .filter((skill): skill is string => skill !== null && skill.length > 0);
+    };
+    
+    // Extract language names from Language[] objects: { language: string, rating: number }
+    const extractLanguages = (languages: any[] | undefined): string[] => {
+      if (!Array.isArray(languages)) return [];
+      return languages
+        .map(item => {
+          if (typeof item === 'object' && item !== null && 'language' in item) {
+            return item.language;
+          }
+          if (typeof item === 'string') {
+            return item;
+          }
+          return null;
+        })
+        .filter((lang): lang is string => lang !== null && lang.length > 0);
     };
     
     const result = {
@@ -827,8 +853,8 @@ export class SearchComponent implements OnInit, OnDestroy {
       location: profile.location,
       height: actor.height,
       weight: actor.weight,
-      skills: ensureStringArray(actor.skills),
-      languages: ensureStringArray(actor.languages),
+      skills: extractSkills(actor.skills),
+      languages: extractLanguages(actor.languages),
       profileImageUrl: actor.actorProfileImageUrl,
       carouselImages: actor.carouselImagesUrl || [],
       profileViewCount: actor.profileViewCount || 0,
