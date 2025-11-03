@@ -1,0 +1,41 @@
+/* Settings sidebar component styles */
+:host {
+  display: block;
+}
+
+/* Ensure smooth transitions for all interactive elements */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus states for accessibility */
+button:focus-visible {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
+:host-context(.actor-theme) button:focus-visible {
+  outline-color: rgb(168 85 247); /* purple-500 */
+}
+
+:host-context(:not(.actor-theme)) button:focus-visible {
+  outline-color: rgb(115 115 115); /* neutral-500 */
+}
+
+/* Ensure icons maintain proper alignment */
+svg {
+  flex-shrink: 0;
+}
+
+/* Text truncation for long tab labels */
+.font-medium {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure description text wraps properly */
+.leading-relaxed {
+  word-wrap: break-word;
+  hyphens: auto;
+}
