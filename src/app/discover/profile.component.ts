@@ -17,1184 +17,446 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div
-      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4 md:py-6"
-      [ngClass]="profileTheme()"
-    >
-      <div
-        class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 md:gap-8 lg:gap-10"
-      >
-        <!-- Left: Profile card + media -->
-        <section class="space-y-5">
-          <!-- Profile card (role-based theming) -->
-          <div
-            class="rounded-2xl p-5 transition-all duration-300"
-            [ngClass]="{
-              'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
-                isActor(),
-              'bg-black/50 ring-2 ring-white/10 border border-neutral-800':
-                !isActor()
-            }"
-          >
-            <div class="flex items-start gap-4">
-              <!-- Profile image -->
-              <div class="relative h-20 w-20 sm:h-24 sm:w-24 group">
-                <div
-                  class="absolute inset-0 rounded-full overflow-hidden transition-all duration-300"
-                  [ngClass]="{
-                    'ring-1 ring-purple-900/20': isActor(),
-                    'ring-1 ring-white/15': !isActor()
-                  }"
+    <div class="min-h-screen bg-black text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 lg:gap-8">
+          <!-- Left: Profile card + media -->
+          <section class="space-y-4">
+            <!-- Profile card -->
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <!-- Settings Icon (top right) -->
+              @if (isViewingOwnProfile()) {
+              <div class="flex justify-end mb-3">
+                <button
+                  class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                  aria-label="settings"
+                  (click)="navigateToSettings()"
                 >
-                  @if (getProfileImageUrl()) {
-                  <img
-                    [src]="getProfileImageUrl()"
-                    [alt]="getDisplayName()"
-                    class="w-full h-full object-cover"
-                  />
-                  <!-- Remove profile picture button on hover -->
+                  <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/>
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                  </svg>
+                </button>
+              </div>
+              }
+
+              <!-- Profile Image (centered, larger) -->
+              <div class="flex flex-col items-center mb-4">
+                <div class="relative group mb-3">
+                  <div class="h-32 w-32 rounded-full overflow-hidden ring-2 ring-neutral-700/50">
+                    @if (getProfileImageUrl()) {
+                    <img
+                      [src]="getProfileImageUrl()"
+                      [alt]="getDisplayName()"
+                      class="w-full h-full object-cover"
+                    />
+                    } @else {
+                    <button
+                      (click)="onDummyProfileClick()"
+                      class="w-full h-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center cursor-pointer"
+                      aria-label="Set profile picture"
+                    >
+                      <svg class="w-12 h-12 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                    </button>
+                    }
+                  </div>
+                  
+                  @if (isViewingOwnProfile() && getProfileImageUrl()) {
+                  <!-- Edit/Remove overlay on hover -->
                   <button
                     (click)="removeProfilePicture()"
-                    class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                    class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-full"
                     aria-label="Remove profile picture"
                   >
-                    <svg
-                      class="w-8 h-8 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                  } @else {
-                  <button
-                    (click)="onDummyProfileClick()"
-                    class="w-full h-full rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer hover:bg-opacity-80"
-                    [ngClass]="{
-                      'bg-purple-950/20 hover:bg-purple-950/30': isActor(),
-                      'bg-white/10 hover:bg-white/15': !isActor()
-                    }"
-                    aria-label="Set profile picture"
-                  >
-                    <svg
-                      class="w-10 h-10 sm:w-12 sm:h-12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      [ngClass]="{
-                        'text-purple-300/40': isActor(),
-                        'text-neutral-400': !isActor()
-                      }"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                   </button>
                   }
                 </div>
-              </div>
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <h1
-                    class="text-lg sm:text-xl font-semibold"
-                    [ngClass]="{
-                      'text-purple-100/90': isActor(),
-                      'text-neutral-100': !isActor()
-                    }"
-                  >
+
+                <!-- Name and Edit Button -->
+                <div class="flex items-center gap-2 mb-1">
+                  <h1 class="text-xl font-medium text-neutral-200">
                     {{ getDisplayName() }}
                   </h1>
-                  <span
-                    class="px-2 py-0.5 text-[11px] rounded-full ring-1 transition-all duration-300"
-                    [ngClass]="{
-                      'ring-purple-900/20 bg-purple-950/20 text-purple-300/70':
-                        isActor(),
-                      'ring-emerald-500/30 bg-emerald-500/10 text-emerald-300':
-                        !isActor()
-                    }"
-                    >{{ userRole() }}</span
-                  >
-
-                  @if (isActor() && profileData()?.actorProfile?.voiceIntro) {
-                  <div class="flex items-center gap-1">
-                    <button
-                      class="h-7 w-7 rounded-full ring-1 transition-all duration-200 grid place-items-center"
-                      [ngClass]="{
-                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                          isActor(),
-                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                      }"
-                      [attr.aria-label]="isVoicePlaying() ? 'pause voice intro' : 'play voice intro'"
-                      (click)="toggleVoiceIntro()"
-                    >
-                      @if (isVoicePlaying()) {
-                      <!-- Pause icon -->
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="h-4 w-4"
-                        [ngClass]="{
-                          'text-purple-300/60': isActor(),
-                          'text-neutral-300': !isActor()
-                        }"
-                      >
-                        <path fill="currentColor" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                      </svg>
-                      } @else {
-                      <!-- Play icon -->
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="h-4 w-4"
-                        [ngClass]="{
-                          'text-purple-300/60': isActor(),
-                          'text-neutral-300': !isActor()
-                        }"
-                      >
-                        <path fill="currentColor" d="M8 5v14l11-7z" />
-                      </svg>
-                      }
-                    </button>
-                    @if (isVoicePlaying()) {
-                    <button
-                      class="h-7 w-7 rounded-full ring-1 transition-all duration-200 grid place-items-center"
-                      [ngClass]="{
-                        'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                          isActor(),
-                        'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                      }"
-                      aria-label="stop voice intro"
-                      (click)="stopVoiceIntro()"
-                    >
-                      <!-- Stop icon -->
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="h-4 w-4"
-                        [ngClass]="{
-                          'text-purple-300/60': isActor(),
-                          'text-neutral-300': !isActor()
-                        }"
-                      >
-                        <path fill="currentColor" d="M6 6h12v12H6z" />
-                      </svg>
-                    </button>
-                    }
-                  </div>
-                  }
-
                   @if (isViewingOwnProfile()) {
                   <button
-                    class="h-6 w-6 grid place-items-center rounded-full ring-1 transition-all duration-200"
-                    [ngClass]="{
-                      'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                        isActor(),
-                      'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                    }"
-                    aria-label="edit"
+                    class="h-6 w-6 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="edit profile"
                     (click)="openEditProfile()"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      class="h-3.5 w-3.5"
-                      [ngClass]="{
-                        'text-purple-300/60': isActor(),
-                        'text-neutral-300': !isActor()
-                      }"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
-                      />
+                    <svg class="h-3 w-3 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
                     </svg>
                   </button>
                   }
                 </div>
 
-                <!-- Basic info grid - different for Actor vs Producer -->
+                <!-- Voice Intro (if actor) -->
+                @if (isActor() && profileData()?.actorProfile?.voiceIntro) {
+                <div class="flex items-center gap-2 mb-3">
+                  <button
+                    class="flex items-center gap-1 px-3 py-1 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors"
+                    [attr.aria-label]="isVoicePlaying() ? 'pause voice intro' : 'play voice intro'"
+                    (click)="toggleVoiceIntro()"
+                  >
+                    @if (isVoicePlaying()) {
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                      <path fill="currentColor" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                    } @else {
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                      <path fill="currentColor" d="M8 5v14l11-7z"/>
+                    </svg>
+                    }
+                    <span class="text-xs text-neutral-400">voice intro</span>
+                  </button>
+                  @if (isVoicePlaying()) {
+                  <button
+                    class="h-7 w-7 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="stop voice intro"
+                    (click)="stopVoiceIntro()"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                      <path fill="currentColor" d="M6 6h12v12H6z"/>
+                    </svg>
+                  </button>
+                  }
+                </div>
+                }
+
+                <!-- Basic Stats -->
                 @if (isActor()) {
-                <!-- Actor basic info -->
-                <div
-                  class="mt-3 grid grid-cols-4 gap-2 text-[11px]"
-                  [ngClass]="{
-                    'text-purple-200/70': isActor(),
-                    'text-neutral-300': !isActor()
-                  }"
-                >
+                <div class="flex items-center gap-3 text-xs text-neutral-400">
                   @if (profileData()?.gender) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ profileData()?.gender }}
-                    <span class="opacity-60">gender</span>
-                  </div>
-                  } @if (profileData()?.actorProfile?.height) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ profileData()?.actorProfile?.height }}
-                    <span class="opacity-60">height</span>
-                  </div>
-                  } @if (profileData()?.actorProfile?.weight) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ profileData()?.actorProfile?.weight }}
-                    <span class="opacity-60">weight</span>
-                  </div>
-                  } @if (profileData()?.location) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ getShortLocation() }}
-                    <span class="opacity-60">location</span>
-                  </div>
+                  <span>{{ profileData()?.gender }}</span>
+                  }
+                  @if (profileData()?.actorProfile?.height) {
+                  <span>{{ profileData()?.actorProfile?.height }}</span>
+                  }
+                  @if (profileData()?.actorProfile?.weight) {
+                  <span>{{ profileData()?.actorProfile?.weight }}</span>
                   }
                 </div>
                 } @else {
-                <!-- Producer basic info -->
-                <div
-                  class="mt-3 grid grid-cols-3 gap-2 text-[11px]"
-                  [ngClass]="{
-                    'text-purple-200/70': isActor(),
-                    'text-neutral-300': !isActor()
-                  }"
-                >
+                <div class="flex items-center gap-3 text-xs text-neutral-400">
                   @if (profileData()?.age) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ profileData()?.age }} <span class="opacity-60">age</span>
-                  </div>
-                  } @if (profileData()?.gender) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ profileData()?.gender }}
-                    <span class="opacity-60">gender</span>
-                  </div>
-                  } @if (profileData()?.location) {
-                  <div
-                    class="rounded-md px-2 py-1 text-center transition-all duration-200"
-                    [ngClass]="{
-                      'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                      'bg-white/5 ring-1 ring-white/10': !isActor()
-                    }"
-                  >
-                    {{ getShortLocation() }}
-                    <span class="opacity-60">location</span>
-                  </div>
+                  <span>{{ profileData()?.age }} yrs</span>
+                  }
+                  @if (profileData()?.gender) {
+                  <span>{{ profileData()?.gender }}</span>
                   }
                 </div>
                 }
               </div>
-              <!-- tiny action icons -->
-              <div
-                class="flex flex-col items-center gap-2"
-                [ngClass]="{
-                  'text-purple-300/50': isActor(),
-                  'text-neutral-400': !isActor()
-                }"
-              >
+
+              <!-- Media tabs - Actor only -->
+              @if (isActor()) {
+              <div class="mb-3">
+                <div class="flex items-center gap-2 border-b border-neutral-800">
+                  <button
+                    class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
+                    [ngClass]="{
+                      'border-white text-white': mediaTab === 'videos',
+                      'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'videos'
+                    }"
+                    (click)="mediaTab = 'videos'"
+                  >
+                    videos
+                  </button>
+                  <button
+                    class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
+                    [ngClass]="{
+                      'border-white text-white': mediaTab === 'photos',
+                      'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'photos'
+                    }"
+                    (click)="mediaTab = 'photos'"
+                  >
+                    photos
+                  </button>
+                </div>
+              </div>
+
+              <!-- Videos Tab Content -->
+              @if (mediaTab === 'videos') {
+                @if (hasVideos()) {
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  @for (videoUrl of videoUrls(); track videoUrl; let idx = $index) {
+                    @if (idx < 4) {
+                    <div
+                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 hover:ring-neutral-600 transition-all"
+                      (click)="openPreviewModal(videoUrl, 'video')"
+                    >
+                      <video [src]="videoUrl" class="w-full h-full object-cover pointer-events-none"></video>
+                    </div>
+                    }
+                  }
+                </div>
+                } @else {
                 <button
-                  class="h-7 w-7 rounded-full ring-1 transition-all duration-200"
-                  [ngClass]="{
-                    'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                      isActor(),
-                    'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                  }"
-                  aria-label="options"
-                ></button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Media tabs - Actor only -->
-          @if (isActor()) {
-          <div>
-            <div
-              class="inline-flex items-center gap-2 rounded-full p-1 transition-all duration-300"
-              [ngClass]="{
-                'bg-purple-950/10 ring-1 ring-purple-900/10': isActor(),
-                'bg-white/5 ring-1 ring-white/10': !isActor()
-              }"
-            >
-              <button
-                class="px-3 py-1.5 rounded-full text-xs transition-all duration-200"
-                [ngClass]="{
-                  'bg-purple-900/20 text-purple-200':
-                    mediaTab === 'videos' && isActor(),
-                  'text-purple-300/60': mediaTab !== 'videos' && isActor(),
-                  'bg-white/10 text-neutral-100':
-                    mediaTab === 'videos' && !isActor(),
-                  'text-neutral-400': mediaTab !== 'videos' && !isActor()
-                }"
-                (click)="mediaTab = 'videos'"
-              >
-                videos
-              </button>
-              <button
-                class="px-3 py-1.5 rounded-full text-xs transition-all duration-200"
-                [ngClass]="{
-                  'bg-purple-900/20 text-purple-200':
-                    mediaTab === 'photos' && isActor(),
-                  'text-purple-300/60': mediaTab !== 'photos' && isActor(),
-                  'bg-white/10 text-neutral-100':
-                    mediaTab === 'photos' && !isActor(),
-                  'text-neutral-400': mediaTab !== 'photos' && !isActor()
-                }"
-                (click)="mediaTab = 'photos'"
-              >
-                photos
-              </button>
-            </div>
-
-            <!-- Videos Tab Content -->
-            @if (mediaTab === 'videos') { @if (hasVideos()) {
-            <div
-              class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
-            >
-              @for (videoUrl of videoUrls(); track videoUrl) {
-              <div
-                class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer group"
-                [ngClass]="{
-                  'ring-purple-900/10 hover:ring-purple-900/20': isActor(),
-                  'ring-white/10 hover:ring-white/20': !isActor()
-                }"
-                (click)="openPreviewModal(videoUrl, 'video')"
-              >
-                <video
-                  [src]="videoUrl"
-                  class="w-full h-full object-cover pointer-events-none"
-                ></video>
-                <div
-                  class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                  (click)="navigateToUpload()"
+                  class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
                 >
-                  <svg
-                    class="h-12 w-12 text-white"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M8 5v14l11-7z" />
+                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
                   </svg>
-                </div>
-              </div>
+                  <span class="text-xs text-neutral-500 uppercase tracking-wide">Add Video</span>
+                </button>
+                }
               }
-              <!-- Add more videos button -->
-              <button
-                (click)="navigateToUpload()"
-                class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
-                [ngClass]="{
-                  'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10':
-                    isActor(),
-                  'ring-white/10 bg-neutral-800/30 hover:bg-neutral-700/40':
-                    !isActor()
-                }"
-              >
-                <svg
-                  class="h-8 w-8"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  [ngClass]="{
-                    'text-purple-300/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-200/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  Add More
-                </span>
-              </button>
-            </div>
-            } @else {
-            <!-- Add video button -->
-            <div class="mt-3">
-              <button
-                (click)="navigateToUpload()"
-                class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
-                [ngClass]="{
-                  'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-neutral-800/50 hover:bg-neutral-700/50':
-                    !isActor()
-                }"
-              >
-                <svg
-                  class="h-8 w-8"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  [ngClass]="{
-                    'text-purple-300/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-200/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  Add Video
-                </span>
-              </button>
-            </div>
-            } }
 
-            <!-- Photos Tab Content -->
-            @if (mediaTab === 'photos') { @if (hasImages()) {
-            <div
-              class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
-            >
-              @for (imageUrl of imageUrls(); track imageUrl) {
-              <div
-                class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 cursor-pointer group"
-                [ngClass]="{
-                  'ring-purple-900/10 hover:ring-purple-900/20': isActor(),
-                  'ring-white/10 hover:ring-white/20': !isActor()
-                }"
-                (click)="openPreviewModal(imageUrl, 'image')"
-              >
-                <img
-                  [src]="imageUrl"
-                  alt="Portfolio image"
-                  class="w-full h-full object-cover"
-                />
-                <div
-                  class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+              <!-- Photos Tab Content -->
+              @if (mediaTab === 'photos') {
+                @if (hasImages()) {
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  @for (imageUrl of imageUrls(); track imageUrl; let idx = $index) {
+                    @if (idx < 4) {
+                    <div
+                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 hover:ring-neutral-600 transition-all"
+                      (click)="openPreviewModal(imageUrl, 'image')"
+                    >
+                      <img [src]="imageUrl" alt="Portfolio image" class="w-full h-full object-cover"/>
+                    </div>
+                    }
+                  }
+                </div>
+                } @else {
+                <button
+                  (click)="navigateToUpload()"
+                  class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
                 >
-                  <svg
-                    class="h-8 w-8 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
+                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
                   </svg>
+                  <span class="text-xs text-neutral-500 uppercase tracking-wide">Add Image</span>
+                </button>
+                }
+              }
+              }
+
+              <!-- Social Links -->
+              @if (hasSocialLinks() || isActor()) {
+              <div class="pt-3 border-t border-neutral-800">
+                <div class="text-xs text-neutral-500 mb-2">social links</div>
+                <div class="flex items-center gap-2">
+                  @if (profileData()?.social?.instaIdUrl) {
+                  <a
+                    [href]="profileData()?.social?.instaIdUrl"
+                    target="_blank"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="Instagram"
+                  >
+                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    </svg>
+                  </a>
+                  }
+                  @if (profileData()?.social?.youtubeIdUrl) {
+                  <a
+                    [href]="profileData()?.social?.youtubeIdUrl"
+                    target="_blank"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="YouTube"
+                  >
+                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                  </a>
+                  }
+                  @if (profileData()?.social?.externalLinkUrl) {
+                  <a
+                    [href]="profileData()?.social?.externalLinkUrl"
+                    target="_blank"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="External Link"
+                  >
+                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/>
+                      <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </a>
+                  }
+                  @if (profileData()?.social?.addLinkUrl) {
+                  <a
+                    [href]="profileData()?.social?.addLinkUrl"
+                    target="_blank"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="Additional Link"
+                  >
+                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                  </a>
+                  }
                 </div>
               </div>
               }
-              <!-- Add more images button -->
-              <button
-                (click)="navigateToUpload()"
-                class="aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
-                [ngClass]="{
-                  'ring-purple-900/10 bg-purple-950/5 hover:bg-purple-900/10':
-                    isActor(),
-                  'ring-white/10 bg-neutral-800/30 hover:bg-neutral-700/40':
-                    !isActor()
-                }"
-              >
-                <svg
-                  class="h-8 w-8"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  [ngClass]="{
-                    'text-purple-300/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-200/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  Add More
-                </span>
-              </button>
             </div>
+          </section>
+
+          <!-- Right: Details -->
+          <section class="space-y-4">
+            @if (isActor()) {
+            <!-- Location -->
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">location</div>
+              <div class="text-sm text-neutral-300">{{ profileData()?.location || 'Not specified' }}</div>
+            </div>
+
+            <!-- Acting Education -->
+            @if (hasEducation()) {
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">acting education</div>
+              <div class="space-y-3">
+                @for (edu of profileData()?.actorProfile?.listEducation; track edu) {
+                <div>
+                  <div class="text-sm text-neutral-300 font-medium">{{ edu.courseName }}</div>
+                  <div class="text-xs text-neutral-500 mt-0.5">{{ edu.schoolName }}</div>
+                  @if (edu.certificateUrl) {
+                  <a
+                    [href]="edu.certificateUrl"
+                    target="_blank"
+                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                  >
+                    view certificate
+                  </a>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Experiences -->
+            @if (hasActorWorks()) {
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">experiences</div>
+              <div class="space-y-3">
+                @for (work of profileData()?.actorProfile?.actorWorks; track work) {
+                <div>
+                  <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    {{ work.genre || 'supporting role' }} | {{ work.year }}
+                  </div>
+                  <a href="#" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
+                    www.linkofproject.com
+                  </a>
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Languages -->
+            @if (hasLanguages()) {
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">languages</div>
+              <div class="space-y-2">
+                @for (language of profileData()?.actorProfile?.languages; track language) {
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-neutral-300">{{ getLanguageName(language) }}</span>
+                  @if (hasLanguageRating(language)) {
+                  <div class="flex items-center gap-0.5">
+                    @for (star of [1,2,3,4,5]; track star) {
+                    <svg 
+                      class="w-3 h-3"
+                      [ngClass]="{
+                        'text-yellow-400': star <= getLanguageRating(language),
+                        'text-neutral-700': star > getLanguageRating(language)
+                      }"
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    }
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Extra Curricular / Skills -->
+            @if (hasSkills()) {
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">extra curricular</div>
+              <div class="space-y-2">
+                @for (skill of profileData()?.actorProfile?.skills; track skill) {
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-neutral-300">{{ getSkillName(skill) }}</span>
+                  @if (hasSkillRating(skill)) {
+                  <div class="flex items-center gap-0.5">
+                    @for (star of [1,2,3,4,5]; track star) {
+                    <svg 
+                      class="w-3 h-3"
+                      [ngClass]="{
+                        'text-yellow-400': star <= getSkillRating(skill),
+                        'text-neutral-700': star > getSkillRating(skill)
+                      }"
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    }
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+            }
+
             } @else {
-            <!-- Add image button -->
-            <div class="mt-3">
-              <button
-                (click)="navigateToUpload()"
-                class="w-full aspect-video rounded-lg ring-1 relative overflow-hidden transition-all duration-200 flex flex-col items-center justify-center gap-2"
-                [ngClass]="{
-                  'ring-purple-900/10 bg-gradient-to-br from-purple-950/20 to-purple-900/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-neutral-800/50 hover:bg-neutral-700/50':
-                    !isActor()
-                }"
-              >
-                <svg
-                  class="h-8 w-8"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  [ngClass]="{
-                    'text-purple-300/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-200/60': isActor(),
-                    'text-neutral-400': !isActor()
-                  }"
-                >
-                  Add Image
-                </span>
-              </button>
+            <!-- Producer Sections -->
+            <!-- Location -->
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">location</div>
+                  <div class="text-sm text-neutral-300">{{ profileData()?.location || 'Not specified' }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">designation</div>
+                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.designation || 'Not specified' }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">production house</div>
+                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.productionHouse || 'Not specified' }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">industry type</div>
+                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.industryType || 'Not specified' }}</div>
+                </div>
+              </div>
             </div>
-            } }
-          </div>
-          }
 
-          <!-- Social links -->
-          @if (hasSocialLinks() || isActor()) {
-          <div class="mt-4">
-            <div
-              class="text-xs mb-2 transition-colors duration-300"
-              [ngClass]="{
-                'text-purple-300/50': isActor(),
-                'text-neutral-500': !isActor()
-              }"
-            >
-              social links
-            </div>
-            <div class="flex items-center gap-3">
-              @if (profileData()?.social?.instaIdUrl) {
-              <a
-                [href]="profileData()?.social?.instaIdUrl"
-                target="_blank"
-                class="h-7 w-7 rounded-full ring-1 transition-all duration-200 flex items-center justify-center"
-                [ngClass]="{
-                  'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                }"
-                aria-label="Instagram"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                </svg>
-              </a>
-              } @if (profileData()?.social?.youtubeIdUrl) {
-              <a
-                [href]="profileData()?.social?.youtubeIdUrl"
-                target="_blank"
-                class="h-7 w-7 rounded-full ring-1 transition-all duration-200 flex items-center justify-center"
-                [ngClass]="{
-                  'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                }"
-                aria-label="YouTube"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
-                  />
-                </svg>
-              </a>
-              } @if (profileData()?.social?.externalLinkUrl) {
-              <a
-                [href]="profileData()?.social?.externalLinkUrl"
-                target="_blank"
-                class="h-7 w-7 rounded-full ring-1 transition-all duration-200 flex items-center justify-center"
-                [ngClass]="{
-                  'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                }"
-                aria-label="External Link"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-                  />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-              } @if (profileData()?.social?.addLinkUrl) {
-              <a
-                [href]="profileData()?.social?.addLinkUrl"
-                target="_blank"
-                class="h-7 w-7 rounded-full ring-1 transition-all duration-200 flex items-center justify-center"
-                [ngClass]="{
-                  'ring-purple-900/15 bg-purple-950/10 hover:bg-purple-900/20':
-                    isActor(),
-                  'ring-white/10 bg-white/5 hover:bg-white/10': !isActor()
-                }"
-                aria-label="Additional Link"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                  />
-                  <path
-                    d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                  />
-                </svg>
-              </a>
-              }
-            </div>
-          </div>
-          }
-        </section>
-
-        <!-- Right: Details -->
-        <section class="space-y-4 sm:space-y-6">
-          <!-- Actor Sections -->
-          @if (isActor()) {
-          <!-- Education and Experience -->
-          <div
-            class="rounded-2xl p-4 sm:p-5 md:p-6 transition-all duration-300"
-            [ngClass]="{
-              'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
-                isActor(),
-              'bg-black/50 ring-2 ring-white/10 border border-neutral-800':
-                !isActor()
-            }"
-          >
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-              <!-- Location -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  location
-                </dt>
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  {{ profileData()?.location || 'Not specified' }}
-                </dd>
-              </div>
-
-              <!-- Education -->
-              <div class="sm:col-span-1">
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  education
-                </dt>
-                @if (hasEducation()) {
-                <dd class="mt-1 space-y-2">
-                  @for (edu of profileData()?.actorProfile?.listEducation; track
-                  edu) {
-                  <div
-                    class="text-sm"
-                    [ngClass]="{
-                      'text-purple-100/80': isActor(),
-                      'text-neutral-200': !isActor()
-                    }"
-                  >
-                    <div class="font-medium">{{ edu.courseName }}</div>
-                    <div
-                      class="text-xs"
-                      [ngClass]="{
-                        'text-purple-200/60': isActor(),
-                        'text-neutral-400': !isActor()
-                      }"
-                    >
-                      {{ edu.schoolName }} • {{ edu.yearCompleted }}
-                    </div>
-                    @if (edu.certificateUrl) {
-                    <a
-                      [href]="edu.certificateUrl"
-                      target="_blank"
-                      class="text-xs hover:underline transition-colors duration-300"
-                      [ngClass]="{
-                        'text-purple-300/60': isActor(),
-                        'text-fuchsia-300': !isActor()
-                      }"
-                    >
-                      view certificate
-                    </a>
-                    }
-                  </div>
-                  }
-                </dd>
-                } @else {
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  No education added
-                </dd>
-                }
-              </div>
-
-              <!-- Experience -->
-              <div class="sm:col-span-2">
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  experience
-                </dt>
-                @if (hasActorWorks()) {
-                <dd class="mt-1 space-y-3 md:space-y-4">
-                  @for (work of profileData()?.actorProfile?.actorWorks; track
-                  work) {
-                  <div
-                    class="p-2 sm:p-3 rounded-lg transition-colors duration-200"
-                    [ngClass]="{
-                      'hover:bg-purple-950/10': isActor(),
-                      'hover:bg-white/5': !isActor()
-                    }"
-                  >
-                    <div
-                      class="text-sm font-medium"
-                      [ngClass]="{
-                        'text-purple-100/80': isActor(),
-                        'text-neutral-200': !isActor()
-                      }"
-                    >
-                      {{ work.projectName }}
-                    </div>
-                    <div
-                      class="text-xs"
-                      [ngClass]="{
-                        'text-purple-200/60': isActor(),
-                        'text-neutral-400': !isActor()
-                      }"
-                    >
-                      {{ work.genre || 'Role not specified' }} • {{ work.year }}
-                    </div>
-                  </div>
-                  }
-                </dd>
-                } @else {
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  No experience added
-                </dd>
-                }
-              </div>
-            </dl>
-          </div>
-
-          <!-- Languages and Skills -->
-          <div
-            class="rounded-2xl p-4 sm:p-5 md:p-6 transition-all duration-300"
-            [ngClass]="{
-              'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
-                isActor(),
-              'bg-black/50 ring-2 ring-white/10 border border-neutral-800':
-                !isActor()
-            }"
-          >
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-              <!-- Languages -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide mb-2"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  languages
-                </dt>
-                @if (hasLanguages()) {
-                <dd
-                  class="text-sm space-y-2 mt-1"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  @for (language of profileData()?.actorProfile?.languages;
-                  track language) {
-                  <div
-                    class="flex items-center justify-between gap-2 p-1.5 rounded-md transition-colors duration-200"
-                    [ngClass]="{
-                      'hover:bg-purple-950/10': isActor(),
-                      'hover:bg-white/5': !isActor()
-                    }"
-                  >
-                    <span>{{ getLanguageName(language) }}</span>
-                    @if (hasLanguageRating(language)) {
-                    <div class="flex items-center gap-1">
-                      @for (star of [1,2,3,4,5]; track star) {
-                      <svg 
-                        class="w-3 h-3"
-                        [ngClass]="{
-                          'text-yellow-400': star <= getLanguageRating(language),
-                          'text-gray-400': star > getLanguageRating(language)
-                        }"
-                        fill="currentColor" 
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                      </svg>
-                      }
-                    </div>
-                    }
-                  </div>
-                  }
-                </dd>
-                } @else {
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  No languages added
-                </dd>
-                }
-              </div>
-
-              <!-- Skills -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide mb-2"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  skills
-                </dt>
-                @if (hasSkills()) {
-                <dd
-                  class="text-sm space-y-2 mt-1"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  @for (skill of profileData()?.actorProfile?.skills; track
-                  skill) {
-                  <div
-                    class="flex items-center justify-between gap-2 p-1.5 rounded-md transition-colors duration-200"
-                    [ngClass]="{
-                      'hover:bg-purple-950/10': isActor(),
-                      'hover:bg-white/5': !isActor()
-                    }"
-                  >
-                    <span>{{ getSkillName(skill) }}</span>
-                    @if (hasSkillRating(skill)) {
-                    <div class="flex items-center gap-1">
-                      @for (star of [1,2,3,4,5]; track star) {
-                      <svg 
-                        class="w-3 h-3"
-                        [ngClass]="{
-                          'text-yellow-400': star <= getSkillRating(skill),
-                          'text-gray-400': star > getSkillRating(skill)
-                        }"
-                        fill="currentColor" 
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                      </svg>
-                      }
-                    </div>
-                    }
-                  </div>
-                  }
-                </dd>
-                } @else {
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  No skills added
-                </dd>
-                }
-              </div>
-            </dl>
-          </div>
-          }
-
-          <!-- Producer Sections -->
-          @if (!isActor()) {
-          <!-- Profile Info -->
-          <div
-            class="rounded-2xl p-4 sm:p-5 md:p-6 transition-all duration-300"
-            [ngClass]="{
-              'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
-                isActor(),
-              'bg-black/50 ring-2 ring-white/10 border border-neutral-800':
-                !isActor()
-            }"
-          >
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-              <!-- Location -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  location
-                </dt>
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  {{ profileData()?.location || 'Not specified' }}
-                </dd>
-              </div>
-
-              <!-- Designation -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  designation
-                </dt>
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  {{
-                    profileData()?.producerProfile?.designation ||
-                      'Not specified'
-                  }}
-                </dd>
-              </div>
-
-              <!-- Production House -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  production house
-                </dt>
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  {{
-                    profileData()?.producerProfile?.productionHouse ||
-                      'Not specified'
-                  }}
-                </dd>
-              </div>
-
-              <!-- Industry Type -->
-              <div>
-                <dt
-                  class="text-xs uppercase tracking-wide"
-                  [ngClass]="{
-                    'text-purple-300/50': isActor(),
-                    'text-neutral-500': !isActor()
-                  }"
-                >
-                  industry type
-                </dt>
-                <dd
-                  class="text-sm"
-                  [ngClass]="{
-                    'text-purple-100/80': isActor(),
-                    'text-neutral-200': !isActor()
-                  }"
-                >
-                  {{
-                    profileData()?.producerProfile?.industryType ||
-                      'Not specified'
-                  }}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          <!-- Previous/Recent Works -->
-          <div
-            class="rounded-2xl p-4 sm:p-5 md:p-6 transition-all duration-300"
-            [ngClass]="{
-              'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10':
-                isActor(),
-              'bg-black/50 ring-2 ring-white/10 border border-neutral-800':
-                !isActor()
-            }"
-          >
-            <dl>
-              <dt
-                class="text-xs uppercase tracking-wide"
-                [ngClass]="{
-                  'text-purple-300/50': isActor(),
-                  'text-neutral-500': !isActor()
-                }"
-              >
-                previous works
-              </dt>
-              @if (hasProducerWorks()) {
-              <dd class="mt-1 space-y-3 md:space-y-4">
-                @for (work of profileData()?.producerProfile?.producerWorks;
-                track work) {
-                <div
-                  class="p-2 sm:p-3 rounded-lg transition-colors duration-200"
-                  [ngClass]="{
-                    'hover:bg-purple-950/10': isActor(),
-                    'hover:bg-white/5': !isActor()
-                  }"
-                >
-                  <div
-                    class="text-sm font-medium"
-                    [ngClass]="{
-                      'text-purple-100/80': isActor(),
-                      'text-neutral-200': !isActor()
-                    }"
-                  >
-                    {{ work.projectName }}
-                  </div>
-                  <div
-                    class="text-xs"
-                    [ngClass]="{
-                      'text-purple-200/60': isActor(),
-                      'text-neutral-400': !isActor()
-                    }"
-                  >
-                    {{ work.genre || 'Genre not specified' }} • {{ work.year }}
-                  </div>
+            <!-- Previous Works -->
+            @if (hasProducerWorks()) {
+            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">previous works</div>
+              <div class="space-y-3">
+                @for (work of profileData()?.producerProfile?.producerWorks; track work) {
+                <div>
+                  <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
+                  <div class="text-xs text-neutral-500 mt-0.5">{{ work.genre || 'Genre not specified' }} • {{ work.year }}</div>
                 </div>
                 }
-              </dd>
-              } @else {
-              <dd
-                class="text-sm"
-                [ngClass]="{
-                  'text-purple-100/80': isActor(),
-                  'text-neutral-200': !isActor()
-                }"
-              >
-                No previous works added
-              </dd>
-              }
-            </dl>
-          </div>
-          }
-        </section>
+              </div>
+            </div>
+            }
+            }
+          </section>
+        </div>
       </div>
     </div>
 
@@ -1332,30 +594,6 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
       :host {
         display: block;
       }
-      /* Subtle purple gradient background for actors */
-      .actor-theme::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            ellipse at top left,
-            rgba(147, 51, 234, 0.03) 0%,
-            transparent 40%
-          ),
-          radial-gradient(
-            ellipse at bottom right,
-            rgba(168, 85, 247, 0.02) 0%,
-            transparent 40%
-          );
-        pointer-events: none;
-        z-index: 0;
-      }
-      .actor-theme {
-        position: relative;
-      }
     `,
   ],
 })
@@ -1388,7 +626,6 @@ export class ProfileComponent implements OnInit {
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
-  profileTheme = computed(() => 'actor-theme'); // Always use actor theme for profile pages
 
   // Computed for navigation
   currentMediaList = computed(() => {
