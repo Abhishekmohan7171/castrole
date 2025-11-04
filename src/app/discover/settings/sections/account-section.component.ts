@@ -192,8 +192,8 @@ import { FormsModule } from '@angular/forms';
             }
           </div>
 
-          <!-- Add Account Button -->
-          @if (userData() && canAddAccountCheck()) {
+          <!-- Add Account Button (Disabled) -->
+          @if (false) {
           <button
             (click)="onAddAccount()"
             class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-all duration-200"
