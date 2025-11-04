@@ -144,6 +144,11 @@ export class SettingsComponent implements OnInit {
   supportConcern = signal<string>('');
   isSubmittingSupport = signal<boolean>(false);
 
+  // Delete account modal signals
+  showDeleteAccountModal = signal<boolean>(false);
+  deleteConfirmationText = signal<string>('');
+  isDeleting = signal<boolean>(false);
+
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
 
@@ -303,6 +308,12 @@ export class SettingsComponent implements OnInit {
       await updateDoc(userDocRef, {
         readReceipts: newValue,
       });
+
+      // Update userData signal
+      const currentUserData = this.userData();
+      if (currentUserData) {
+        this.userData.set({ ...currentUserData, readReceipts: newValue });
+      }
 
       console.log(`✓ Read receipts ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
@@ -611,15 +622,55 @@ export class SettingsComponent implements OnInit {
   }
 
   deleteAccount() {
-    // TODO: Implement account deletion flow
-    // This should show a confirmation modal with:
-    // 1. Warning about permanent deletion
-    // 2. Required confirmation input
-    // 3. Password verification
-    // 4. Final confirmation button
+    this.showDeleteAccountModal.set(true);
+    this.deleteConfirmationText.set('');
+  }
 
-    console.log('Delete account flow initiated');
-    // For now, just log - this is a dangerous operation that needs careful implementation
+  closeDeleteAccountModal() {
+    this.showDeleteAccountModal.set(false);
+    this.deleteConfirmationText.set('');
+    this.isDeleting.set(false);
+  }
+
+  getRequiredDeleteText(): string {
+    const userData = this.userData();
+    return userData?.name ? `delete ${userData.name}` : 'delete account';
+  }
+
+  canConfirmDelete(): boolean {
+    const requiredText = this.getRequiredDeleteText();
+    return this.deleteConfirmationText().toLowerCase() === requiredText.toLowerCase();
+  }
+
+  async confirmDeleteAccount() {
+    if (!this.canConfirmDelete()) {
+      return;
+    }
+
+    this.isDeleting.set(true);
+
+    try {
+      // TODO: Replace with actual Firebase deletion logic
+      console.log('🗑️ Account deletion confirmed for user:', this.userData()?.name);
+      console.log('🗑️ This would delete all user data, profile, media, and chat history');
+      
+      // Simulate deletion process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log('✅ Account deletion completed (simulated)');
+      
+      // In real implementation, this would:
+      // 1. Delete user document from Firestore
+      // 2. Delete all user media from Storage
+      // 3. Remove user from all chat rooms
+      // 4. Delete user authentication
+      // 5. Sign out and redirect to login
+
+      this.closeDeleteAccountModal();
+    } catch (error) {
+      console.error('❌ Error deleting account:', error);
+      this.isDeleting.set(false);
+    }
   }
 
   // Helper methods for blocked users modal
