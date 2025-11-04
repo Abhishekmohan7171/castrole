@@ -50,7 +50,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                       [alt]="getDisplayName()"
                       class="w-full h-full object-cover"
                     />
-                    } @else {
+                    } @else if (isViewingOwnProfile()) {
                     <button
                       (click)="onDummyProfileClick()"
                       class="w-full h-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center cursor-pointer"
@@ -60,6 +60,13 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                       </svg>
                     </button>
+                    } @else {
+                    <!-- Display placeholder avatar for other users -->
+                    <div class="w-full h-full bg-neutral-800/50 flex items-center justify-center">
+                      <svg class="w-12 h-12 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                    </div>
                     }
                   </div>
                   
@@ -195,7 +202,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                     }
                   }
                 </div>
-                } @else {
+                } @else if (isViewingOwnProfile()) {
                 <button
                   (click)="navigateToUpload()"
                   class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
@@ -223,7 +230,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                     }
                   }
                 </div>
-                } @else {
+                } @else if (isViewingOwnProfile()) {
                 <button
                   (click)="navigateToUpload()"
                   class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
@@ -491,8 +498,8 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
           </svg>
         </button>
 
-        <!-- Set as Profile Picture button (only for images) -->
-        @if (previewMediaType() === 'image') {
+        <!-- Set as Profile Picture button (only for images and own profile) -->
+        @if (previewMediaType() === 'image' && isViewingOwnProfile()) {
         <button
           (click)="setAsProfilePicture(); $event.stopPropagation()"
           class="absolute top-4 left-4 z-10 px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
