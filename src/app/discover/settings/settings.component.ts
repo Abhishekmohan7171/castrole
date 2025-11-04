@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
+import { LoadingService } from '../../services/loading.service';
 import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { UserDoc } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
+import { filter, take } from 'rxjs';
 import { SettingsSidebarComponent, SettingsTab } from './components/settings-sidebar.component';
 import { AccountSectionComponent } from './sections/account-section.component';
 import { AnalyticsSectionComponent } from './sections/analytics-section.component';
@@ -67,6 +69,7 @@ export class SettingsComponent implements OnInit {
   private firestore = inject(Firestore);
   private profileService = inject(ProfileService);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -176,8 +179,14 @@ export class SettingsComponent implements OnInit {
   });
 
   async ngOnInit() {
-    await this.loadUserData();
-    await this.profileService.loadProfileData();
+    // Wait for auth to be fully initialized before loading user data
+    this.loadingService.isLoading$.pipe(
+      filter(isLoading => !isLoading),
+      take(1)
+    ).subscribe(async () => {
+      await this.loadUserData();
+      await this.profileService.loadProfileData();
+    });
   }
 
   setActiveTab(tab: SettingsTab) {

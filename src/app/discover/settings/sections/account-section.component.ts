@@ -257,7 +257,7 @@ export class AccountSectionComponent {
           phone: data.phone || '',
         });
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   isEditingField(field: string): boolean {
