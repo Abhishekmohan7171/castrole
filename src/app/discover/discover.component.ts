@@ -28,7 +28,7 @@ import { NotificationDrawerComponent, Notification } from './notification-drawer
           <a routerLink="/discover"
              class="text-3xl font-black tracking-wider select-none transition-colors duration-300"
              [ngClass]="{'text-purple-200/80': isActor(), 'text-neutral-300': !isActor()}">
-            castrole
+            kalacast
           </a>
           <nav class="flex items-center gap-8 text-sm">
             <a routerLink="/discover"
