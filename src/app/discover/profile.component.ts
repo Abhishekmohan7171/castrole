@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ProfileUrlService } from '../services/profile-url.service';
 import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
   Storage,
@@ -626,6 +627,7 @@ export class ProfileComponent implements OnInit {
   private storage = inject(Storage);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private profileUrlService = inject(ProfileUrlService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -729,60 +731,119 @@ export class ProfileComponent implements OnInit {
   });
 
   ngOnInit() {
-    // Check if we have a username parameter (viewing someone else's profile)
-    const username = this.route.snapshot.paramMap.get('username');
+    // Check if we have a slugUid parameter (viewing someone else's profile)
+    const slugUid = this.route.snapshot.paramMap.get('slugUid');
+    console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
     
-    if (username) {
-      // Viewing someone else's profile
+    if (slugUid) {
+      // Viewing someone else's profile via stored slug-uid URL
+      console.log('Loading profile for slugUid:', slugUid);
       this.isViewingOwnProfile.set(false);
-      this.targetUsername.set(username);
-      this.loadUserProfileByUsername(username);
+      this.loadUserProfileBySlugUid(slugUid);
     } else {
       // Viewing own profile
+      console.log('Loading own profile');
       this.isViewingOwnProfile.set(true);
       this.loadUserProfile();
     }
   }
 
-  private async loadUserProfileByUsername(username: string) {
+  /**
+   * Load user profile by stored slug-uid parameter
+   * Format: slug-uid (e.g., "rajkumar-rao-xK9mP2nQ7R") - STORED in database
+   */
+  private async loadUserProfileBySlugUid(slugUid: string) {
     try {
-      // Query Firestore to find user by name
-      const usersRef = collection(this.firestore, 'users');
-      const userQuery = query(
-        usersRef, 
-        where('name', '==', username),
-        limit(1)
-      );
-
-      const querySnapshot = await getDocs(userQuery);
+      console.log('Loading profile by slugUid:', slugUid);
       
-      if (querySnapshot.empty) {
-        console.error('User not found');
+      // Query profiles collection by slug field (which contains slug-uid)
+      const profilesRef = collection(this.firestore, 'profiles');
+      const profileQuery = query(profilesRef, where('slug', '==', slugUid), limit(1));
+      const profileDocs = await getDocs(profileQuery);
+      
+      if (profileDocs.empty) {
+        // Profile not found by slug, try finding by UID suffix match
+        console.warn('Profile not found by slug, trying UID suffix match...');
+        
+        const shortUid = this.profileUrlService.extractUid(slugUid);
+        
+        if (!shortUid) {
+          console.error('Invalid slug-uid format');
+          this.router.navigate(['/discover']);
+          return;
+        }
+        
+        console.log('Extracted short UID:', shortUid, 'searching for matching profile...');
+        
+        // Query all profiles and find one where UID ends with shortUid
+        const allProfilesQuery = query(collection(this.firestore, 'profiles'));
+        const allProfiles = await getDocs(allProfilesQuery);
+        
+        const matchingProfile = allProfiles.docs.find(doc => {
+          const profile = doc.data() as Profile;
+          return profile.uid.endsWith(shortUid);
+        });
+        
+        if (!matchingProfile) {
+          console.error('No profile found with matching UID suffix');
+          this.router.navigate(['/discover']);
+          return;
+        }
+        
+        const profileData = matchingProfile.data() as Profile;
+        console.log('Profile found via UID suffix match:', profileData);
+        
+        // Set profile data
+        this.profileData.set(profileData);
+        
+        // Load user data
+        const userDocRef = doc(this.firestore, 'users', profileData.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserDoc;
+          this.userData.set(userData);
+          this.userRole.set(userData.currentRole || 'actor');
+          this.targetUsername.set(userData.name);
+        }
+        
+        // Load media
+        this.loadMediaFromStorage(profileData.uid);
+        return;
+      }
+
+      const profileDoc = profileDocs.docs[0];
+      const profileData = profileDoc.data() as Profile;
+      console.log('Profile found by slug:', profileData);
+      
+      // Set profile data
+      this.profileData.set(profileData);
+
+      // Load user data
+      const userDocRef = doc(this.firestore, 'users', profileData.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        // User not found
+        console.error('User not found for UID:', profileData.uid);
         this.router.navigate(['/discover']);
         return;
       }
 
-      const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data() as UserDoc;
+      console.log('User found:', userData);
       
       // Set user data
       this.userData.set(userData);
       this.userRole.set(userData.currentRole || 'actor');
-
-      // Load profile data
-      const profileDocRef = doc(this.firestore, 'profiles', userDoc.id);
-      const profileDoc = await getDoc(profileDocRef);
-      
-      if (profileDoc.exists()) {
-        const profileData = profileDoc.data() as Profile;
-        this.profileData.set(profileData);
-      }
+      this.targetUsername.set(userData.name);
 
       // Load media from storage
-      this.loadMediaFromStorage(userDoc.id);
+      this.loadMediaFromStorage(profileData.uid);
 
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      // Error loading profile, redirect to discover
+      console.error('Error loading profile:', error);
       this.router.navigate(['/discover']);
     }
   }
@@ -1171,5 +1232,40 @@ export class ProfileComponent implements OnInit {
 
   getSkillRating(skill: string | Skill): number {
     return typeof skill === 'object' ? skill.rating : 0;
+  }
+
+  /**
+   * Get the profile URL for the current profile
+   * Returns the slug format URL
+   */
+  getProfileUrl(): string {
+    const profile = this.profileData();
+    
+    if (!profile || !profile.slug) {
+      return '/discover/profile';
+    }
+    
+    return this.profileUrlService.generateProfileUrl(profile.slug);
+  }
+
+  /**
+   * Get the full shareable URL for the current profile
+   */
+  getShareableProfileUrl(): string {
+    const profilePath = this.getProfileUrl();
+    return `${window.location.origin}${profilePath}`;
+  }
+
+  /**
+   * Copy profile URL to clipboard
+   */
+  async copyProfileUrl(): Promise<boolean> {
+    try {
+      const url = this.getShareableProfileUrl();
+      await navigator.clipboard.writeText(url);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 }
