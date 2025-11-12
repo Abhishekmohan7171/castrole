@@ -215,10 +215,10 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
     } @else {
-      <div class="text-center py-12 space-y-6">
+      <div class="flex flex-col items-center justify-center py-16 px-6 space-y-6 max-w-md mx-auto">
         <div class="flex justify-center">
           <svg
-            class="w-20 h-20 text-purple-300/30"
+            class="w-24 h-24 text-purple-300/30"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -226,21 +226,26 @@ import { CommonModule } from '@angular/common';
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              stroke-width="1"
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              stroke-width="1.5"
+              d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
+            <circle cx="9" cy="9" r="2" fill="currentColor" opacity="0.2"/>
+            <circle cx="15" cy="15" r="2" fill="currentColor" opacity="0.2"/>
           </svg>
         </div>
-        <!-- Upgrade Message -->
-        <h3 class="text-lg font-medium text-purple-200 mb-8 max-w-md">
-          Upgrade to premium for detailed analytics
-        </h3>
-        <!-- Go Premium Button -->
+        <div class="text-center space-y-3">
+          <h3 class="text-lg font-semibold text-purple-200">
+            Analytics Insights
+          </h3>
+          <p class="text-sm text-purple-300/70 leading-relaxed">
+            Get detailed insights about your profile performance, search appearances, and audience engagement
+          </p>
+        </div>
         <button
-          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-full transition-colors duration-200"
+          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-full transition-all duration-200 hover:scale-105 shadow-lg"
           (click)="onUpgradeSubscription()"
         >
-          Go Premium
+          Upgrade to Premium
         </button>
       </div>
     }
