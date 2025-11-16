@@ -176,24 +176,58 @@ import { FormsModule } from '@angular/forms';
 
         <div class="space-y-3">
           <!-- Current Roles Display -->
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-2 items-center">
             @for (role of userData()?.roles || []; track role) {
             <span
-              class="px-3 py-1 text-xs rounded-full"
+              class="px-3 py-1.5 text-xs rounded-full font-medium"
               [ngClass]="{
                 'bg-purple-600/20 text-purple-300 border border-purple-600/30':
-                  isActor(),
+                  role === userData()?.currentRole && isActor(),
                 'bg-neutral-600/20 text-neutral-300 border border-neutral-600/30':
-                  !isActor()
+                  role === userData()?.currentRole && !isActor(),
+                'bg-neutral-800/50 text-neutral-400 border border-neutral-700/50':
+                  role !== userData()?.currentRole
               }"
             >
               {{ role | titlecase }}
+              @if (role === userData()?.currentRole) {
+                <span class="ml-1.5 text-[10px] opacity-75">(Active)</span>
+              }
             </span>
             }
           </div>
 
-          <!-- Add Account Button (Disabled) -->
-          @if (false) {
+          <!-- Switch Role Button (shown when user has multiple roles) -->
+          @if (canSwitchRole()) {
+          <button
+            (click)="onSwitchRole()"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-all duration-200"
+            [ngClass]="{
+              'border-purple-600/30 text-purple-300 hover:bg-purple-600/10':
+                isActor(),
+              'border-neutral-600/30 text-neutral-300 hover:bg-neutral-600/10':
+                !isActor()
+            }"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Switch to {{ getOtherRoleText() | titlecase }}
+          </button>
+          }
+
+          <!-- Add Account Button -->
+          @if (canAddAccountCheck()) {
           <button
             (click)="onAddAccount()"
             class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-all duration-200"
@@ -235,6 +269,7 @@ export class AccountSectionComponent {
   canAddAccount = input.required<() => boolean>();
   getMissingRole = input.required<() => string>();
   addAccount = input.required<() => void>();
+  switchRole = input.required<() => void>();
 
   // Output for data changes
   dataChange = output<{ name: string; email: string; phone: string }>();
@@ -294,5 +329,21 @@ export class AccountSectionComponent {
 
   onAddAccount() {
     this.addAccount()();
+  }
+
+  canSwitchRole(): boolean {
+    const roles = this.userData()?.roles || [];
+    return roles.length > 1;
+  }
+
+  getOtherRoleText(): string {
+    const roles = this.userData()?.roles || [];
+    const currentRole = this.userData()?.currentRole;
+    const otherRole = roles.find((role: string) => role !== currentRole);
+    return otherRole || '';
+  }
+
+  onSwitchRole() {
+    this.switchRole()();
   }
 }
