@@ -99,6 +99,7 @@
                 [canAddAccount]="canAddAccount.bind(this)"
                 [getMissingRole]="getMissingRole.bind(this)"
                 [addAccount]="addAccount.bind(this)"
+                [switchRole]="switchRole.bind(this)"
                 (dataChange)="onEditableDataChange($event)"
               />
             }
@@ -583,5 +584,16 @@
       </div>
     </div>
   </div>
+  }
+
+  <!-- Add Account Modal -->
+  @if (showAddAccountModal()) {
+    <app-add-account-modal
+      [accountType]="addAccountType()"
+      [email]="userData()?.email || ''"
+      [phone]="userData()?.phone || ''"
+      (close)="closeAddAccountModal()"
+      (submit)="handleAddAccountSubmit($event)"
+    />
   }
 </div>

@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+Refer to the best practices file for development commands related to Angular.
+
 ### Core Development
 
 - `nx serve` - Start development server on http://localhost:4200

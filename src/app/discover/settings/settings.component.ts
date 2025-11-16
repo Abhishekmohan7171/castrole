@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
-import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc, serverTimestamp } from '@angular/fire/firestore';
 import { UserDoc } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
 import { filter, take } from 'rxjs';
@@ -16,6 +16,7 @@ import { PrivacySectionComponent } from './sections/privacy-section.component';
 import { SubscriptionsSectionComponent } from './sections/subscriptions-section.component';
 import { SupportSectionComponent } from './sections/support-section.component';
 import { LegalSectionComponent } from './sections/legal-section.component';
+import { AddAccountModalComponent } from './components/add-account-modal.component';
 
 @Component({
   selector: 'app-discover-settings',
@@ -29,7 +30,8 @@ import { LegalSectionComponent } from './sections/legal-section.component';
     PrivacySectionComponent,
     SubscriptionsSectionComponent,
     SupportSectionComponent,
-    LegalSectionComponent
+    LegalSectionComponent,
+    AddAccountModalComponent
   ],
   templateUrl: './settings.component.html',
   styles: [
@@ -147,6 +149,10 @@ export class SettingsComponent implements OnInit {
   // Delete account modal signals
   showDeleteAccountModal = signal<boolean>(false);
   deleteConfirmationText = signal<string>('');
+
+  // Add account modal signals
+  showAddAccountModal = signal<boolean>(false);
+  addAccountType = signal<'actor' | 'producer'>('actor');
   isDeleting = signal<boolean>(false);
 
   // Mobile sidebar state
@@ -417,6 +423,23 @@ export class SettingsComponent implements OnInit {
   }
 
   async addAccount() {
+    const missingRole = this.getMissingRole();
+    if (!missingRole) return;
+
+    // Set the account type and open the modal
+    this.addAccountType.set(missingRole as 'actor' | 'producer');
+    this.showAddAccountModal.set(true);
+  }
+
+  closeAddAccountModal() {
+    this.showAddAccountModal.set(false);
+  }
+
+  async handleAddAccountSubmit(formData: {
+    name?: string;
+    productionHouse?: string;
+    location: string;
+  }) {
     const user = this.auth.getCurrentUser();
     if (!user) return;
 
@@ -424,31 +447,82 @@ export class SettingsComponent implements OnInit {
     if (!missingRole) return;
 
     try {
-      const currentUserData = this.userData();
-      if (!currentUserData) return;
+      // Call the auth service to add the alternate account
+      await this.auth.addAlternateAccount({
+        uid: user.uid,
+        role: missingRole as 'actor' | 'producer',
+        name: formData.name,
+        productionHouse: formData.productionHouse,
+        location: formData.location,
+      });
 
-      const updatedRoles = [...currentUserData.roles];
-      if (!updatedRoles.includes(missingRole)) {
-        updatedRoles.push(missingRole);
+      // Refresh user data from Firestore
+      const userDocRef = doc(this.firestore, 'users', user.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (userSnap.exists()) {
+        const updatedUserData = userSnap.data() as UserDoc;
+        this.userData.set(updatedUserData);
+        this.userRole.set(updatedUserData.currentRole);
+
+        // Reload profile data
+        await this.profileService.loadProfileData();
       }
 
+      // Close modal
+      this.showAddAccountModal.set(false);
+
+      console.log(`✓ ${missingRole} account added successfully`);
+    } catch (error) {
+      console.error('Error adding account:', error);
+      // Show error to user via modal
+      throw error;
+    }
+  }
+
+  async switchRole() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    const currentUserData = this.userData();
+    if (!currentUserData) return;
+
+    const roles = currentUserData.roles || [];
+    if (roles.length <= 1) {
+      console.warn('User only has one role, cannot switch');
+      return;
+    }
+
+    // Find the other role
+    const currentRole = currentUserData.currentRole;
+    const otherRole = roles.find((role: string) => role !== currentRole);
+
+    if (!otherRole) {
+      console.warn('No other role found to switch to');
+      return;
+    }
+
+    try {
+      // Update the currentRole in Firestore
       const userDocRef = doc(this.firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
-        roles: updatedRoles,
-        currentRole: missingRole, // Switch to the newly added role
+        currentRole: otherRole,
+        updatedAt: serverTimestamp(),
       });
 
       // Update local state
       this.userData.set({
         ...currentUserData,
-        roles: updatedRoles,
-        currentRole: missingRole,
+        currentRole: otherRole,
       });
-      this.userRole.set(missingRole);
+      this.userRole.set(otherRole);
 
-      console.log(`✓ ${missingRole} account added successfully`);
+      // Reload profile data for the new role
+      await this.profileService.loadProfileData();
+
+      console.log(`✓ Switched to ${otherRole} role successfully`);
     } catch (error) {
-      console.error('Error adding account:', error);
+      console.error('Error switching role:', error);
     }
   }
 

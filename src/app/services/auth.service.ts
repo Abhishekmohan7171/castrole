@@ -268,6 +268,107 @@ export class AuthService {
     await this.createProfile(uid, profile);
   }
 
+  /** Adds an alternate account type (actor/producer) to an existing user */
+  async addAlternateAccount(params: {
+    uid: string;
+    role: 'actor' | 'producer';
+    name?: string;
+    productionHouse?: string;
+    location: string;
+  }): Promise<void> {
+    const { uid, role, name, productionHouse, location } = params;
+
+    // First, fetch the existing profile document
+    const profileRef = doc(this.db, 'profiles', uid);
+    const profileSnap = await getDoc(profileRef);
+
+    if (!profileSnap.exists()) {
+      throw new Error('User profile not found');
+    }
+
+    const existingProfile = profileSnap.data() as Profile;
+
+    // Create the new role-specific profile
+    if (role === 'actor') {
+      if (!name) {
+        throw new Error('Stage name is required for actor profile');
+      }
+
+      const actorProfile: ActorProfile = {
+        stageName: name,
+        carouselImagesUrl: [],
+        skills: [],
+        languages: [],
+        listEducation: [],
+        actorWorks: [],
+        notifications: [],
+        actorAnalytics: [],
+        profileViewCount: 0,
+        wishListCount: 0,
+        isSubscribed: false,
+      };
+
+      // Merge with existing profile
+      await setDoc(
+        profileRef,
+        {
+          ...existingProfile,
+          location: location,
+          actorProfile,
+        },
+        { merge: true } as any
+      );
+    } else if (role === 'producer') {
+      if (!productionHouse) {
+        throw new Error('Production house is required for producer profile');
+      }
+
+      const producerProfile: ProducerProfile = {
+        name: name || '',
+        productionHouse: productionHouse,
+        producerWorks: [],
+        notifications: [],
+        isSubscribed: false,
+        isBadgedVerified: false,
+        wishList: [],
+      };
+
+      // Merge with existing profile
+      await setDoc(
+        profileRef,
+        {
+          ...existingProfile,
+          location: location,
+          producerProfile,
+        },
+        { merge: true } as any
+      );
+    }
+
+    // Update user document to add the new role
+    const userRef = doc(this.db, 'users', uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      throw new Error('User document not found');
+    }
+
+    const userData = userSnap.data() as UserDoc;
+    const updatedRoles = [...(userData.roles || [])];
+
+    // Add the new role if not already present
+    if (!updatedRoles.includes(role)) {
+      updatedRoles.push(role);
+    }
+
+    // Update user document with new roles and switch to the new role
+    await updateDoc(userRef, {
+      roles: updatedRoles,
+      currentRole: role,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
   // =========================
   // D. Google & Apple Auth
   // =========================
