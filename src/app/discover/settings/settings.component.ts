@@ -5,11 +5,20 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
-import { Firestore, doc, getDoc, updateDoc, serverTimestamp } from '@angular/fire/firestore';
+import {
+  Firestore,
+  doc,
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+} from '@angular/fire/firestore';
 import { UserDoc } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
 import { filter, take } from 'rxjs';
-import { SettingsSidebarComponent, SettingsTab } from './components/settings-sidebar.component';
+import {
+  SettingsSidebarComponent,
+  SettingsTab,
+} from './components/settings-sidebar.component';
 import { AccountSectionComponent } from './sections/account-section.component';
 import { AnalyticsSectionComponent } from './sections/analytics-section.component';
 import { PrivacySectionComponent } from './sections/privacy-section.component';
@@ -31,7 +40,7 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
     SubscriptionsSectionComponent,
     SupportSectionComponent,
     LegalSectionComponent,
-    AddAccountModalComponent
+    AddAccountModalComponent,
   ],
   templateUrl: './settings.component.html',
   styles: [
@@ -141,6 +150,70 @@ export class SettingsComponent implements OnInit {
   blockedUsersList = signal<any[]>([]);
   recentLoginsList = signal<any[]>([]);
 
+  private readonly sampleBlockedUsers = [
+    {
+      blockedBy: 'usr_demo_01',
+      displayName: 'Rhea Kapoor',
+      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+      reason: 'Repeated spam casting requests',
+      mutualConnections: 2,
+      notes: 'Auto-flagged by Trust & Safety.',
+      role: 'producer',
+    },
+    {
+      blockedBy: 'usr_demo_02',
+      displayName: 'Kabir Menon',
+      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
+      reason: 'Shared unsolicited files',
+      mutualConnections: 0,
+      notes: 'Blocked manually after review.',
+      role: 'actor',
+    },
+    {
+      blockedBy: 'usr_demo_03',
+      displayName: 'Studio Nimbus',
+      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35),
+      reason: 'Suspicious payment links',
+      mutualConnections: 5,
+      notes: 'Investigation pending.',
+      role: 'producer',
+    },
+  ];
+
+  private readonly sampleRecentLogins = [
+    {
+      id: 'session-current',
+      platform: 'web',
+      model: 'Chrome • macOS',
+      city: 'Mumbai, IN',
+      lastActive: 'Active now',
+      ip: '103.82.115.24',
+      browser: 'Chrome 119',
+      current: true,
+      risk: 'low',
+    },
+    {
+      id: 'session-hyd-1',
+      platform: 'ios',
+      model: 'iPhone 15 Pro',
+      city: 'Hyderabad, IN',
+      lastActive: '2 days ago',
+      ip: '49.207.11.10',
+      browser: 'Castrole iOS',
+      risk: 'medium',
+    },
+    {
+      id: 'session-dubai',
+      platform: 'web',
+      model: 'Edge • Windows',
+      city: 'Dubai, UAE',
+      lastActive: '3 weeks ago',
+      ip: '83.110.44.19',
+      browser: 'Edge 118',
+      risk: 'high',
+    },
+  ];
+
   // Support form signals
   supportSubject = signal<string>('');
   supportConcern = signal<string>('');
@@ -157,7 +230,6 @@ export class SettingsComponent implements OnInit {
 
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
-
 
   // Available tabs based on role
   availableTabs = computed(() => {
@@ -177,27 +249,30 @@ export class SettingsComponent implements OnInit {
 
   // Sidebar classes for mobile/desktop
   sidebarClasses = computed(() => {
-    const base = 'fixed lg:sticky top-0 lg:top-0 left-0 h-screen z-50 transition-transform duration-300';
+    const base =
+      'fixed lg:sticky top-0 lg:top-0 left-0 h-screen z-50 transition-transform duration-300';
     const width = 'w-72 lg:w-64';
-    const mobile = this.isMobileSidebarOpen() 
-      ? 'translate-x-0' 
+    const mobile = this.isMobileSidebarOpen()
+      ? 'translate-x-0'
       : '-translate-x-full lg:translate-x-0';
-    const backdrop = this.isMobileSidebarOpen() 
-      ? 'lg:bg-transparent bg-black/60 backdrop-blur-sm' 
+    const backdrop = this.isMobileSidebarOpen()
+      ? 'lg:bg-transparent bg-black/60 backdrop-blur-sm'
       : '';
-    
+
     return `${base} ${width} ${mobile} ${backdrop}`;
   });
 
   async ngOnInit() {
     // Wait for auth to be fully initialized before loading user data
-    this.loadingService.isLoading$.pipe(
-      filter(isLoading => !isLoading),
-      take(1)
-    ).subscribe(async () => {
-      await this.loadUserData();
-      await this.profileService.loadProfileData();
-    });
+    this.loadingService.isLoading$
+      .pipe(
+        filter((isLoading) => !isLoading),
+        take(1)
+      )
+      .subscribe(async () => {
+        await this.loadUserData();
+        await this.profileService.loadProfileData();
+      });
   }
 
   setActiveTab(tab: SettingsTab) {
@@ -226,12 +301,18 @@ export class SettingsComponent implements OnInit {
   // Get tab icon SVG
   getTabIcon(tab: SettingsTab): string {
     const icons: Record<SettingsTab, string> = {
-      account: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-      privacy: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-      subscriptions: '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
-      analytics: '<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M2 12h20"/>',
-      support: '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
-      legal: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>',
+      account:
+        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      privacy:
+        '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      subscriptions:
+        '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+      analytics:
+        '<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M2 12h20"/>',
+      support:
+        '<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>',
+      legal:
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>',
     };
     return icons[tab];
   }
@@ -251,13 +332,63 @@ export class SettingsComponent implements OnInit {
 
   // Mobile sidebar methods
   toggleMobileSidebar() {
-    this.isMobileSidebarOpen.update(v => !v);
+    this.isMobileSidebarOpen.update((v) => !v);
   }
 
   onSidebarBackdropClick(event: Event) {
     if (event.target === event.currentTarget) {
       this.isMobileSidebarOpen.set(false);
     }
+  }
+
+  getRiskBadgeClasses(risk?: string): string {
+    switch ((risk || 'low').toLowerCase()) {
+      case 'high':
+        return 'bg-red-500/15 text-red-300 border border-red-500/30';
+      case 'medium':
+        return 'bg-amber-500/15 text-amber-300 border border-amber-500/30';
+      default:
+        return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+    }
+  }
+
+  formatRiskLabel(risk?: string): string {
+    switch ((risk || 'low').toLowerCase()) {
+      case 'high':
+        return 'High risk';
+      case 'medium':
+        return 'Review';
+      default:
+        return 'Trusted device';
+    }
+  }
+
+  getRoleBadgeClasses(role?: string): string {
+    switch ((role || 'actor').toLowerCase()) {
+      case 'producer':
+        return 'bg-amber-500/15 text-amber-200 border border-amber-500/30';
+      case 'actor':
+        return 'bg-sky-500/15 text-sky-200 border border-sky-500/30';
+      default:
+        return 'bg-neutral-500/15 text-neutral-200 border border-neutral-500/30';
+    }
+  }
+
+  formatRoleLabel(role?: string): string {
+    if (!role) {
+      return 'User';
+    }
+
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+
+  countCurrentSessions(): number {
+    const devices = this.recentLoginsList();
+    if (!devices?.length) {
+      return 0;
+    }
+
+    return devices.filter((device) => !!device?.current).length;
   }
 
   // Navigation methods
@@ -653,13 +784,17 @@ export class SettingsComponent implements OnInit {
   // Account management methods
   viewBlockedUsers() {
     const blockedUsers = this.userData()?.blocked || [];
-    this.blockedUsersList.set(blockedUsers);
+    this.blockedUsersList.set(
+      blockedUsers.length ? blockedUsers : this.sampleBlockedUsers
+    );
     this.showBlockedUsersModal.set(true);
   }
 
   viewRecentLogins() {
     const devices = this.userData()?.device || [];
-    this.recentLoginsList.set(devices);
+    this.recentLoginsList.set(
+      devices.length ? devices : this.sampleRecentLogins
+    );
     this.showRecentLoginsModal.set(true);
   }
 
@@ -713,7 +848,9 @@ export class SettingsComponent implements OnInit {
 
   canConfirmDelete(): boolean {
     const requiredText = this.getRequiredDeleteText();
-    return this.deleteConfirmationText().toLowerCase() === requiredText.toLowerCase();
+    return (
+      this.deleteConfirmationText().toLowerCase() === requiredText.toLowerCase()
+    );
   }
 
   async confirmDeleteAccount() {
@@ -725,14 +862,19 @@ export class SettingsComponent implements OnInit {
 
     try {
       // TODO: Replace with actual Firebase deletion logic
-      console.log('🗑️ Account deletion confirmed for user:', this.userData()?.name);
-      console.log('🗑️ This would delete all user data, profile, media, and chat history');
-      
+      console.log(
+        '🗑️ Account deletion confirmed for user:',
+        this.userData()?.name
+      );
+      console.log(
+        '🗑️ This would delete all user data, profile, media, and chat history'
+      );
+
       // Simulate deletion process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       console.log('✅ Account deletion completed (simulated)');
-      
+
       // In real implementation, this would:
       // 1. Delete user document from Firestore
       // 2. Delete all user media from Storage
@@ -749,15 +891,12 @@ export class SettingsComponent implements OnInit {
 
   // Helper methods for blocked users modal
   getBlockedUserInitial(blockedUser: any): string {
-    // For now, return first letter of blockedBy ID
-    // In a real implementation, you'd fetch user details
-    return blockedUser.blockedBy?.[0]?.toUpperCase() || 'U';
+    const source = blockedUser.displayName || blockedUser.blockedBy || 'user';
+    return source?.[0]?.toUpperCase() || 'U';
   }
 
   getBlockedUserName(blockedUser: any): string {
-    // For now, return the ID
-    // In a real implementation, you'd fetch user details from user service
-    return blockedUser.blockedBy || 'Unknown User';
+    return blockedUser.displayName || blockedUser.blockedBy || 'Unknown User';
   }
 
   formatBlockedDate(date: any): string {
@@ -913,5 +1052,4 @@ export class SettingsComponent implements OnInit {
       alert("Thank you for your feedback! We'll get back to you soon.");
     }, 2000);
   }
-
 }
