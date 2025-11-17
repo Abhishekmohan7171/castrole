@@ -582,4 +582,36 @@ export class ChatService {
       shareReplay(1)
     );
   }
+
+  // Search messages across all rooms for a user
+  async searchMessagesInRooms(roomIds: string[], searchTerm: string): Promise<Map<string, (ChatMessage & { id: string })[]>> {
+    const results = new Map<string, (ChatMessage & { id: string })[]>();
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    
+    if (!lowerSearchTerm || roomIds.length === 0) {
+      return results;
+    }
+
+    // Search messages in each room
+    const searchPromises = roomIds.map(async (roomId) => {
+      try {
+        const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
+        const q = query(msgsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        
+        const matchingMessages = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage & { id: string }))
+          .filter(msg => msg.text.toLowerCase().includes(lowerSearchTerm));
+        
+        if (matchingMessages.length > 0) {
+          results.set(roomId, matchingMessages);
+        }
+      } catch (error) {
+        console.error(`Error searching messages in room ${roomId}:`, error);
+      }
+    });
+
+    await Promise.all(searchPromises);
+    return results;
+  }
 }
