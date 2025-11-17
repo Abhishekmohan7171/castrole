@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { ProfileUrlService } from '../services/profile-url.service';
+import { ChatService } from '../services/chat.service';
 import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
   Storage,
@@ -85,20 +86,49 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   }
                 </div>
 
-                <!-- Name and Edit Button -->
-                <div class="flex items-center gap-2 mb-1">
-                  <h1 class="text-xl font-medium text-neutral-200">
-                    {{ getDisplayName() }}
-                  </h1>
-                  @if (isViewingOwnProfile()) {
+                <!-- Name and Edit/Connect Button -->
+                <div class="flex flex-col items-center gap-2 mb-1">
+                  <div class="flex items-center gap-2">
+                    <h1 class="text-xl font-medium text-neutral-200">
+                      {{ getDisplayName() }}
+                    </h1>
+                    @if (isViewingOwnProfile()) {
+                    <button
+                      class="h-6 w-6 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                      aria-label="edit profile"
+                      (click)="openEditProfile()"
+                    >
+                      <svg class="h-3 w-3 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+                      </svg>
+                    </button>
+                    }
+                  </div>
+                  
+                  <!-- Connect Button (for viewing other profiles) -->
+                  @if (!isViewingOwnProfile() && canConnect()) {
                   <button
-                    class="h-6 w-6 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
-                    aria-label="edit profile"
-                    (click)="openEditProfile()"
+                    (click)="connectWithUser()"
+                    [disabled]="isConnecting()"
+                    class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
+                    [ngClass]="{
+                      'bg-fuchsia-600 hover:bg-fuchsia-700 text-white': !isConnecting(),
+                      'bg-neutral-700 text-neutral-400 cursor-not-allowed': isConnecting()
+                    }"
                   >
-                    <svg class="h-3 w-3 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
-                    </svg>
+                    @if (isConnecting()) {
+                      <span class="inline-flex space-x-1">
+                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                      </span>
+                      <span>connecting...</span>
+                    } @else {
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                      <span>connect</span>
+                    }
                   </button>
                   }
                 </div>
@@ -628,6 +658,7 @@ export class ProfileComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private profileUrlService = inject(ProfileUrlService);
+  private chatService = inject(ChatService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -640,6 +671,26 @@ export class ProfileComponent implements OnInit {
   // Profile viewing signals
   isViewingOwnProfile = signal<boolean>(true);
   targetUsername = signal<string | null>(null);
+  targetUserId = signal<string | null>(null);
+  currentUserRole = signal<string | null>(null);
+  
+  // Connect button state
+  isConnecting = signal<boolean>(false);
+  canConnect = computed(() => {
+    const currentUser = this.auth.getCurrentUser();
+    const targetId = this.targetUserId();
+    
+    // Can connect if:
+    // 1. Not viewing own profile
+    // 2. Current user is a producer
+    // 3. Target user is an actor
+    // 4. Both users exist
+    return !this.isViewingOwnProfile() && 
+           currentUser !== null && 
+           targetId !== null &&
+           this.currentUserRole() === 'producer' &&
+           this.userRole() === 'actor';
+  });
 
   // Media signals
   videoUrls = signal<string[]>([]);
@@ -730,7 +781,21 @@ export class ProfileComponent implements OnInit {
     );
   });
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Load current user's role first
+    const currentUser = this.auth.getCurrentUser();
+    if (currentUser) {
+      try {
+        const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+        if (currentUserDoc.exists()) {
+          const currentUserData = currentUserDoc.data() as UserDoc;
+          this.currentUserRole.set(currentUserData.currentRole || null);
+        }
+      } catch (error) {
+        console.error('Error loading current user role:', error);
+      }
+    }
+    
     // Check if we have a slugUid parameter (viewing someone else's profile)
     const slugUid = this.route.snapshot.paramMap.get('slugUid');
     console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
@@ -805,6 +870,7 @@ export class ProfileComponent implements OnInit {
           this.userData.set(userData);
           this.userRole.set(userData.currentRole || 'actor');
           this.targetUsername.set(userData.name);
+          this.targetUserId.set(profileData.uid);
         }
         
         // Load media
@@ -837,6 +903,7 @@ export class ProfileComponent implements OnInit {
       this.userData.set(userData);
       this.userRole.set(userData.currentRole || 'actor');
       this.targetUsername.set(userData.name);
+      this.targetUserId.set(profileData.uid);
 
       // Load media from storage
       this.loadMediaFromStorage(profileData.uid);
@@ -1266,6 +1333,52 @@ export class ProfileComponent implements OnInit {
       return true;
     } catch (error) {
       return false;
+    }
+  }
+
+  /**
+   * Connect with the user (initiate chat)
+   * Only available for producers viewing actor profiles
+   * Opens the chat room directly after creation
+   */
+  async connectWithUser() {
+    const currentUser = this.auth.getCurrentUser();
+    const targetId = this.targetUserId();
+    
+    if (!currentUser || !targetId || this.isConnecting()) {
+      return;
+    }
+
+    // Check if current user is a producer
+    const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+    if (!currentUserDoc.exists()) {
+      return;
+    }
+
+    const currentUserData = currentUserDoc.data() as UserDoc;
+    if (currentUserData.currentRole !== 'producer') {
+      return;
+    }
+
+    this.isConnecting.set(true);
+
+    try {
+      // Create chat room without sending initial message
+      const roomId = await this.chatService.producerStartChat(targetId, currentUser.uid);
+      
+      // Store the room ID in localStorage so chat component opens it directly
+      try {
+        localStorage.setItem('chat:lastRoomId', roomId);
+      } catch (storageError) {
+        console.warn('Could not save room ID to localStorage:', storageError);
+      }
+      
+      // Navigate to chat page - it will automatically open the stored room
+      this.router.navigate(['/discover/chat']);
+    } catch (error) {
+      console.error('Error connecting with user:', error);
+    } finally {
+      this.isConnecting.set(false);
     }
   }
 }
