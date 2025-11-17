@@ -1,6 +1,7 @@
 export interface Profile {
   // Common fields
   uid: string; // Identifying the user
+  slug?: string; // Stored slug-uid (e.g., "rajkumar-rao-xK9mP2nQ7R") - set once, never changes
   gender?: string;
   location?: string;
   age?: string; // Optional, not related to profile completion progress bar for producer
