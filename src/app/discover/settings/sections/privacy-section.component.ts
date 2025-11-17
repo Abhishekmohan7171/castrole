@@ -306,7 +306,7 @@ import { CommonModule } from '@angular/common';
 
         <!-- View Blocked Users -->
         <button
-          (click)="viewBlockedUsers()"
+          (click)="viewBlockedUsers()()"
           class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
           [ngClass]="{
             'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
@@ -353,7 +353,7 @@ import { CommonModule } from '@angular/common';
 
         <!-- Recent Logins -->
         <button
-          (click)="viewRecentLogins()"
+          (click)="viewRecentLogins()()"
           class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
           [ngClass]="{
             'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
@@ -400,7 +400,7 @@ import { CommonModule } from '@angular/common';
 
         <!-- Logout All Devices -->
         <button
-          (click)="logoutAllDevices()"
+          (click)="logoutAllDevices()()"
           class="w-full flex items-center justify-between p-4 rounded-lg border transition-all duration-200"
           [ngClass]="{
             'bg-purple-950/10 border-purple-900/20 hover:bg-purple-950/20 text-purple-200':
@@ -432,7 +432,7 @@ import { CommonModule } from '@angular/common';
 
         <!-- Delete Account -->
         <button
-          (click)="deleteAccount()"
+          (click)="deleteAccount()()"
           class="w-full flex items-center justify-between p-4 rounded-lg border border-red-600/30 bg-red-600/10 hover:bg-red-600/20 text-red-400 transition-all duration-200"
         >
           <div class="flex items-center gap-3">

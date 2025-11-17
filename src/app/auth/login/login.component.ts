@@ -16,7 +16,7 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
       <!-- Loader -->
       <app-loader [show]="loading" message="Authenticating..."></app-loader>
       <!-- Brand -->
-      <h1 class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">castrole</h1>
+      <h1 class="pt-16 pb-8 text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">kalacast</h1>
 
       <!-- Card -->
       <div class="w-full max-w-xl rounded-3xl  border border-white/5 shadow-2xl shadow-black/60 px-8 py-10">

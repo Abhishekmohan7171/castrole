@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
+ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,9 +8,11 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { Profile, ActorProfile } from '../../assets/interfaces/profile.interfaces';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { LoggerService } from '../services/logger.service';
+import { ProfileUrlService } from '../services/profile-url.service';
 
 interface ActorSearchResult {
   uid: string;
+  slug?: string; // Stored slug from profile
   stageName: string;
   age?: string;
   gender?: string;
@@ -414,6 +416,7 @@ interface ParsedSearchQuery {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
+                          View
                         </button>
                         <button 
                           (click)="toggleWishlist(actor)"
@@ -532,6 +535,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private auth = inject(Auth);
   private router = inject(Router);
   private logger = inject(LoggerService);
+  private profileUrlService = inject(ProfileUrlService);
   private destroy$ = new Subject<void>();
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
@@ -847,6 +851,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     
     const result = {
       uid: profile.uid,
+      slug: profile.slug, // Include stored slug
       stageName: actor.stageName || 'Unknown',
       age: profile.age,
       gender: profile.gender,
@@ -1303,11 +1308,29 @@ export class SearchComponent implements OnInit, OnDestroy {
     return this.wishlist().some(a => a.uid === actor.uid);
   }
 
+  /**
+   * Navigate to actor profile using stored slug-uid
+   */
   viewProfile(actor: ActorSearchResult): void {
-    // Navigate to actor profile or chat
-    this.router.navigate(['/discover/chat'], { 
-      queryParams: { userId: actor.uid }
-    });
+    console.log('=== viewProfile called ===');
+    console.log('Actor:', actor);
+    
+    // Use stored slug-uid if available, otherwise generate temporary one
+    const slugUid = actor.slug || this.profileUrlService.generateSlugUid(actor.stageName, actor.uid);
+    console.log('Using slugUid:', slugUid);
+    
+    if (!actor.slug) {
+      console.warn('Actor missing stored slug-uid, using generated one. This may not work if profile has a different slug-uid stored.');
+    }
+    
+    // Navigate to profile
+    this.router.navigate(['/discover', slugUid]).then(
+      success => {
+        console.log('Navigation success:', success);
+        console.log('New URL:', this.router.url);
+      },
+      error => console.error('Navigation error:', error)
+    );
   }
 
   viewAllWishlist(): void {

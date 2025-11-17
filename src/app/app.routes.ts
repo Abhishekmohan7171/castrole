@@ -93,9 +93,10 @@ export const routes: Routes = [
             (m) => m.SettingsComponent
           ),
       },
-      // Public profile routes (/:username)
+      // Public profile routes (/:slugUid format - STORED in database)
+      // Example: /discover/rajkumar-rao-xK9mP2nQ7R
       {
-        path: ':username',
+        path: ':slugUid',
         loadComponent: () =>
           import('./discover/profile.component').then(
             (m) => m.ProfileComponent

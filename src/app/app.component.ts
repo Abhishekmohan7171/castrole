@@ -5,11 +5,12 @@ import { Auth } from '@angular/fire/auth';
 import { inject } from '@angular/core';
 import { LoadingService } from './services/loading.service';
 import { filter, take } from 'rxjs/operators';
+import { ToastComponent } from './common-components/toast/toast.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule],
+  imports: [RouterOutlet, CommonModule, ToastComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

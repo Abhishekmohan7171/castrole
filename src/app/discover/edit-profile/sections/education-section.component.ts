@@ -1,8 +1,22 @@
 import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { Profile, Education, Work } from '../../../../assets/interfaces/profile.interfaces';
+
+// Custom validator for year range (1900 to current year)
+function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
+  if (!control.value) return null;
+
+  const year = parseInt(control.value, 10);
+  const currentYear = new Date().getFullYear();
+
+  if (isNaN(year) || year < 1900 || year > currentYear) {
+    return { yearRange: { min: 1900, max: currentYear, actual: control.value } };
+  }
+
+  return null;
+}
 
 @Component({
   selector: 'app-education-section',
@@ -296,18 +310,18 @@ export class EducationSectionComponent implements OnInit {
 
   createEducationFormGroup(edu?: Education): FormGroup {
     return this.fb.group({
-      schoolName: [edu?.schoolName || '', Validators.required],
-      courseName: [edu?.courseName || '', Validators.required],
-      yearCompleted: [edu?.yearCompleted || '', Validators.required],
+      schoolName: [edu?.schoolName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+      courseName: [edu?.courseName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+      yearCompleted: [edu?.yearCompleted || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]],
       certificateUrl: [edu?.certificateUrl || '']
     });
   }
 
   createWorkFormGroup(work?: Work): FormGroup {
     return this.fb.group({
-      projectName: [work?.projectName || '', Validators.required],
-      genre: [work?.genre || ''],
-      year: [work?.year || '', Validators.required]
+      projectName: [work?.projectName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+      genre: [work?.genre || '', [Validators.maxLength(100)]],
+      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]]
     });
   }
 

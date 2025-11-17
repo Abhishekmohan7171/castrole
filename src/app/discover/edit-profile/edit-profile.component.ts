@@ -10,6 +10,7 @@ import { EducationSectionComponent } from './sections/education-section.componen
 import { VoiceIntroSectionComponent } from './sections/voice-intro-section.component';
 import { LanguagesSkillsSectionComponent } from './sections/languages-skills-section.component';
 import { SocialsSectionComponent } from './sections/socials-section.component';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-edit-profile',
@@ -222,6 +223,7 @@ export class EditProfileComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private firestore = inject(Firestore);
   private auth = inject(Auth);
+  private toastService = inject(ToastService);
 
   // State
   profile = signal<Profile | null>(null);
@@ -480,11 +482,11 @@ export class EditProfileComponent implements OnInit {
       // Update local state
       this.profile.set(updatedProfile as Profile);
 
-      // Show success feedback (you can add a toast service later)
-      alert('Profile updated successfully!');
+      // Show success toast
+      this.toastService.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      this.toastService.error('Failed to save profile. Please try again.');
     }
   }
 

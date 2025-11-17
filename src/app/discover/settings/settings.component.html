@@ -1,14 +1,26 @@
 <div class="min-h-screen bg-neutral-950">
   <!-- Mobile Header -->
-  <div class="lg:hidden sticky top-0 z-40 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800">
+  <div
+    class="lg:hidden sticky top-0 z-40 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800"
+  >
     <div class="flex items-center justify-between px-4 py-3">
       <button
         (click)="toggleMobileSidebar()"
         class="p-2 hover:bg-white/5 rounded-lg transition-colors"
         aria-label="Toggle menu"
       >
-        <svg class="w-6 h-6 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        <svg
+          class="w-6 h-6 text-neutral-300"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
         </svg>
       </button>
       <h1 class="text-lg font-semibold text-white">Settings</h1>
@@ -17,8 +29,18 @@
         class="p-2 hover:bg-white/5 rounded-lg transition-colors"
         aria-label="Close"
       >
-        <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <svg
+          class="w-5 h-5 text-neutral-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
     </div>
@@ -26,10 +48,7 @@
 
   <div class="flex">
     <!-- Sidebar Navigation -->
-    <aside
-      [class]="sidebarClasses()"
-      (click)="onSidebarBackdropClick($event)"
-    >
+    <aside [class]="sidebarClasses()" (click)="onSidebarBackdropClick($event)">
       <div
         class="bg-neutral-900 h-full overflow-y-auto"
         (click)="$event.stopPropagation()"
@@ -42,40 +61,50 @@
         <!-- Navigation Items -->
         <nav class="space-y-1">
           @for (tab of availableTabs(); track tab) {
-            <button
-              (click)="onTabChange(tab)"
-              [class]="activeTab() === tab 
+          <button
+            (click)="onTabChange(tab)"
+            [class]="
+              activeTab() === tab
                 ? 'w-full text-left px-4 py-3 rounded-lg bg-purple-600/20 border-l-2 border-purple-500 transition-all duration-200'
-                : 'w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 border-l-2 border-transparent transition-all duration-200'"
-            >
-              <div class="flex items-start gap-3">
-                <!-- Icon -->
-                <div [class]="activeTab() === tab ? 'text-purple-400 mt-0.5' : 'text-neutral-500 mt-0.5'">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    [innerHTML]="getTabIcon(tab)"
-                  ></svg>
-                </div>
-                
-                <!-- Text -->
-                <div class="flex-1 space-y-0.5">
-                  <h3 
-                    [class]="activeTab() === tab 
-                      ? 'text-base font-medium text-white'
-                      : 'text-base font-medium text-neutral-300'"
-                  >
-                    {{ getTabLabel(tab) }}
-                  </h3>
-                  <p class="text-xs text-neutral-500 leading-tight">
-                    {{ getTabDescription(tab) }}
-                  </p>
-                </div>
+                : 'w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 border-l-2 border-transparent transition-all duration-200'
+            "
+          >
+            <div class="flex items-start gap-3">
+              <!-- Icon -->
+              <div
+                [class]="
+                  activeTab() === tab
+                    ? 'text-purple-400 mt-0.5'
+                    : 'text-neutral-500 mt-0.5'
+                "
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  [innerHTML]="getTabIcon(tab)"
+                ></svg>
               </div>
-            </button>
+
+              <!-- Text -->
+              <div class="flex-1 space-y-0.5">
+                <h3
+                  [class]="
+                    activeTab() === tab
+                      ? 'text-base font-medium text-white'
+                      : 'text-base font-medium text-neutral-300'
+                  "
+                >
+                  {{ getTabLabel(tab) }}
+                </h3>
+                <p class="text-xs text-neutral-500 leading-tight">
+                  {{ getTabDescription(tab) }}
+                </p>
+              </div>
+            </div>
+          </button>
           }
         </nav>
       </div>
@@ -86,72 +115,66 @@
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <!-- Content Sections -->
         <div class="space-y-6">
-          <h2 class="text-2xl font-semibold text-white mb-6">{{ getTabLabel(activeTab()) }}</h2>
-          
-          @switch (activeTab()) { 
-            @case ('account') {
-              <app-account-section
-                [isActor]="isActor()"
-                [userData]="userData()"
-                [editableUserData]="editableUserData()"
-                [editingFields]="editingFields()"
-                [toggleEditField]="toggleEditField.bind(this)"
-                [canAddAccount]="canAddAccount.bind(this)"
-                [getMissingRole]="getMissingRole.bind(this)"
-                [addAccount]="addAccount.bind(this)"
-                (dataChange)="onEditableDataChange($event)"
-              />
-            }
-            @case ('privacy') {
-              <app-privacy-section
-                [isActor]="isActor()"
-                [isProducer]="isProducer()"
-                [ghostMode]="ghostMode()"
-                [lastSeenVisible]="lastSeenVisible()"
-                [onlineStatusVisible]="onlineStatusVisible()"
-                [readReceipts]="readReceipts()"
-                [allowChatRequests]="allowChatRequests()"
-                [toggleGhostMode]="toggleGhostMode"
-                [toggleLastSeenVisible]="toggleLastSeenVisible"
-                [toggleOnlineStatusVisible]="toggleOnlineStatusVisible"
-                [toggleReadReceipts]="toggleReadReceipts"
-                [toggleAllowChatRequests]="toggleAllowChatRequests"
-                [viewBlockedUsers]="viewBlockedUsers"
-                [viewRecentLogins]="viewRecentLogins"
-                [logoutAllDevices]="logoutAllDevices"
-                [deleteAccount]="deleteAccount"
-              />
-            }
-            @case ('subscriptions') {
-              <app-subscriptions-section
-                [isActor]="isActor()"
-                [upgradeSubscription]="upgradeSubscription"
-                [manageSubscription]="manageSubscription"
-                [viewPaymentHistory]="viewPaymentHistory"
-              />
-            }
-            @case ('analytics') {
-              <app-analytics-section
-                [isSubscribed]="isSubscribed()"
-                [analyticsData]="analyticsData"
-                [upgradeSubscription]="upgradeSubscription"
-              />
-            }
-            @case ('support') {
-              <app-support-section
-                [isActor]="isActor()"
-                [supportSubject]="supportSubject()"
-                [supportConcern]="supportConcern()"
-                [isSubmittingSupport]="isSubmittingSupport()"
-                [submitSupportForm]="submitSupportForm.bind(this)"
-              />
-            }
-            @case ('legal') {
-              <app-legal-section
-                [isActor]="isActor()"
-              />
-            }
-          }
+          <h2 class="text-2xl font-semibold text-white mb-6">
+            {{ getTabLabel(activeTab()) }}
+          </h2>
+
+          @switch (activeTab()) { @case ('account') {
+          <app-account-section
+            [isActor]="isActor()"
+            [userData]="userData()"
+            [editableUserData]="editableUserData()"
+            [editingFields]="editingFields()"
+            [toggleEditField]="toggleEditField.bind(this)"
+            [canAddAccount]="canAddAccount.bind(this)"
+            [getMissingRole]="getMissingRole.bind(this)"
+            [addAccount]="addAccount.bind(this)"
+            [switchRole]="switchRole.bind(this)"
+            (dataChange)="onEditableDataChange($event)"
+          />
+          } @case ('privacy') {
+          <app-privacy-section
+            [isActor]="isActor()"
+            [isProducer]="isProducer()"
+            [ghostMode]="ghostMode()"
+            [lastSeenVisible]="lastSeenVisible()"
+            [onlineStatusVisible]="onlineStatusVisible()"
+            [readReceipts]="readReceipts()"
+            [allowChatRequests]="allowChatRequests()"
+            [toggleGhostMode]="toggleGhostMode.bind(this)"
+            [toggleLastSeenVisible]="toggleLastSeenVisible.bind(this)"
+            [toggleOnlineStatusVisible]="toggleOnlineStatusVisible.bind(this)"
+            [toggleReadReceipts]="toggleReadReceipts.bind(this)"
+            [toggleAllowChatRequests]="toggleAllowChatRequests.bind(this)"
+            [viewBlockedUsers]="viewBlockedUsers.bind(this)"
+            [viewRecentLogins]="viewRecentLogins.bind(this)"
+            [logoutAllDevices]="logoutAllDevices.bind(this)"
+            [deleteAccount]="deleteAccount.bind(this)"
+          />
+          } @case ('subscriptions') {
+          <app-subscriptions-section
+            [isActor]="isActor()"
+            [upgradeSubscription]="upgradeSubscription"
+            [manageSubscription]="manageSubscription"
+            [viewPaymentHistory]="viewPaymentHistory"
+          />
+          } @case ('analytics') {
+          <app-analytics-section
+            [isSubscribed]="isSubscribed()"
+            [analyticsData]="analyticsData"
+            [upgradeSubscription]="upgradeSubscription"
+          />
+          } @case ('support') {
+          <app-support-section
+            [isActor]="isActor()"
+            [supportSubject]="supportSubject()"
+            [supportConcern]="supportConcern()"
+            [isSubmittingSupport]="isSubmittingSupport()"
+            [submitSupportForm]="submitSupportForm.bind(this)"
+          />
+          } @case ('legal') {
+          <app-legal-section [isActor]="isActor()" />
+          } }
         </div>
       </div>
     </main>
@@ -168,22 +191,42 @@
       [ngClass]="{
         'bg-purple-950/90 ring-1 ring-purple-900/30 border border-purple-950/30':
           isActor(),
-        'bg-black/90 ring-2 ring-white/10 border border-neutral-800':
-          !isActor()
+        'bg-black/90 ring-2 ring-white/10 border border-neutral-800': !isActor()
       }"
       (click)="$event.stopPropagation()"
     >
       <!-- Modal Header -->
-      <div class="flex items-center justify-between mb-6">
-        <h3
-          class="text-lg font-semibold"
-          [ngClass]="{
-            'text-purple-100': isActor(),
-            'text-neutral-100': !isActor()
-          }"
-        >
-          Blocked Users
-        </h3>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p
+            class="text-xs uppercase tracking-wide"
+            [ngClass]="{
+              'text-purple-300/80': isActor(),
+              'text-neutral-400': !isActor()
+            }"
+          >
+            Privacy & safety
+          </p>
+          <h3
+            class="text-xl font-semibold"
+            [ngClass]="{
+              'text-purple-100': isActor(),
+              'text-neutral-100': !isActor()
+            }"
+          >
+            Blocked users
+          </h3>
+          <p
+            class="text-sm mt-1"
+            [ngClass]="{
+              'text-purple-200/70': isActor(),
+              'text-neutral-300/80': !isActor()
+            }"
+          >
+            Review people you muted from chats, casting calls, or profile views.
+            You can unblock them any time.
+          </p>
+        </div>
         <button
           (click)="closeBlockedUsersModal()"
           class="p-2 rounded-lg transition-colors"
@@ -191,6 +234,7 @@
             'hover:bg-purple-900/20 text-purple-300': isActor(),
             'hover:bg-white/10 text-neutral-300': !isActor()
           }"
+          aria-label="Close blocked users dialog"
         >
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -202,89 +246,226 @@
         </button>
       </div>
 
-      <!-- Blocked Users List -->
-      <div class="space-y-3 max-h-96 overflow-y-auto">
-        @if (blockedUsersList().length === 0) {
-        <div class="text-center py-8">
-          <svg
-            class="w-12 h-12 mx-auto mb-3 opacity-50"
+      <div class="space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            class="rounded-2xl p-4 border"
             [ngClass]="{
-              'text-purple-400': isActor(),
-              'text-neutral-400': !isActor()
-            }"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
-            />
-          </svg>
-          <p
-            class="text-sm opacity-70"
-            [ngClass]="{
-              'text-purple-300': isActor(),
-              'text-neutral-300': !isActor()
+              'border-purple-900/40 bg-purple-950/30': isActor(),
+              'border-white/10 bg-white/5': !isActor()
             }"
           >
-            No blocked users
-          </p>
-        </div>
-        } @else { @for (blockedUser of blockedUsersList(); track
-        blockedUser.blockedBy) {
-        <div
-          class="flex items-center justify-between p-3 rounded-lg"
-          [ngClass]="{
-            'bg-purple-900/20': isActor(),
-            'bg-white/5': !isActor()
-          }"
-        >
-          <div class="flex items-center gap-3">
-            <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
+            <p
+              class="text-xs uppercase tracking-wide"
               [ngClass]="{
-                'bg-purple-600 text-white': isActor(),
-                'bg-neutral-600 text-white': !isActor()
+                'text-purple-300/70': isActor(),
+                'text-neutral-400': !isActor()
               }"
             >
-              {{ getBlockedUserInitial(blockedUser) }}
-            </div>
-            <div>
-              <p
-                class="text-sm font-medium"
-                [ngClass]="{
-                  'text-purple-100': isActor(),
-                  'text-neutral-100': !isActor()
-                }"
-              >
-                {{ getBlockedUserName(blockedUser) }}
-              </p>
-              <p
-                class="text-xs opacity-70"
-                [ngClass]="{
-                  'text-purple-300': isActor(),
-                  'text-neutral-400': !isActor()
-                }"
-              >
-                Blocked {{ formatBlockedDate(blockedUser.blockedAt) }}
-              </p>
-            </div>
+              total blocked
+            </p>
+            <p
+              class="text-3xl font-semibold mt-1"
+              [ngClass]="{ 'text-white': true }"
+            >
+              {{ blockedUsersList().length }}
+            </p>
+            <p
+              class="text-xs mt-2"
+              [ngClass]="{
+                'text-purple-200/70': isActor(),
+                'text-neutral-400': !isActor()
+              }"
+            >
+              Includes both actor and producer profiles you've muted.
+            </p>
           </div>
-          <button
-            (click)="unblockUser(blockedUser)"
-            class="px-3 py-1 text-xs rounded-lg transition-colors"
+          <div
+            class="rounded-2xl p-4 border"
             [ngClass]="{
-              'bg-purple-600 hover:bg-purple-700 text-white': isActor(),
-              'bg-neutral-600 hover:bg-neutral-700 text-white': !isActor()
+              'border-purple-900/40 bg-gradient-to-br from-purple-900/40 to-transparent':
+                isActor(),
+              'border-white/10 bg-gradient-to-br from-white/5 to-transparent':
+                !isActor()
             }"
           >
-            Unblock
-          </button>
+            <p
+              class="text-sm font-medium"
+              [ngClass]="{
+                'text-purple-100': isActor(),
+                'text-neutral-100': !isActor()
+              }"
+            >
+              Why blocks matter
+            </p>
+            <p
+              class="text-xs mt-2 leading-relaxed"
+              [ngClass]="{
+                'text-purple-200/80': isActor(),
+                'text-neutral-300/90': !isActor()
+              }"
+            >
+              Blocked users cannot view your profile, mention you, or send
+              casting requests. We keep a private audit trail for trust &
+              safety.
+            </p>
+          </div>
         </div>
-        } }
+
+        <!-- Blocked Users List -->
+        <div class="space-y-4 max-h-[26rem] overflow-y-auto pr-1">
+          @if (blockedUsersList().length === 0) {
+          <div class="text-center py-10">
+            <svg
+              class="w-12 h-12 mx-auto mb-3 opacity-60"
+              [ngClass]="{
+                'text-purple-400': isActor(),
+                'text-neutral-400': !isActor()
+              }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
+              />
+            </svg>
+            <p
+              class="text-sm"
+              [ngClass]="{
+                'text-purple-200/80': isActor(),
+                'text-neutral-300': !isActor()
+              }"
+            >
+              You're all clear—no one is blocked right now.
+            </p>
+            <p
+              class="text-xs mt-1"
+              [ngClass]="{
+                'text-purple-300/60': isActor(),
+                'text-neutral-400': !isActor()
+              }"
+            >
+              You can block someone from their profile or chat at any time.
+            </p>
+          </div>
+          } @else { @for (blockedUser of blockedUsersList(); track
+          blockedUser.blockedBy ?? blockedUser.displayName) {
+          <article
+            class="rounded-2xl border px-4 py-3 space-y-3"
+            [ngClass]="{
+              'border-purple-900/30 bg-purple-950/20 hover:border-purple-500/50 transition-colors':
+                isActor(),
+              'border-white/10 bg-white/5 hover:border-white/30 transition-colors':
+                !isActor()
+            }"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold"
+                  [ngClass]="{
+                    'bg-purple-600 text-white': isActor(),
+                    'bg-neutral-700 text-white': !isActor()
+                  }"
+                >
+                  {{ getBlockedUserInitial(blockedUser) }}
+                </div>
+                <div>
+                  <p
+                    class="text-sm font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    {{ getBlockedUserName(blockedUser) }}
+                  </p>
+                  <p
+                    class="text-xs"
+                    [ngClass]="{
+                      'text-purple-200/70': isActor(),
+                      'text-neutral-400': !isActor()
+                    }"
+                  >
+                    {{ blockedUser.reason || "Reason not specified" }}
+                  </p>
+                </div>
+              </div>
+              <span
+                class="px-2 py-1 text-[11px] rounded-full font-medium tracking-wide"
+                [ngClass]="getRoleBadgeClasses(blockedUser.role)"
+              >
+                {{ formatRoleLabel(blockedUser.role) }}
+              </span>
+            </div>
+
+            <div
+              class="grid grid-cols-2 gap-4 text-xs"
+              [ngClass]="{
+                'text-purple-200/80': isActor(),
+                'text-neutral-300/90': !isActor()
+              }"
+            >
+              <div>
+                <p class="uppercase text-[10px] tracking-wide opacity-70">
+                  Blocked
+                </p>
+                <p class="mt-0.5 font-medium">
+                  {{ formatBlockedDate(blockedUser.blockedAt) }}
+                </p>
+              </div>
+              <div>
+                <p class="uppercase text-[10px] tracking-wide opacity-70">
+                  Mutual connections
+                </p>
+                <p class="mt-0.5 font-medium">
+                  {{ blockedUser.mutualConnections ?? 0 }}
+                </p>
+              </div>
+            </div>
+
+            @if (blockedUser.notes) {
+            <p
+              class="text-xs rounded-xl px-3 py-2"
+              [ngClass]="{
+                'bg-purple-900/40 text-purple-100/90': isActor(),
+                'bg-white/10 text-neutral-100': !isActor()
+              }"
+            >
+              {{ blockedUser.notes }}
+            </p>
+            }
+
+            <div class="flex items-center justify-end gap-2">
+              <button
+                class="text-xs px-3 py-1.5 rounded-lg border"
+                [ngClass]="{
+                  'border-purple-900/40 text-purple-200 hover:bg-purple-900/30':
+                    isActor(),
+                  'border-white/20 text-neutral-200 hover:bg-white/10':
+                    !isActor()
+                }"
+              >
+                Report
+              </button>
+              <button
+                (click)="unblockUser(blockedUser)"
+                class="text-xs px-3 py-1.5 rounded-lg font-medium"
+                [ngClass]="{
+                  'bg-purple-600 hover:bg-purple-700 text-white': isActor(),
+                  'bg-neutral-600 hover:bg-neutral-700 text-white': !isActor()
+                }"
+              >
+                Unblock
+              </button>
+            </div>
+          </article>
+          } }
+        </div>
       </div>
     </div>
   </div>
@@ -301,22 +482,42 @@
       [ngClass]="{
         'bg-purple-950/90 ring-1 ring-purple-900/30 border border-purple-950/30':
           isActor(),
-        'bg-black/90 ring-2 ring-white/10 border border-neutral-800':
-          !isActor()
+        'bg-black/90 ring-2 ring-white/10 border border-neutral-800': !isActor()
       }"
       (click)="$event.stopPropagation()"
     >
       <!-- Modal Header -->
-      <div class="flex items-center justify-between mb-6">
-        <h3
-          class="text-lg font-semibold"
-          [ngClass]="{
-            'text-purple-100': isActor(),
-            'text-neutral-100': !isActor()
-          }"
-        >
-          Recent Logins
-        </h3>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p
+            class="text-xs uppercase tracking-wide"
+            [ngClass]="{
+              'text-purple-300/80': isActor(),
+              'text-neutral-400': !isActor()
+            }"
+          >
+            account activity
+          </p>
+          <h3
+            class="text-xl font-semibold"
+            [ngClass]="{
+              'text-purple-100': isActor(),
+              'text-neutral-100': !isActor()
+            }"
+          >
+            Recent logins
+          </h3>
+          <p
+            class="text-sm mt-1"
+            [ngClass]="{
+              'text-purple-200/70': isActor(),
+              'text-neutral-300/80': !isActor()
+            }"
+          >
+            Track devices that accessed your account. Unknown sessions can be
+            revoked instantly.
+          </p>
+        </div>
         <button
           (click)="closeRecentLoginsModal()"
           class="p-2 rounded-lg transition-colors"
@@ -324,6 +525,7 @@
             'hover:bg-purple-900/20 text-purple-300': isActor(),
             'hover:bg-white/10 text-neutral-300': !isActor()
           }"
+          aria-label="Close recent logins dialog"
         >
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -335,92 +537,212 @@
         </button>
       </div>
 
-      <!-- Recent Logins List -->
-      <div class="space-y-3 max-h-96 overflow-y-auto">
-        @if (recentLoginsList().length === 0) {
-        <div class="text-center py-8">
-          <svg
-            class="w-12 h-12 mx-auto mb-3 opacity-50"
-            [ngClass]="{
-              'text-purple-400': isActor(),
-              'text-neutral-400': !isActor()
-            }"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
-          <p
-            class="text-sm opacity-70"
-            [ngClass]="{
-              'text-purple-300': isActor(),
-              'text-neutral-300': !isActor()
-            }"
-          >
-            No recent logins
-          </p>
-        </div>
-        } @else { @for (device of recentLoginsList(); track device) {
+      <div class="space-y-5">
         <div
-          class="flex items-center gap-3 p-3 rounded-lg"
+          class="rounded-2xl border p-4"
           [ngClass]="{
-            'bg-purple-900/20': isActor(),
-            'bg-white/5': !isActor()
+            'border-purple-900/40 bg-purple-950/20': isActor(),
+            'border-white/10 bg-white/5': !isActor()
           }"
         >
-          <div class="text-2xl">{{ getDeviceIcon(device.platform) }}</div>
-          <div class="flex-1">
-            <p
-              class="text-sm font-medium"
+          <div class="flex flex-wrap gap-4">
+            <div>
+              <p
+                class="text-xs uppercase tracking-wide"
+                [ngClass]="{
+                  'text-purple-300/70': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                Currently active
+              </p>
+              <p class="text-2xl font-semibold text-white">
+                {{ countCurrentSessions() || 1 }}
+              </p>
+              <p
+                class="text-xs mt-1"
+                [ngClass]="{
+                  'text-purple-200/70': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                Sessions signed in right now
+              </p>
+            </div>
+            <div class="flex-1 min-w-[180px]">
+              <p
+                class="text-xs uppercase tracking-wide"
+                [ngClass]="{
+                  'text-purple-300/70': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                last reviewed
+              </p>
+              <p class="text-sm font-medium text-white">Just now</p>
+              <p
+                class="text-xs mt-1"
+                [ngClass]="{
+                  'text-purple-200/70': isActor(),
+                  'text-neutral-400': !isActor()
+                }"
+              >
+                We notify you if a new device signs in from an unusual location.
+              </p>
+            </div>
+            <button
+              (click)="logoutAllDevices()"
+              class="px-4 py-2 rounded-lg text-sm font-medium"
               [ngClass]="{
-                'text-purple-100': isActor(),
-                'text-neutral-100': !isActor()
+                'bg-red-600/80 hover:bg-red-600 text-white transition-colors': true
               }"
             >
-              {{ getDeviceDisplayName(device) }}
+              Logout all devices
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Logins List -->
+        <div class="space-y-4 max-h-[26rem] overflow-y-auto pr-1">
+          @if (recentLoginsList().length === 0) {
+          <div class="text-center py-10">
+            <svg
+              class="w-12 h-12 mx-auto mb-3 opacity-60"
+              [ngClass]="{
+                'text-purple-400': isActor(),
+                'text-neutral-400': !isActor()
+              }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <p
+              class="text-sm"
+              [ngClass]="{
+                'text-purple-200/80': isActor(),
+                'text-neutral-300': !isActor()
+              }"
+            >
+              No login history yet.
             </p>
             <p
-              class="text-xs opacity-70"
+              class="text-xs mt-1"
               [ngClass]="{
-                'text-purple-300': isActor(),
+                'text-purple-300/60': isActor(),
                 'text-neutral-400': !isActor()
               }"
             >
-              {{ device.city || 'Unknown location' }} •
-              {{ device.lastActive || 'Recently' }}
+              We'll show devices here once you start signing in on multiple
+              platforms.
             </p>
           </div>
-          @if (device.current) {
-          <span
-            class="px-2 py-1 text-xs rounded-full"
+          } @else { @for (device of recentLoginsList(); track device.id ||
+          device.platform + device.model) {
+          <article
+            class="rounded-2xl border p-4 space-y-3"
             [ngClass]="{
-              'bg-green-500/20 text-green-400': true
+              'border-purple-900/30 bg-purple-950/20 hover:border-purple-500/50 transition-colors':
+                isActor(),
+              'border-white/10 bg-white/5 hover:border-white/30 transition-colors':
+                !isActor()
             }"
           >
-            Current
-          </span>
-          }
-        </div>
-        } }
-      </div>
+            <div class="flex items-start gap-3">
+              <div class="text-2xl" aria-hidden="true">
+                {{ getDeviceIcon(device.platform) }}
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p
+                    class="text-sm font-semibold"
+                    [ngClass]="{
+                      'text-purple-100': isActor(),
+                      'text-neutral-100': !isActor()
+                    }"
+                  >
+                    {{ getDeviceDisplayName(device) }}
+                  </p>
+                  <span
+                    class="text-[11px] px-2 py-0.5 rounded-full border"
+                    [ngClass]="getRiskBadgeClasses(device.risk)"
+                  >
+                    {{ formatRiskLabel(device.risk) }}
+                  </span>
+                  @if (device.current) {
+                  <span
+                    class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  >
+                    Current session
+                  </span>
+                  }
+                </div>
+                <p
+                  class="text-xs mt-1"
+                  [ngClass]="{
+                    'text-purple-200/70': isActor(),
+                    'text-neutral-400': !isActor()
+                  }"
+                >
+                  {{ device.city || "Unknown location" }} •
+                  {{ device.lastActive || "Recently" }}
+                </p>
+              </div>
+            </div>
 
-      <!-- Logout All Button -->
-      <div class="mt-6 pt-4 border-t" [ngClass]="{ 'border-purple-900/20': isActor(), 'border-neutral-700/50': !isActor() }">
-        <button
-          (click)="logoutAllDevices()"
-          class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-          [ngClass]="{
-            'bg-red-600 hover:bg-red-700 text-white': true
-          }"
-        >
-          Logout All Devices
-        </button>
+            <div
+              class="grid grid-cols-2 gap-4 text-xs"
+              [ngClass]="{
+                'text-purple-200/80': isActor(),
+                'text-neutral-300/90': !isActor()
+              }"
+            >
+              <div>
+                <p class="uppercase text-[10px] tracking-wide opacity-70">
+                  IP address
+                </p>
+                <p class="mt-0.5 font-medium">{{ device.ip || "—" }}</p>
+              </div>
+              <div>
+                <p class="uppercase text-[10px] tracking-wide opacity-70">
+                  App / Browser
+                </p>
+                <p class="mt-0.5 font-medium">
+                  {{ device.browser || "Castrole" }}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
+              <button
+                class="text-xs px-3 py-1.5 rounded-lg border"
+                [ngClass]="{
+                  'border-purple-900/40 text-purple-200 hover:bg-purple-900/30':
+                    isActor(),
+                  'border-white/20 text-neutral-200 hover:bg-white/10':
+                    !isActor()
+                }"
+              >
+                Mark safe
+              </button>
+              <button
+                class="text-xs px-3 py-1.5 rounded-lg font-medium"
+                [ngClass]="{
+                  'bg-red-600/80 hover:bg-red-600 text-white': true
+                }"
+              >
+                End session
+              </button>
+            </div>
+          </article>
+          } }
+        </div>
       </div>
     </div>
   </div>
@@ -437,8 +759,7 @@
       [ngClass]="{
         'bg-purple-950/90 ring-1 ring-purple-900/30 border border-purple-950/30':
           isActor(),
-        'bg-black/90 ring-2 ring-white/10 border border-neutral-800':
-          !isActor()
+        'bg-black/90 ring-2 ring-white/10 border border-neutral-800': !isActor()
       }"
       (click)="$event.stopPropagation()"
     >
@@ -474,16 +795,16 @@
       <!-- Warning Content -->
       <div class="space-y-4 mb-6">
         <div class="flex items-start gap-3">
-          <svg 
-            class="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            class="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="2" 
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
             />
           </svg>
@@ -552,8 +873,7 @@
           [ngClass]="{
             'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
               isActor(),
-            'border-neutral-700 text-neutral-300 hover:bg-black/20':
-              !isActor()
+            'border-neutral-700 text-neutral-300 hover:bg-black/20': !isActor()
           }"
           [disabled]="isDeleting()"
         >
@@ -563,25 +883,47 @@
           (click)="confirmDeleteAccount()"
           class="flex-1 px-4 py-2 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           [ngClass]="{
-            'bg-red-600 hover:bg-red-700 text-white': canConfirmDelete() && !isDeleting(),
-            'bg-red-600/50 text-white/50 cursor-not-allowed': !canConfirmDelete() || isDeleting()
+            'bg-red-600 hover:bg-red-700 text-white':
+              canConfirmDelete() && !isDeleting(),
+            'bg-red-600/50 text-white/50 cursor-not-allowed':
+              !canConfirmDelete() || isDeleting()
           }"
           [disabled]="!canConfirmDelete() || isDeleting()"
         >
           @if (isDeleting()) {
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
-                <path fill="currentColor" class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Deleting...
-            </div>
-          } @else {
-            Delete Account
-          }
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+                class="opacity-25"
+              ></circle>
+              <path
+                fill="currentColor"
+                class="opacity-75"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Deleting...
+          </div>
+          } @else { Delete Account }
         </button>
       </div>
     </div>
   </div>
+  }
+
+  <!-- Add Account Modal -->
+  @if (showAddAccountModal()) {
+  <app-add-account-modal
+    [accountType]="addAccountType()"
+    [email]="userData()?.email || ''"
+    [phone]="userData()?.phone || ''"
+    (close)="closeAddAccountModal()"
+    (submit)="handleAddAccountSubmit($event)"
+  />
   }
 </div>

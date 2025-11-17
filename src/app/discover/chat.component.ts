@@ -30,35 +30,66 @@ import { PresenceService } from '../services/presence.service';
         >
           <div class="p-4 border-b relative transition-colors duration-300"
                [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}">
-            @if (myRole() === 'producer') {
-              <input
-                type="search"
-                [formControl]="searchControl"
-                placeholder="search actors"
-                (focus)="openActorDropdown()"
-                (blur)="closeActorDropdownLater()"
-                (input)="onSearch($any($event.target).value)"
-                class="w-full bg-neutral-900 text-neutral-200 placeholder-neutral-500 rounded-full px-4 py-2 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/30 transition"
-              />
-              @if (showActorDropdown) {
-                <div class="absolute left-4 right-4 mt-2 z-10 max-h-72 overflow-auto rounded-xl bg-neutral-900 ring-1 ring-white/10 border border-white/5 shadow-xl">
-                  @for (actor of filteredActors(); track actor.uid) {
-                    <button type="button" (mousedown)="$event.preventDefault()" (click)="startChatWith(actor)"
-                            class="w-full text-left px-3 py-2 hover:bg-white/5 transition flex items-center gap-3">
-                      <div class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">{{ actor.name[0] | uppercase }}</div>
+            <!-- Universal Search Input -->
+            <input
+              type="search"
+              [formControl]="searchControl"
+              placeholder="search conversations or messages"
+              (focus)="openSearchResults()"
+              (blur)="closeSearchResultsLater()"
+              class="w-full rounded-full px-4 py-2 outline-none ring-1 transition text-sm"
+              [ngClass]="{
+                'bg-purple-950/10 text-purple-100 placeholder-purple-300/50 ring-purple-900/15 focus:ring-2 focus:ring-purple-500/30': myRole() === 'actor',
+                'bg-neutral-900 text-neutral-200 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/30': myRole() !== 'actor'
+              }"
+            />
+            
+            <!-- Search Results Dropdown -->
+            @if (showSearchResults && (searchResults().conversations.length > 0 || isSearching())) {
+              <div class="absolute left-4 right-4 mt-2 z-10 max-h-72 overflow-auto rounded-xl ring-1 border shadow-xl transition-colors duration-300"
+                   [ngClass]="{
+                     'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole() === 'actor',
+                     'bg-neutral-900 ring-white/10 border-white/5': myRole() !== 'actor'
+                   }">
+                @if (isSearching()) {
+                  <div class="px-3 py-3 text-sm"
+                       [ngClass]="{'text-purple-300/60': myRole() === 'actor', 'text-neutral-400': myRole() !== 'actor'}">
+                    Searching...
+                  </div>
+                }
+                @if (!isSearching()) {
+                  @for (convo of searchResults().conversations; track convo.id) {
+                    <button type="button" (mousedown)="$event.preventDefault()" (click)="selectSearchResult(convo)"
+                            class="w-full text-left px-3 py-2 transition flex items-center gap-3"
+                            [ngClass]="{'hover:bg-purple-950/10': myRole() === 'actor', 'hover:bg-white/5': myRole() !== 'actor'}">
+                      <div class="h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-300"
+                           [ngClass]="{
+                             'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
+                             'bg-white/10 text-neutral-400': myRole() !== 'actor'
+                           }">
+                        {{ convo.name[0] | uppercase }}
+                      </div>
                       <div class="flex-1 min-w-0">
-                        <p class="truncate text-sm text-neutral-100">{{ actor.name || actor.uid }}</p>
-                        <!-- <p class="truncate text-xs text-neutral-400">{{ actor.location }}</p> -->
+                        <p class="truncate text-sm"
+                           [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
+                          {{ convo.name }}
+                        </p>
+                        @if (searchResults().messageMatches.get(convo.id); as matchCount) {
+                          <p class="truncate text-xs"
+                             [ngClass]="{'text-purple-300/60': myRole() === 'actor', 'text-neutral-400': myRole() !== 'actor'}">
+                            {{ matchCount }} message{{ matchCount > 1 ? 's' : '' }} found
+                          </p>
+                        }
                       </div>
                     </button>
                   }
-                  @if (filteredActors().length === 0) {
-                    <div class="px-3 py-3 text-sm text-neutral-400">No actors found</div>
-                  }
-                </div>
-              }
-            } @else if (myRole() === 'actor') {
-              <div class="flex items-center gap-3">
+                }
+              </div>
+            }
+            
+            <!-- Actor View Mode Tabs (below search) -->
+            @if (myRole() === 'actor') {
+              <div class="flex items-center gap-3 mt-3">
                 <button 
                   type="button" 
                   (click)="setViewMode('chat')" 
@@ -375,7 +406,7 @@ import { PresenceService } from '../services/presence.service';
                     </svg>
                   </div>
                   <p>No conversations yet</p>
-                  <p class="text-xs text-neutral-500">Search for actors to start a conversation</p>
+                  <p class="text-xs text-neutral-500">Use the search above to find conversations</p>
                 </div>
               </div>
 
@@ -543,14 +574,14 @@ export class ChatComponent implements OnInit, OnDestroy {
   private counterpartNames = new Map<string, string>();
   private onlineStatusSub = new Subscription();
 
-  actors$?: Observable<UserDoc[]>;
-  filteredActors$?: Observable<UserDoc[]>;
-  // Signal for filtered actors
-  filteredActors = signal<UserDoc[]>([]);
-  private search$ = new BehaviorSubject<string>('');
-  showActorDropdown = false;
-
+  // Universal search
   searchControl = new FormControl('');
+  showSearchResults = false;
+  searchResults = signal<{
+    conversations: Conversation[];
+    messageMatches: Map<string, number>;
+  }>({ conversations: [], messageMatches: new Map() });
+  isSearching = signal(false);
 
   user$ = this.user
 
@@ -654,28 +685,16 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Skip cached rooms processing to avoid showing user IDs
     // The conversations$ observable will load proper data with names
 
-    // Producer: actor search streams - LOAD ACTORS ON INIT
-    this.roomsSub.add(this.myRole$.subscribe((role) => {
-      if (role === 'producer') {
-        // Load all actors immediately when component loads
-        this.actors$ = this.actor.getAllActors().pipe(shareReplay(1));
-        this.filteredActors$ = combineLatest([
-          this.actors$!,
-          this.search$.pipe(debounceTime(150), distinctUntilChanged(), startWith('')),
-        ]).pipe(
-          map(([actors, term]) => {
-            const t = (term || '').toLowerCase().trim();
-            if (!t) return actors;
-            return (actors || []).filter((a) =>
-              (a.name || '').toLowerCase().includes(t) 
-            );
-          }),
-          tap(filtered => this.filteredActors.set(filtered))
-        );
-        // Subscribe to populate the signal immediately
-        this.roomsSub.add(this.filteredActors$.subscribe());
-      }
-    }));
+    // Universal search: debounce search input
+    this.roomsSub.add(
+      this.searchControl.valueChanges.pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        tap(() => this.isSearching.set(true))
+      ).subscribe(term => {
+        this.performUniversalSearch(term || '');
+      })
+    );
 
     // Rooms stream depending on role and view mode
     this.rooms$ = combineLatest([this.myRole$, this.viewMode$]).pipe(
@@ -1108,39 +1127,69 @@ export class ChatComponent implements OnInit, OnDestroy {
     return r.participants.find((p) => p !== this.meUid) || r.participants[0];
   }
 
-  // Producer actor search dropdown handlers
-  openActorDropdown() { this.showActorDropdown = true; }
-  closeActorDropdownLater() { setTimeout(() => (this.showActorDropdown = false), 120); }
-  onSearch(term: string) { this.search$.next(term); }
-  async startChatWith(u: UserDoc) {
-    if (!this.meUid || this.myRole() !== 'producer') return;
-
-    this.showActorDropdown = false;
-    this.loading.set(true);
-
-    try {
-      // Create a chat room without sending an initial message
-      const roomId = await this.chat.producerStartChat(u.uid, this.meUid);
-
-      // Wait a moment for the room to propagate through observables
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Find the conversation and open it
-      const convo = this.conversations().find(c => c.id === roomId);
-      if (convo) {
-        this.open(convo);
-        // Set focus on the draft input
-        setTimeout(() => {
-          const draftInput = document.getElementById('message-draft');
-          if (draftInput) {
-            draftInput.focus();
-          }
-        }, 100);
-      }
-    } finally {
-      this.loading.set(false);
-      this.mobileListOpen = false;
+  // Universal search handlers
+  openSearchResults() { 
+    this.showSearchResults = true; 
+  }
+  
+  closeSearchResultsLater() { 
+    setTimeout(() => {
+      this.showSearchResults = false;
+      this.isSearching.set(false);
+    }, 200); 
+  }
+  
+  async performUniversalSearch(term: string) {
+    const searchTerm = term.trim().toLowerCase();
+    
+    if (!searchTerm) {
+      this.searchResults.set({ conversations: [], messageMatches: new Map() });
+      this.isSearching.set(false);
+      return;
     }
+
+    const allConversations = this.conversations();
+    
+    // Search by person name
+    const nameMatches = allConversations.filter(c => 
+      c.name.toLowerCase().includes(searchTerm)
+    );
+
+    // Search by message content
+    const roomIds = allConversations.map(c => c.id);
+    const messageResults = await this.chat.searchMessagesInRooms(roomIds, searchTerm);
+    
+    // Combine results: conversations with name matches or message matches
+    const messageMatchedConvos = allConversations.filter(c => 
+      messageResults.has(c.id)
+    );
+    
+    // Merge and deduplicate
+    const allMatches = [...nameMatches];
+    messageMatchedConvos.forEach(c => {
+      if (!allMatches.find(existing => existing.id === c.id)) {
+        allMatches.push(c);
+      }
+    });
+
+    // Create a map of conversation ID to message count
+    const messageMatchCounts = new Map<string, number>();
+    messageResults.forEach((messages, roomId) => {
+      messageMatchCounts.set(roomId, messages.length);
+    });
+
+    this.searchResults.set({ 
+      conversations: allMatches,
+      messageMatches: messageMatchCounts
+    });
+    this.isSearching.set(false);
+  }
+
+  selectSearchResult(conversation: Conversation) {
+    this.showSearchResults = false;
+    this.searchControl.setValue('', { emitEvent: false });
+    this.searchResults.set({ conversations: [], messageMatches: new Map() });
+    this.open(conversation);
   }
 
   // Accept a chat request (for actors)
@@ -1223,9 +1272,13 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.open(convos[0]);
       return;
     }
-    if (this.myRole() === 'producer') {
-      this.openActorDropdown();
-    }
+    // Focus on search input if no conversations exist
+    setTimeout(() => {
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+      if (searchInput) {
+        searchInput.focus();
+      }
+    }, 100);
   }
 
   // Helper method to get actor initial for display
