@@ -150,36 +150,6 @@ export class SettingsComponent implements OnInit {
   blockedUsersList = signal<any[]>([]);
   recentLoginsList = signal<any[]>([]);
 
-  private readonly sampleBlockedUsers = [
-    {
-      blockedBy: 'usr_demo_01',
-      displayName: 'Rhea Kapoor',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      reason: 'Repeated spam casting requests',
-      mutualConnections: 2,
-      notes: 'Auto-flagged by Trust & Safety.',
-      role: 'producer',
-    },
-    {
-      blockedBy: 'usr_demo_02',
-      displayName: 'Kabir Menon',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
-      reason: 'Shared unsolicited files',
-      mutualConnections: 0,
-      notes: 'Blocked manually after review.',
-      role: 'actor',
-    },
-    {
-      blockedBy: 'usr_demo_03',
-      displayName: 'Studio Nimbus',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35),
-      reason: 'Suspicious payment links',
-      mutualConnections: 5,
-      notes: 'Investigation pending.',
-      role: 'producer',
-    },
-  ];
-
   private readonly sampleRecentLogins = [
     {
       id: 'session-current',
@@ -784,9 +754,7 @@ export class SettingsComponent implements OnInit {
   // Account management methods
   viewBlockedUsers() {
     const blockedUsers = this.userData()?.blocked || [];
-    this.blockedUsersList.set(
-      blockedUsers.length ? blockedUsers : this.sampleBlockedUsers
-    );
+    this.blockedUsersList.set(blockedUsers);
     this.showBlockedUsersModal.set(true);
   }
 
