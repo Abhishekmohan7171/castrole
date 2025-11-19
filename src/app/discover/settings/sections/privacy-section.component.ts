@@ -49,7 +49,7 @@ import { CommonModule } from '@angular/common';
             </p>
           </div>
           <button
-            (click)="toggleGhostMode()"
+            (click)="toggleGhostMode()()"
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             [ngClass]="{
               'bg-purple-600 focus:ring-purple-500':
@@ -115,7 +115,7 @@ import { CommonModule } from '@angular/common';
             </p>
           </div>
           <button
-            (click)="toggleLastSeenVisible()"
+            (click)="toggleLastSeenVisible()()"
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             [ngClass]="{
               'bg-purple-600 focus:ring-purple-500':
@@ -167,7 +167,7 @@ import { CommonModule } from '@angular/common';
             </p>
           </div>
           <button
-            (click)="toggleOnlineStatusVisible()"
+            (click)="toggleOnlineStatusVisible()()"
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             [ngClass]="{
               'bg-purple-600 focus:ring-purple-500':
@@ -219,7 +219,7 @@ import { CommonModule } from '@angular/common';
             </p>
           </div>
           <button
-            (click)="toggleReadReceipts()"
+            (click)="toggleReadReceipts()()"
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             [ngClass]="{
               'bg-purple-600 focus:ring-purple-500':
@@ -272,7 +272,7 @@ import { CommonModule } from '@angular/common';
             </p>
           </div>
           <button
-            (click)="toggleAllowChatRequests()"
+            (click)="toggleAllowChatRequests()()"
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             [ngClass]="{
               'bg-purple-600 focus:ring-purple-500': allowChatRequests(),

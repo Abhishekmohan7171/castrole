@@ -11,6 +11,8 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
+  collection,
+  addDoc,
 } from '@angular/fire/firestore';
 import { UserDoc } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
@@ -149,36 +151,6 @@ export class SettingsComponent implements OnInit {
   showRecentLoginsModal = signal<boolean>(false);
   blockedUsersList = signal<any[]>([]);
   recentLoginsList = signal<any[]>([]);
-
-  private readonly sampleBlockedUsers = [
-    {
-      blockedBy: 'usr_demo_01',
-      displayName: 'Rhea Kapoor',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      reason: 'Repeated spam casting requests',
-      mutualConnections: 2,
-      notes: 'Auto-flagged by Trust & Safety.',
-      role: 'producer',
-    },
-    {
-      blockedBy: 'usr_demo_02',
-      displayName: 'Kabir Menon',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
-      reason: 'Shared unsolicited files',
-      mutualConnections: 0,
-      notes: 'Blocked manually after review.',
-      role: 'actor',
-    },
-    {
-      blockedBy: 'usr_demo_03',
-      displayName: 'Studio Nimbus',
-      blockedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35),
-      reason: 'Suspicious payment links',
-      mutualConnections: 5,
-      notes: 'Investigation pending.',
-      role: 'producer',
-    },
-  ];
 
   private readonly sampleRecentLogins = [
     {
@@ -423,7 +395,7 @@ export class SettingsComponent implements OnInit {
           this.ghostMode.set(userData.ghost || false);
           this.lastSeenVisible.set(userData.lastSeen !== undefined); // If lastSeen exists, it's visible
           this.onlineStatusVisible.set(userData.isOnline !== undefined); // If isOnline exists, it's visible
-          this.allowChatRequests.set(true); // Default to true, could be extended based on role settings
+          this.allowChatRequests.set(userData.allowChatRequests !== false); // Default to true if not set
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -771,8 +743,17 @@ export class SettingsComponent implements OnInit {
       const newValue = !this.allowChatRequests();
       this.allowChatRequests.set(newValue);
 
-      // This could be extended to update user settings for chat request permissions
-      // For now, it's just a UI toggle
+      const userDocRef = doc(this.firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        allowChatRequests: newValue,
+      });
+
+      // Update userData signal
+      const currentUserData = this.userData();
+      if (currentUserData) {
+        this.userData.set({ ...currentUserData, allowChatRequests: newValue });
+      }
+
       console.log(`✓ Chat requests ${newValue ? 'allowed' : 'blocked'}`);
     } catch (error) {
       console.error('Error updating chat request settings:', error);
@@ -784,9 +765,7 @@ export class SettingsComponent implements OnInit {
   // Account management methods
   viewBlockedUsers() {
     const blockedUsers = this.userData()?.blocked || [];
-    this.blockedUsersList.set(
-      blockedUsers.length ? blockedUsers : this.sampleBlockedUsers
-    );
+    this.blockedUsersList.set(blockedUsers);
     this.showBlockedUsersModal.set(true);
   }
 
@@ -812,21 +791,26 @@ export class SettingsComponent implements OnInit {
     if (!user) return;
 
     try {
-      // TODO: Implement logout from all devices
-      // This would involve:
-      // 1. Clearing all device tokens
-      // 2. Updating the user document to remove device info
-      // 3. Forcing re-authentication on other devices
-
+      // Clear all device tokens and update login time
       const userDocRef = doc(this.firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
         device: [], // Clear all devices
-        loggedInTime: new Date(), // Update login time to force re-auth
+        loggedInTime: serverTimestamp(), // Update login time to invalidate other sessions
+        isOnline: false,
+        lastSeen: serverTimestamp(),
       });
 
       console.log('✓ Logged out from all devices');
+
+      // Close the modal
+      this.closeRecentLoginsModal();
+
+      // Sign out the current user and redirect to login
+      await this.auth.logout();
+      this.router.navigate(['/auth/login']);
     } catch (error) {
       console.error('Error logging out from all devices:', error);
+      alert('Failed to logout from all devices. Please try again.');
     }
   }
 
@@ -1026,30 +1010,44 @@ export class SettingsComponent implements OnInit {
   }
 
   // Support form methods
-  submitSupportForm() {
+  async submitSupportForm() {
     if (!this.supportSubject().trim() || !this.supportConcern().trim()) {
       return;
     }
 
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
     this.isSubmittingSupport.set(true);
 
-    // TODO: Implement backend submission
-    // For now, just simulate the submission process
-    setTimeout(() => {
-      console.log('✓ Support form submitted:', {
-        subject: this.supportSubject(),
-        concern: this.supportConcern(),
-        user: this.userData()?.uid,
-        timestamp: new Date().toISOString(),
-      });
+    try {
+      const userData = this.userData();
+      const supportTicket = {
+        userId: user.uid,
+        userEmail: userData?.email || user.email || '',
+        userName: userData?.name || '',
+        subject: this.supportSubject().trim(),
+        concern: this.supportConcern().trim(),
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      const supportCollection = collection(this.firestore, 'support_tickets');
+      await addDoc(supportCollection, supportTicket);
+
+      console.log('✓ Support form submitted successfully');
 
       // Reset form and show success state
       this.supportSubject.set('');
       this.supportConcern.set('');
       this.isSubmittingSupport.set(false);
 
-      // Could show a success message here
       alert("Thank you for your feedback! We'll get back to you soon.");
-    }, 2000);
+    } catch (error) {
+      console.error('Error submitting support form:', error);
+      this.isSubmittingSupport.set(false);
+      alert('Failed to submit your feedback. Please try again.');
+    }
   }
 }

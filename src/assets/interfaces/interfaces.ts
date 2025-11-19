@@ -26,6 +26,7 @@ export interface UserDoc {
   deleteAccountDate?: any;
   // Privacy settings
   readReceipts?: boolean; // Default true - send read receipts
+  allowChatRequests?: boolean; // Default true - allow new chat requests
 }
 
 export interface devices {

@@ -352,10 +352,19 @@
               You can block someone from their profile or chat at any time.
             </p>
           </div>
-          } @else { @for (blockedUser of blockedUsersList(); track
-          blockedUser.blockedBy ?? blockedUser.displayName) {
+          } @else {
+          <div
+            class="hidden md:grid grid-cols-[1fr,120px,100px] text-[11px] uppercase tracking-wide px-4 text-neutral-400"
+            aria-hidden="true"
+          >
+            <span>User name</span>
+            <span class="justify-self-center">Role</span>
+            <span class="justify-self-end">Action</span>
+          </div>
+          @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy
+          ?? blockedUser.displayName) {
           <article
-            class="rounded-2xl border px-4 py-3 space-y-3"
+            class="rounded-2xl border px-4 py-3"
             [ngClass]="{
               'border-purple-900/30 bg-purple-950/20 hover:border-purple-500/50 transition-colors':
                 isActor(),
@@ -363,7 +372,9 @@
                 !isActor()
             }"
           >
-            <div class="flex items-start justify-between gap-3">
+            <div
+              class="flex flex-col gap-3 md:grid md:grid-cols-[1fr,120px,100px] md:items-center"
+            >
               <div class="flex items-center gap-3">
                 <div
                   class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold"
@@ -391,70 +402,22 @@
                       'text-neutral-400': !isActor()
                     }"
                   >
-                    {{ blockedUser.reason || "Reason not specified" }}
+                    {{ blockedUser.reason || "Reason not specified" }} · Blocked
+                    {{ formatBlockedDate(blockedUser.blockedAt) }}
                   </p>
                 </div>
               </div>
+
               <span
-                class="px-2 py-1 text-[11px] rounded-full font-medium tracking-wide"
+                class="px-2 py-1 text-[11px] rounded-full font-medium tracking-wide md:justify-self-center"
                 [ngClass]="getRoleBadgeClasses(blockedUser.role)"
               >
                 {{ formatRoleLabel(blockedUser.role) }}
               </span>
-            </div>
 
-            <div
-              class="grid grid-cols-2 gap-4 text-xs"
-              [ngClass]="{
-                'text-purple-200/80': isActor(),
-                'text-neutral-300/90': !isActor()
-              }"
-            >
-              <div>
-                <p class="uppercase text-[10px] tracking-wide opacity-70">
-                  Blocked
-                </p>
-                <p class="mt-0.5 font-medium">
-                  {{ formatBlockedDate(blockedUser.blockedAt) }}
-                </p>
-              </div>
-              <div>
-                <p class="uppercase text-[10px] tracking-wide opacity-70">
-                  Mutual connections
-                </p>
-                <p class="mt-0.5 font-medium">
-                  {{ blockedUser.mutualConnections ?? 0 }}
-                </p>
-              </div>
-            </div>
-
-            @if (blockedUser.notes) {
-            <p
-              class="text-xs rounded-xl px-3 py-2"
-              [ngClass]="{
-                'bg-purple-900/40 text-purple-100/90': isActor(),
-                'bg-white/10 text-neutral-100': !isActor()
-              }"
-            >
-              {{ blockedUser.notes }}
-            </p>
-            }
-
-            <div class="flex items-center justify-end gap-2">
-              <button
-                class="text-xs px-3 py-1.5 rounded-lg border"
-                [ngClass]="{
-                  'border-purple-900/40 text-purple-200 hover:bg-purple-900/30':
-                    isActor(),
-                  'border-white/20 text-neutral-200 hover:bg-white/10':
-                    !isActor()
-                }"
-              >
-                Report
-              </button>
               <button
                 (click)="unblockUser(blockedUser)"
-                class="text-xs px-3 py-1.5 rounded-lg font-medium"
+                class="text-xs px-3 py-1.5 rounded-lg font-medium md:justify-self-end"
                 [ngClass]="{
                   'bg-purple-600 hover:bg-purple-700 text-white': isActor(),
                   'bg-neutral-600 hover:bg-neutral-700 text-white': !isActor()
