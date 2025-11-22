@@ -9,6 +9,7 @@ import { Profile, ActorProfile } from '../../assets/interfaces/profile.interface
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { LoggerService } from '../services/logger.service';
 import { ProfileUrlService } from '../services/profile-url.service';
+import { AnalyticsService } from '../services/analytics.service';
 
 interface ActorSearchResult {
   uid: string;
@@ -536,6 +537,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private logger = inject(LoggerService);
   private profileUrlService = inject(ProfileUrlService);
+  private analyticsService = inject(AnalyticsService);
   private destroy$ = new Subject<void>();
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
@@ -1289,7 +1291,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   async toggleWishlist(actor: ActorSearchResult): Promise<void> {
     const currentWishlist = this.wishlist();
     const index = currentWishlist.findIndex(a => a.uid === actor.uid);
-    
+
     if (index > -1) {
       // Remove from wishlist
       this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
@@ -1298,8 +1300,13 @@ export class SearchComponent implements OnInit, OnDestroy {
       // Add to wishlist
       this.wishlist.set([...currentWishlist, actor]);
       this.logger.log(`Added ${actor.stageName} to wishlist`);
+
+      // Track analytics for wishlist addition
+      if (this.currentUserId) {
+        await this.analyticsService.trackWishlistAdd(actor.uid, this.currentUserId);
+      }
     }
-    
+
     // Persist to Firestore
     await this.saveWishlist();
   }

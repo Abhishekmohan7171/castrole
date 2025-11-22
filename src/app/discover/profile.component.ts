@@ -4,6 +4,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
+import { AnalyticsService } from '../services/analytics.service';
 import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
   Storage,
@@ -659,6 +660,7 @@ export class ProfileComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private profileUrlService = inject(ProfileUrlService);
   private chatService = inject(ChatService);
+  private analyticsService = inject(AnalyticsService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -875,6 +877,9 @@ export class ProfileComponent implements OnInit {
         
         // Load media
         this.loadMediaFromStorage(profileData.uid);
+
+        // Track profile view if current user is a producer viewing an actor's profile
+        this.trackProfileView(profileData.uid);
         return;
       }
 
@@ -907,6 +912,9 @@ export class ProfileComponent implements OnInit {
 
       // Load media from storage
       this.loadMediaFromStorage(profileData.uid);
+
+      // Track profile view if current user is a producer viewing an actor's profile
+      this.trackProfileView(profileData.uid);
 
     } catch (error) {
       // Error loading profile, redirect to discover
@@ -941,6 +949,26 @@ export class ProfileComponent implements OnInit {
       this.imageUrls.set([]);
     } finally {
       this.isLoadingMedia.set(false);
+    }
+  }
+
+  /**
+   * Track profile view analytics
+   * Only tracks if current user is a producer viewing an actor's profile
+   */
+  private async trackProfileView(actorId: string) {
+    const currentUser = this.auth.getCurrentUser();
+    if (!currentUser) return;
+
+    // Don't track if viewing own profile
+    if (currentUser.uid === actorId) return;
+
+    // Only track if current user is a producer viewing an actor
+    const currentUserRole = this.currentUserRole();
+    const viewedUserRole = this.userRole();
+
+    if (currentUserRole === 'producer' && viewedUserRole === 'actor') {
+      await this.analyticsService.trackProfileView(actorId, currentUser.uid);
     }
   }
 

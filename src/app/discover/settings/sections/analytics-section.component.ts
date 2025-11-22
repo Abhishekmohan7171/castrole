@@ -1,5 +1,6 @@
 import { Component, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
 
 @Component({
   selector: 'app-analytics-section',
@@ -236,33 +237,60 @@ import { CommonModule } from '@angular/common';
 })
 export class AnalyticsSectionComponent {
   isSubscribed = input.required<boolean>();
-  analyticsData = input.required<any>();
+  analyticsData = input.required<UserAnalytics | null>();
   upgradeSubscription = input.required<() => void>();
 
   onUpgradeSubscription() {
     this.upgradeSubscription()();
   }
 
+  // Helper to format seconds to readable time
+  formatDuration(seconds: number): string {
+    if (!seconds || seconds === 0) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}m ${secs}s`;
+  }
+
   // Safe access methods for analytics data
   getProfileOverview() {
-    return this.analyticsData()?.profileOverview || {};
+    const data = this.analyticsData();
+    if (!data) {
+      return {
+        profileViews: 0,
+        wishlistCount: 0,
+        avgTimeOnProfile: 'N/A',
+        visibilityScore: 0,
+      };
+    }
+
+    return {
+      profileViews: data.profileViews.total || 0,
+      wishlistCount: data.wishlistCount || 0,
+      avgTimeOnProfile: this.formatDuration(data.profileViews.avgDuration),
+      visibilityScore: Math.round(data.visibilityScore || 0),
+    };
   }
 
   getSearchAppearances() {
-    return this.analyticsData()?.searchAppearances || { count: 0, videos: [] };
+    // Phase 1: Not yet implemented
+    return {
+      count: 0,
+      videos: [] as Array<{ title: string; thumbnail: string }>
+    };
   }
 
   getTopPerformingVideo() {
-    return (
-      this.analyticsData()?.topPerformingVideo || {
-        title: 'N/A',
-        views: 0,
-        avgWatchTime: 'N/A',
-      }
-    );
+    // Phase 1: Not yet implemented
+    return {
+      title: 'N/A',
+      views: 'Coming soon',
+      avgWatchTime: 'N/A',
+    };
   }
 
   getTagInsights() {
-    return this.analyticsData()?.tagInsights || [];
+    // Phase 1: Not yet implemented
+    return [] as Array<{ tag: string; percentage: number }>;
   }
 }

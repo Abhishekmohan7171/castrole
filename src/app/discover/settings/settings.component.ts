@@ -1,10 +1,11 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import {
   Firestore,
   doc,
@@ -14,9 +15,9 @@ import {
   collection,
   addDoc,
 } from '@angular/fire/firestore';
-import { UserDoc } from '../../../assets/interfaces/interfaces';
+import { UserDoc, UserAnalytics } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
-import { filter, take } from 'rxjs';
+import { filter, take, Subscription } from 'rxjs';
 import {
   SettingsSidebarComponent,
   SettingsTab,
@@ -77,12 +78,14 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
     `,
   ],
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
   private profileService = inject(ProfileService);
   private router = inject(Router);
   private loadingService = inject(LoadingService);
+  private analyticsService = inject(AnalyticsService);
+  private analyticsSubscription: Subscription | null = null;
 
   // User role signals
   userRole = signal<string>('actor');
@@ -114,31 +117,8 @@ export class SettingsComponent implements OnInit {
   });
   editingFields = signal<Set<string>>(new Set());
 
-  // Analytics mock data
-  analyticsData = signal({
-    profileOverview: {
-      profileViews: 1250,
-      wishlistCount: 82,
-      avgTimeOnProfile: '3m 12s',
-      visibilityScore: 76,
-    },
-    searchAppearances: {
-      count: 186,
-      videos: [
-        { title: 'Video 1', thumbnail: '' },
-        { title: 'Video 2', thumbnail: '' },
-      ],
-    },
-    topPerformingVideo: {
-      title: 'Video Title',
-      views: '1.3M views',
-      avgWatchTime: '3m 20s',
-    },
-    tagInsights: [
-      { tag: 'Comedy', percentage: 85 },
-      { tag: 'Drama', percentage: 65 },
-    ],
-  });
+  // Real analytics data
+  analyticsData = signal<UserAnalytics | null>(null);
 
   // Privacy settings signals
   ghostMode = signal<boolean>(false);
@@ -244,7 +224,24 @@ export class SettingsComponent implements OnInit {
       .subscribe(async () => {
         await this.loadUserData();
         await this.profileService.loadProfileData();
+
+        // Load analytics data if user is an actor
+        const user = this.auth.getCurrentUser();
+        if (user && this.isActor()) {
+          this.analyticsSubscription = this.analyticsService
+            .getUserAnalytics(user.uid)
+            .subscribe((analytics) => {
+              this.analyticsData.set(analytics);
+            });
+        }
       });
+  }
+
+  ngOnDestroy() {
+    // Clean up analytics subscription
+    if (this.analyticsSubscription) {
+      this.analyticsSubscription.unsubscribe();
+    }
   }
 
   setActiveTab(tab: SettingsTab) {
