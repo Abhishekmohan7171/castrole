@@ -26,6 +26,7 @@ export interface UserDoc {
   deleteAccountDate?: any;
   // Privacy settings
   readReceipts?: boolean; // Default true - send read receipts
+  allowChatRequests?: boolean; // Default true - allow new chat requests
 }
 
 export interface devices {
@@ -129,4 +130,28 @@ export interface VideoMetadata {
 export interface ImageMetadata {
   caption?: string;
   tags?: string[];
+}
+
+//ANALYTICS INTERFACES
+export interface AnalyticsEvent {
+  id?: string;
+  eventType: 'profile_view' | 'wishlist_add';
+  actorId: string;
+  producerId: string;
+  timestamp: Timestamp;
+  metadata?: {
+    duration?: number; // View duration in seconds
+  };
+}
+
+export interface UserAnalytics {
+  actorId: string;
+  profileViews: {
+    total: number;
+    last30Days: number;
+    avgDuration: number; // Average view duration in seconds
+  };
+  wishlistCount: number;
+  visibilityScore: number; // 0-100 calculated metric
+  lastUpdated: Timestamp;
 }

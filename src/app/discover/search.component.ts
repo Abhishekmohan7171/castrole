@@ -9,6 +9,7 @@ import { Profile, ActorProfile } from '../../assets/interfaces/profile.interface
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { LoggerService } from '../services/logger.service';
 import { ProfileUrlService } from '../services/profile-url.service';
+import { AnalyticsService } from '../services/analytics.service';
 
 interface ActorSearchResult {
   uid: string;
@@ -23,6 +24,7 @@ interface ActorSearchResult {
   languages?: string[];
   profileImageUrl?: string;
   carouselImages?: string[];
+  voiceIntroUrl?: string;
   profileViewCount?: number;
   wishlistCount?: number;
   // For search relevance
@@ -30,7 +32,7 @@ interface ActorSearchResult {
 }
 
 interface SearchFilters {
-  characterTypes: string[];  // Changed to array for multi-select
+  characterType: string;  // Single character type dropdown
   minAge: number;
   maxAge: number;
   gender: string;
@@ -107,21 +109,19 @@ interface ParsedSearchQuery {
             <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-6">Filters</h2>
 
-              <!-- Character Type (Multi-Select) -->
+              <!-- Character Type (Dropdown) -->
               <div class="mb-6">
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Character Type</label>
-                <div class="space-y-2">
-                  @for (type of ['Lead', 'Supporting', 'Extra', 'Cameo']; track type) {
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox"
-                        [checked]="filters().characterTypes.includes(type.toLowerCase())"
-                        (change)="toggleCharacterType(type.toLowerCase())"
-                        class="w-4 h-4 rounded border-neutral-600 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-neutral-900">
-                      <span class="text-neutral-300">{{ type }}</span>
-                    </label>
-                  }
-                </div>
+                <select 
+                  [value]="filters().characterType"
+                  (change)="updateFilter('characterType', $any($event.target).value)"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                  <option value="any">Any</option>
+                  <option value="lead">Lead</option>
+                  <option value="supporting">Supporting</option>
+                  <option value="extra">Extra</option>
+                  <option value="cameo">Cameo</option>
+                </select>
               </div>
 
               <!-- Age Range -->
@@ -264,10 +264,10 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().characterTypes.length > 0) {
+                @if (filters().characterType !== 'any') {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
-                    Types: {{ filters().characterTypes.join(', ') }}
-                    <button (click)="updateFilter('characterTypes', [])" class="hover:text-neutral-100">
+                    Type: {{ filters().characterType }}
+                    <button (click)="updateFilter('characterType', 'any')" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -377,56 +377,102 @@ interface ParsedSearchQuery {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 @for (actor of filteredActors(); track actor.uid) {
                   <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-fuchsia-500/50 transition-all duration-300 group">
-                    <!-- Actor Photo -->
-                    <div class="relative aspect-[3/4] bg-gradient-to-br from-neutral-800 to-neutral-900 overflow-hidden">
+                    <!-- Circular Actor Photo -->
+                    <div class="relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center py-6">
                       @if (actor.profileImageUrl) {
-                        <img [src]="actor.profileImageUrl" [alt]="actor.stageName" class="w-full h-full object-cover">
+                        <img 
+                          [src]="actor.profileImageUrl" 
+                          [alt]="actor.stageName" 
+                          class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-fuchsia-500/50 transition-colors shadow-xl">
                       } @else {
-                        <div class="w-full h-full flex items-center justify-center text-6xl font-bold text-neutral-700">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center text-3xl font-bold text-neutral-400 border-4 border-neutral-700 group-hover:border-fuchsia-500/50 transition-colors shadow-xl">
                           {{ actor.stageName.charAt(0).toUpperCase() }}
                         </div>
                       }
-                      
-                      <!-- Hover Overlay -->
-                      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
 
                     <!-- Actor Info -->
                     <div class="p-4">
-                      <h3 class="text-lg font-semibold text-neutral-100 mb-1">{{ actor.stageName }}</h3>
-                      <p class="text-sm text-neutral-400 mb-3">{{ actor.age || 'N/A' }} years old</p>
+                      <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="flex-1 min-w-0">
+                          <h3 class="text-base font-semibold text-neutral-100 truncate">{{ actor.stageName }}</h3>
+                          <div class="flex items-center gap-2 text-sm text-neutral-400 mt-0.5">
+                            @if (actor.age) {
+                              <span>{{ actor.age }} yrs</span>
+                            }
+                            @if (actor.gender) {
+                              <span>•</span>
+                              <span class="capitalize">{{ actor.gender }}</span>
+                            }
+                          </div>
+                        </div>
+                        
+                        <!-- Wishlist Button -->
+                        <button 
+                          (click)="toggleWishlist(actor)"
+                          [class]="isInWishlist(actor) ? 'bg-fuchsia-500 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-fuchsia-400'"
+                          class="p-2 rounded-lg transition-colors flex-shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      @if (actor.location) {
+                        <p class="text-xs text-neutral-500 mb-3 truncate">📍 {{ actor.location }}</p>
+                      }
+
+                      <!-- Voice Intro Player -->
+                      @if (actor.voiceIntroUrl) {
+                        <div class="mb-3 bg-neutral-800 rounded-lg p-2 flex items-center gap-2">
+                          <button 
+                            (click)="toggleVoicePlay(actor.uid)"
+                            class="p-1.5 rounded-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white transition-colors flex-shrink-0">
+                            @if (playingVoiceId() === actor.uid) {
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                              </svg>
+                            } @else {
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            }
+                          </button>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs text-neutral-400">Voice Intro</p>
+                          </div>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                        </div>
+                      }
 
                       <!-- Skills/Tags -->
                       @if (actor.skills && actor.skills.length > 0) {
-                        <div class="flex flex-wrap gap-1.5 mb-4">
+                        <div class="flex flex-wrap gap-1.5 mb-3">
                           @for (skill of actor.skills.slice(0, 3); track skill) {
                             <span class="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-300">
                               {{ skill }}
+                            </span>
+                          }
+                          @if (actor.skills.length > 3) {
+                            <span class="px-2 py-1 text-xs text-neutral-500">
+                              +{{ actor.skills.length - 3 }}
                             </span>
                           }
                         </div>
                       }
 
                       <!-- Actions -->
-                      <div class="flex items-center gap-2">
-                        <button 
-                          (click)="viewProfile(actor)"
-                          class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          View
-                        </button>
-                        <button 
-                          (click)="toggleWishlist(actor)"
-                          [class]="isInWishlist(actor) ? 'bg-fuchsia-500 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-fuchsia-400'"
-                          class="p-2 rounded-lg transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                        </button>
-                      </div>
+                      <button 
+                        (click)="viewProfile(actor)"
+                        class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View Profile
+                      </button>
                     </div>
                   </div>
                 }
@@ -536,6 +582,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private logger = inject(LoggerService);
   private profileUrlService = inject(ProfileUrlService);
+  private analyticsService = inject(AnalyticsService);
   private destroy$ = new Subject<void>();
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
@@ -558,7 +605,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   
   // Filters
   filters = signal<SearchFilters>({
-    characterTypes: [],  // Empty array means 'any'
+    characterType: 'any',  // Single character type dropdown
     minAge: 0,  // Changed from 18 to 0
     maxAge: 100,  // Changed from 50 to 100
     gender: 'any',
@@ -577,6 +624,10 @@ export class SearchComponent implements OnInit, OnDestroy {
   wishlist = signal<ActorSearchResult[]>([]);
   wishlistLoading = signal(false);
 
+  // Voice player
+  playingVoiceId = signal<string | null>(null);
+  private audioElement: HTMLAudioElement | null = null;
+
   // Computed filtered actors with advanced logic
   filteredActors = computed(() => {
     const searchText = this.searchQuery().toLowerCase();
@@ -586,7 +637,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Don't show results if no search query and default filters
     const hasSearchQuery = searchText.trim().length > 0;
     const hasNonDefaultFilters = 
-      currentFilters.characterTypes.length > 0 ||
+      currentFilters.characterType !== 'any' ||
       currentFilters.gender !== 'any' ||
       currentFilters.minAge !== 0 ||
       currentFilters.maxAge !== 100 ||
@@ -849,7 +900,7 @@ export class SearchComponent implements OnInit, OnDestroy {
         .filter((lang): lang is string => lang !== null && lang.length > 0);
     };
     
-    const result = {
+    const result: ActorSearchResult = {
       uid: profile.uid,
       slug: profile.slug, // Include stored slug
       stageName: actor.stageName || 'Unknown',
@@ -862,6 +913,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       languages: extractLanguages(actor.languages),
       profileImageUrl: actor.actorProfileImageUrl,
       carouselImages: actor.carouselImagesUrl || [],
+      voiceIntroUrl: actor.voiceIntro,
       profileViewCount: actor.profileViewCount || 0,
       wishlistCount: actor.wishListCount || 0
     };
@@ -1089,12 +1141,12 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Check if user has applied any non-default filters
+   * Check if any non-default filters are active
    */
   hasActiveFilters(): boolean {
     const currentFilters = this.filters();
     return (
-      currentFilters.characterTypes.length > 0 ||
+      currentFilters.characterType !== 'any' ||
       currentFilters.gender !== 'any' ||
       currentFilters.minAge !== 0 ||
       currentFilters.maxAge !== 100 ||
@@ -1118,23 +1170,11 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Toggle character type in multi-select
-   */
-  toggleCharacterType(type: string): void {
-    const currentTypes = this.filters().characterTypes;
-    const newTypes = currentTypes.includes(type)
-      ? currentTypes.filter(t => t !== type)
-      : [...currentTypes, type];
-    this.updateFilter('characterTypes', newTypes);
-  }
-  
-  /**
    * Parse and apply language filter from comma-separated input
    */
   applyLanguageFilter(): void {
     const input = this.languageInput().trim();
     if (input) {
-      // Split by comma and clean up
       const languages = input.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0);
       this.updateFilter('languages', languages);
       this.logger.log(`Languages filter applied: ${languages.join(', ')}`);
@@ -1142,14 +1182,13 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.updateFilter('languages', []);
     }
   }
-  
+
   /**
    * Parse and apply skills filter from comma-separated input
    */
   applySkillsFilter(): void {
     const input = this.skillsInput().trim();
     if (input) {
-      // Split by comma and clean up
       const skills = input.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
       this.updateFilter('skills', skills);
       this.logger.log(`Skills filter applied: ${skills.join(', ')}`);
@@ -1157,28 +1196,23 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.updateFilter('skills', []);
     }
   }
-  
+
   /**
    * Apply all filters (triggered by Apply Filters button)
    */
   applyFilters(): void {
-    // Parse comma-separated inputs
     this.applyLanguageFilter();
     this.applySkillsFilter();
-    
-    // Log current filter state
     this.logger.log('Filters applied:', this.filters());
     this.logger.log('Active filters count:', this.getActiveFilterCount());
-    
-    // Computed signal will automatically recalculate
   }
-  
+
   /**
    * Clear all filters and reset to defaults
    */
   clearFilters(): void {
     this.filters.set({
-      characterTypes: [],
+      characterType: 'any',
       minAge: 0,
       maxAge: 100,
       gender: 'any',
@@ -1192,7 +1226,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.skillsInput.set('');
     this.logger.log('All filters cleared');
   }
-  
+
   /**
    * Get count of active non-default filters
    */
@@ -1200,7 +1234,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     const currentFilters = this.filters();
     let count = 0;
     
-    if (currentFilters.characterTypes.length > 0) count++;
+    if (currentFilters.characterType !== 'any') count++;
     if (currentFilters.gender !== 'any') count++;
     if (currentFilters.minAge !== 0 || currentFilters.maxAge !== 100) count++;
     if (currentFilters.heightCm) count++;
@@ -1213,8 +1247,49 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Toggle voice intro playback
+   */
+  toggleVoicePlay(actorUid: string): void {
+    const actor = this.allActors().find(a => a.uid === actorUid);
+    if (!actor?.voiceIntroUrl) return;
+
+    // If currently playing this actor's voice, pause it
+    if (this.playingVoiceId() === actorUid) {
+      this.audioElement?.pause();
+      this.playingVoiceId.set(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
+
+    // Create and play new audio
+    this.audioElement = new Audio(actor.voiceIntroUrl);
+    this.playingVoiceId.set(actorUid);
+
+    this.audioElement.addEventListener('ended', () => {
+      this.playingVoiceId.set(null);
+      this.audioElement = null;
+    });
+
+    this.audioElement.addEventListener('error', (error) => {
+      this.logger.error('Error playing voice intro:', error);
+      this.playingVoiceId.set(null);
+      this.audioElement = null;
+    });
+
+    this.audioElement.play().catch(error => {
+      this.logger.error('Failed to play audio:', error);
+      this.playingVoiceId.set(null);
+      this.audioElement = null;
+    });
+  }
+
+  /**
    * Setup real-time wishlist listener for current producer
-   * Updates automatically when wishlist changes on any device
    */
   setupWishlistListener(): void {
     if (!this.currentUserId) {
@@ -1289,7 +1364,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   async toggleWishlist(actor: ActorSearchResult): Promise<void> {
     const currentWishlist = this.wishlist();
     const index = currentWishlist.findIndex(a => a.uid === actor.uid);
-    
+
     if (index > -1) {
       // Remove from wishlist
       this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
@@ -1298,8 +1373,13 @@ export class SearchComponent implements OnInit, OnDestroy {
       // Add to wishlist
       this.wishlist.set([...currentWishlist, actor]);
       this.logger.log(`Added ${actor.stageName} to wishlist`);
+
+      // Track analytics for wishlist addition
+      if (this.currentUserId) {
+        await this.analyticsService.trackWishlistAdd(actor.uid, this.currentUserId);
+      }
     }
-    
+
     // Persist to Firestore
     await this.saveWishlist();
   }
