@@ -40,11 +40,16 @@ export class BlockService {
 
       // Create blocked details with Timestamp.now() instead of serverTimestamp()
       // because serverTimestamp() cannot be used inside arrayUnion()
-      const blockedDetail: blockedDetails = {
+      // Also, arrayUnion() doesn't accept undefined values, so only add reason if provided
+      const blockedDetail: any = {
         blockedBy: blockedUserId,
         date: new Date(),
-        reason: reason || undefined,
       };
+
+      // Only add reason field if it's provided (arrayUnion doesn't accept undefined)
+      if (reason) {
+        blockedDetail.reason = reason;
+      }
 
       // Add to blocked array
       await updateDoc(userDocRef, {

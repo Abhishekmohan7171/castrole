@@ -1,4 +1,11 @@
-import { Component, inject, OnInit, signal, computed, OnDestroy } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  signal,
+  computed,
+  OnDestroy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -422,8 +429,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       if (currentUserData) {
         this.userData.set({ ...currentUserData, readReceipts: newValue });
       }
-
-      console.log(`✓ Read receipts ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error updating read receipts setting:', error);
       // Revert on error
@@ -486,8 +491,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const fields = new Set(this.editingFields());
       fields.delete(field);
       this.editingFields.set(fields);
-
-      console.log(`✓ ${field} updated successfully`);
     } catch (error) {
       console.error(`Error updating ${field}:`, error);
       // Revert the editable data on error
@@ -573,8 +576,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
       // Close modal
       this.showAddAccountModal.set(false);
-
-      console.log(`✓ ${missingRole} account added successfully`);
     } catch (error) {
       console.error('Error adding account:', error);
       // Show error to user via modal
@@ -621,8 +622,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
       // Reload profile data for the new role
       await this.profileService.loadProfileData();
-
-      console.log(`✓ Switched to ${otherRole} role successfully`);
     } catch (error) {
       console.error('Error switching role:', error);
     }
@@ -647,8 +646,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       if (currentUserData) {
         this.userData.set({ ...currentUserData, ghost: newValue });
       }
-
-      console.log(`✓ Ghost mode ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error updating ghost mode:', error);
       // Revert on error
@@ -684,10 +681,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
           lastSeen: updateData.lastSeen,
         });
       }
-
-      console.log(
-        `✓ Last seen visibility ${newValue ? 'enabled' : 'disabled'}`
-      );
     } catch (error) {
       console.error('Error updating last seen visibility:', error);
       // Revert on error
@@ -723,10 +716,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
           isOnline: updateData.isOnline,
         });
       }
-
-      console.log(
-        `✓ Online status visibility ${newValue ? 'enabled' : 'disabled'}`
-      );
     } catch (error) {
       console.error('Error updating online status visibility:', error);
       // Revert on error
@@ -752,8 +741,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       if (currentUserData) {
         this.userData.set({ ...currentUserData, allowChatRequests: newValue });
       }
-
-      console.log(`✓ Chat requests ${newValue ? 'allowed' : 'blocked'}`);
     } catch (error) {
       console.error('Error updating chat request settings:', error);
       // Revert on error
@@ -769,25 +756,40 @@ export class SettingsComponent implements OnInit, OnDestroy {
     const blockedUsersWithNames = await Promise.all(
       blockedUsers.map(async (blockedUser) => {
         try {
-          const userDoc = await getDoc(doc(this.firestore, 'users', blockedUser.blockedBy));
+          const userDoc = await getDoc(
+            doc(this.firestore, 'users', blockedUser.blockedBy)
+          );
           if (userDoc.exists()) {
             const userData = userDoc.data() as UserDoc;
+
             return {
               ...blockedUser,
               displayName: userData.name || 'Unknown User',
               role: userData.currentRole || 'user',
               blockedAt: blockedUser.date,
             };
+          } else {
+            console.warn('User document not found for:', blockedUser.blockedBy);
+            return {
+              ...blockedUser,
+              displayName: blockedUser.blockedBy || 'Unknown User',
+              role: 'user',
+              blockedAt: blockedUser.date,
+            };
           }
         } catch (error) {
-          console.error('Error fetching blocked user data:', error);
+          console.error(
+            'Error fetching blocked user data for',
+            blockedUser.blockedBy,
+            error
+          );
+          return {
+            ...blockedUser,
+            displayName: blockedUser.blockedBy || 'Unknown User',
+            role: 'user',
+            blockedAt: blockedUser.date,
+          };
         }
-        return {
-          ...blockedUser,
-          displayName: 'Unknown User',
-          role: 'user',
-          blockedAt: blockedUser.date,
-        };
       })
     );
 
@@ -825,8 +827,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
         isOnline: false,
         lastSeen: serverTimestamp(),
       });
-
-      console.log('✓ Logged out from all devices');
 
       // Close the modal
       this.closeRecentLoginsModal();
@@ -955,8 +955,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
       // Update modal list
       this.blockedUsersList.set(updatedBlocked);
-
-      console.log(`✓ Unblocked user: ${blockedUser.blockedBy}`);
     } catch (error) {
       console.error('Error unblocking user:', error);
     }
@@ -1061,8 +1059,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
       const supportCollection = collection(this.firestore, 'support_tickets');
       await addDoc(supportCollection, supportTicket);
-
-      console.log('✓ Support form submitted successfully');
 
       // Reset form and show success state
       this.supportSubject.set('');
