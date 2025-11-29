@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
 import { AnalyticsService } from '../services/analytics.service';
+import { BlockService } from '../services/block.service';
 import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
   Storage,
@@ -105,32 +106,86 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                     </button>
                     }
                   </div>
-                  
-                  <!-- Connect Button (for viewing other profiles) -->
-                  @if (!isViewingOwnProfile() && canConnect()) {
-                  <button
-                    (click)="connectWithUser()"
-                    [disabled]="isConnecting()"
-                    class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
-                    [ngClass]="{
-                      'bg-fuchsia-600 hover:bg-fuchsia-700 text-white': !isConnecting(),
-                      'bg-neutral-700 text-neutral-400 cursor-not-allowed': isConnecting()
-                    }"
-                  >
-                    @if (isConnecting()) {
-                      <span class="inline-flex space-x-1">
-                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                        <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-                      </span>
-                      <span>connecting...</span>
-                    } @else {
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                      </svg>
-                      <span>connect</span>
+
+                  <!-- Connect Button and Block Menu Row (for viewing other profiles) -->
+                  @if (!isViewingOwnProfile() && (canConnect() || targetUserId())) {
+                  <div class="flex items-center gap-2">
+                    <!-- Connect Button -->
+                    @if (canConnect()) {
+                    <button
+                      (click)="connectWithUser()"
+                      [disabled]="isConnecting()"
+                      class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
+                      [ngClass]="{
+                        'bg-fuchsia-600 hover:bg-fuchsia-700 text-white': !isConnecting(),
+                        'bg-neutral-700 text-neutral-400 cursor-not-allowed': isConnecting()
+                      }"
+                    >
+                      @if (isConnecting()) {
+                        <span class="inline-flex space-x-1">
+                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                        </span>
+                        <span>connecting...</span>
+                      } @else {
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>connect</span>
+                      }
+                    </button>
                     }
-                  </button>
+
+                    <!-- Block/Unblock Menu -->
+                    @if (targetUserId()) {
+                    <div class="relative">
+                      <button
+                        type="button"
+                        (click)="showBlockMenu.set(!showBlockMenu())"
+                        class="p-1.5 rounded-full hover:bg-neutral-800/50 transition-colors"
+                        title="More options"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                          <circle cx="12" cy="12" r="1"></circle>
+                          <circle cx="12" cy="5" r="1"></circle>
+                          <circle cx="12" cy="19" r="1"></circle>
+                        </svg>
+                      </button>
+
+                      <!-- Dropdown Menu -->
+                      @if (showBlockMenu()) {
+                        <div class="absolute left-1/2 -translate-x-1/2 mt-2 w-40 rounded-lg shadow-xl z-10 border bg-neutral-900 border-white/10">
+                          @if (!isUserBlocked()) {
+                            <button
+                              type="button"
+                              (click)="blockUser()"
+                              class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-red-400"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                              </svg>
+                              Block User
+                            </button>
+                          } @else {
+                            <button
+                              type="button"
+                              (click)="unblockUser()"
+                              class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-green-400"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                              Unblock User
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    }
+                  </div>
                   }
                 </div>
 
@@ -661,6 +716,7 @@ export class ProfileComponent implements OnInit {
   private profileUrlService = inject(ProfileUrlService);
   private chatService = inject(ChatService);
   private analyticsService = inject(AnalyticsService);
+  private blockService = inject(BlockService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -681,18 +737,22 @@ export class ProfileComponent implements OnInit {
   canConnect = computed(() => {
     const currentUser = this.auth.getCurrentUser();
     const targetId = this.targetUserId();
-    
+
     // Can connect if:
     // 1. Not viewing own profile
     // 2. Current user is a producer
     // 3. Target user is an actor
     // 4. Both users exist
-    return !this.isViewingOwnProfile() && 
-           currentUser !== null && 
+    return !this.isViewingOwnProfile() &&
+           currentUser !== null &&
            targetId !== null &&
            this.currentUserRole() === 'producer' &&
            this.userRole() === 'actor';
   });
+
+  // Block functionality
+  isUserBlocked = signal<boolean>(false);
+  showBlockMenu = signal<boolean>(false);
 
   // Media signals
   videoUrls = signal<string[]>([]);
@@ -880,6 +940,9 @@ export class ProfileComponent implements OnInit {
 
         // Track profile view if current user is a producer viewing an actor's profile
         this.trackProfileView(profileData.uid);
+
+        // Check block status
+        this.checkBlockStatus();
         return;
       }
 
@@ -915,6 +978,9 @@ export class ProfileComponent implements OnInit {
 
       // Track profile view if current user is a producer viewing an actor's profile
       this.trackProfileView(profileData.uid);
+
+      // Check block status
+      this.checkBlockStatus();
 
     } catch (error) {
       // Error loading profile, redirect to discover
@@ -1361,6 +1427,66 @@ export class ProfileComponent implements OnInit {
       return true;
     } catch (error) {
       return false;
+    }
+  }
+
+  /**
+   * Check if the current user has blocked the profile user
+   */
+  async checkBlockStatus() {
+    const currentUser = this.auth.getCurrentUser();
+    const targetId = this.targetUserId();
+
+    if (!currentUser || !targetId || this.isViewingOwnProfile()) {
+      this.isUserBlocked.set(false);
+      return;
+    }
+
+    try {
+      const isBlocked = await this.blockService.isUserBlockedAsync(currentUser.uid, targetId);
+      this.isUserBlocked.set(isBlocked);
+    } catch (error) {
+      console.error('Error checking block status:', error);
+      this.isUserBlocked.set(false);
+    }
+  }
+
+  /**
+   * Block the user
+   */
+  async blockUser() {
+    const currentUser = this.auth.getCurrentUser();
+    const targetId = this.targetUserId();
+
+    if (!currentUser || !targetId) return;
+
+    try {
+      await this.blockService.blockUser(currentUser.uid, targetId);
+      this.isUserBlocked.set(true);
+      this.showBlockMenu.set(false);
+      alert('User has been blocked');
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      alert('Failed to block user');
+    }
+  }
+
+  /**
+   * Unblock the user
+   */
+  async unblockUser() {
+    const currentUser = this.auth.getCurrentUser();
+    const targetId = this.targetUserId();
+
+    if (!currentUser || !targetId) return;
+
+    try {
+      await this.blockService.unblockUser(currentUser.uid, targetId);
+      this.isUserBlocked.set(false);
+      alert('User has been unblocked');
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      alert('Failed to unblock user');
     }
   }
 

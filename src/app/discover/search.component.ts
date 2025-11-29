@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Firestore, collection, query, where, getDocs, DocumentData, doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil, firstValueFrom } from 'rxjs';
 import { Profile, ActorProfile } from '../../assets/interfaces/profile.interfaces';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import { LoggerService } from '../services/logger.service';
 import { ProfileUrlService } from '../services/profile-url.service';
 import { AnalyticsService } from '../services/analytics.service';
+import { BlockService } from '../services/block.service';
 
 interface ActorSearchResult {
   uid: string;
@@ -583,6 +584,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private logger = inject(LoggerService);
   private profileUrlService = inject(ProfileUrlService);
   private analyticsService = inject(AnalyticsService);
+  private blockService = inject(BlockService);
   private destroy$ = new Subject<void>();
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
@@ -841,8 +843,19 @@ export class SearchComponent implements OnInit, OnDestroy {
       }
       
       this.logger.log(`Loaded ${actors.length} actor profiles`);
-      this.allActors.set(actors);
-      
+
+      // Filter out blocked users if current user is logged in
+      let filteredActors = actors;
+      if (this.currentUserId) {
+        const blockedUserIds = await firstValueFrom(this.blockService.getBlockedUserIds(this.currentUserId));
+        if (blockedUserIds && blockedUserIds.length > 0) {
+          filteredActors = actors.filter(actor => !blockedUserIds.includes(actor.uid));
+          this.logger.log(`Filtered ${actors.length - filteredActors.length} blocked actors`);
+        }
+      }
+
+      this.allActors.set(filteredActors);
+
       // Setup real-time wishlist listener after actors are loaded
       if (this.currentUserId) {
         this.setupWishlistListener();
