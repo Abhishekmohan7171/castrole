@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
 import { AnalyticsService } from '../../services/analytics.service';
+import { UserService } from '../../services/user.service';
 import {
   Firestore,
   doc,
@@ -85,6 +86,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private loadingService = inject(LoadingService);
   private analyticsService = inject(AnalyticsService);
+  private userService = inject(UserService);
   private analyticsSubscription: Subscription | null = null;
 
   // User role signals
@@ -760,9 +762,36 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   // Account management methods
-  viewBlockedUsers() {
+  async viewBlockedUsers() {
     const blockedUsers = this.userData()?.blocked || [];
-    this.blockedUsersList.set(blockedUsers);
+
+    // Fetch user names dynamically for each blocked user
+    const blockedUsersWithNames = await Promise.all(
+      blockedUsers.map(async (blockedUser) => {
+        try {
+          const userDoc = await getDoc(doc(this.firestore, 'users', blockedUser.blockedBy));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as UserDoc;
+            return {
+              ...blockedUser,
+              displayName: userData.name || 'Unknown User',
+              role: userData.currentRole || 'user',
+              blockedAt: blockedUser.date,
+            };
+          }
+        } catch (error) {
+          console.error('Error fetching blocked user data:', error);
+        }
+        return {
+          ...blockedUser,
+          displayName: 'Unknown User',
+          role: 'user',
+          blockedAt: blockedUser.date,
+        };
+      })
+    );
+
+    this.blockedUsersList.set(blockedUsersWithNames);
     this.showBlockedUsersModal.set(true);
   }
 

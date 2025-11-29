@@ -22,12 +22,14 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay, distinctUntilChanged } from 'rxjs';
 import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
+import { BlockService } from './block.service';
 
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   private db = inject(Firestore);
   private auth = inject(Auth);
+  private blockService = inject(BlockService);
 
   // Track typing state per room
   private typingState = new Map<string, BehaviorSubject<boolean>>();
@@ -70,18 +72,32 @@ export class ChatService {
 
   // Producer initiates chat by sending first message (optional)
   async producerStartChat(actorId: string, producerId: string, text?: string): Promise<string> {
+    // Check if either user has blocked the other before creating/accessing room
+    const canInteract = await this.blockService.canUsersInteract(producerId, actorId);
+    if (!canInteract) {
+      console.warn('Cannot start chat: one user has blocked the other');
+      throw new Error('You cannot message this user');
+    }
+
     const roomId = await this.ensureRoom(actorId, producerId);
-    
+
     // Only send a message if text is provided
     if (text) {
       await this.sendMessage({ roomId, senderId: producerId, receiverId: actorId, text });
     }
-    
+
     return roomId;
   }
 
   // Send a message in a room
   async sendMessage({ roomId, senderId, receiverId, text }: { roomId: string; senderId: string; receiverId: string; text: string }): Promise<void> {
+    // Check if either user has blocked the other
+    const canInteract = await this.blockService.canUsersInteract(senderId, receiverId);
+    if (!canInteract) {
+      console.warn('Cannot send message: one user has blocked the other');
+      throw new Error('You cannot message this user');
+    }
+
     const msgRef = collection(this.db, 'chatRooms', roomId, 'messages');
     const timestamp = serverTimestamp();
     const message = {
@@ -613,5 +629,21 @@ export class ChatService {
 
     await Promise.all(searchPromises);
     return results;
+  }
+
+  /**
+   * Check if two users can interact (neither has blocked the other)
+   * Exposed for components to check before showing chat/message UI
+   */
+  async canUsersInteract(userId1: string, userId2: string): Promise<boolean> {
+    return this.blockService.canUsersInteract(userId1, userId2);
+  }
+
+  /**
+   * Check if a user is blocked by the current user
+   * Exposed for components to check block status
+   */
+  isUserBlocked(userId: string, checkUserId: string): Observable<boolean> {
+    return this.blockService.isUserBlocked(userId, checkUserId);
   }
 }
