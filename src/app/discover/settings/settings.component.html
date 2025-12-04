@@ -361,8 +361,7 @@
             <span class="justify-self-center">Role</span>
             <span class="justify-self-end">Action</span>
           </div>
-          @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy
-          ?? blockedUser.displayName) {
+          @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy) {
           <article
             class="rounded-2xl border px-4 py-3"
             [ngClass]="{

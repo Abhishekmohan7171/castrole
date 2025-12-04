@@ -11,6 +11,7 @@ import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 import { PresenceService } from '../services/presence.service';
+import { BlockService } from '../services/block.service';
 
 @Component({
   selector: 'app-discover-chat',
@@ -291,7 +292,7 @@ import { PresenceService } from '../services/presence.service';
             >
               {{ active()?.name?.[0] | uppercase }}
             </div>
-            <div class="text-sm">
+            <div class="text-sm flex-1">
               <div [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
                 {{ active()?.name || 'select a chat' }}
               </div>
@@ -299,7 +300,7 @@ import { PresenceService } from '../services/presence.service';
                    [ngClass]="{'text-purple-300/50': myRole() === 'actor', 'text-neutral-500': myRole() !== 'actor'}">
                 <!-- Online status indicator -->
                 <span *ngIf="active() && counterpartLastSeen()" class="flex items-center gap-1.5">
-                  <span 
+                  <span
                     class="w-2 h-2 rounded-full"
                     [ngClass]="{
                       'bg-green-500 animate-pulse': counterpartOnline(),
@@ -318,6 +319,69 @@ import { PresenceService } from '../services/presence.service';
                   typing...
                 </span>
               </div>
+            </div>
+
+            <!-- Block/Unblock Menu -->
+            <div *ngIf="active()" class="relative">
+              <button
+                type="button"
+                (click)="showBlockMenu.set(!showBlockMenu())"
+                class="p-2 rounded-full transition-colors"
+                [ngClass]="{
+                  'hover:bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
+                  'hover:bg-white/10 text-neutral-400': myRole() !== 'actor'
+                }"
+                title="More options"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </button>
+
+              <!-- Dropdown Menu -->
+              @if (showBlockMenu()) {
+                <div class="absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-10 border transition-colors duration-300"
+                     [ngClass]="{
+                       'bg-purple-950/10 border-purple-900/10': myRole() === 'actor',
+                       'bg-neutral-900 border-white/10': myRole() !== 'actor'
+                     }">
+                  @if (!isCounterpartBlocked()) {
+                    <button
+                      type="button"
+                      (click)="blockCurrentUser()"
+                      class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2"
+                      [ngClass]="{
+                        'hover:bg-purple-950/10 text-red-400': myRole() === 'actor',
+                        'hover:bg-white/5 text-red-400': myRole() !== 'actor'
+                      }"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                      </svg>
+                      Block User
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="unblockCurrentUser()"
+                      class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2"
+                      [ngClass]="{
+                        'hover:bg-purple-950/10 text-green-400': myRole() === 'actor',
+                        'hover:bg-white/5 text-green-400': myRole() !== 'actor'
+                      }"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                      Unblock User
+                    </button>
+                  }
+                </div>
+              }
             </div>
           </header>
 
@@ -478,9 +542,27 @@ import { PresenceService } from '../services/presence.service';
             </ng-template>
           </div>
 
-          <!-- Composer -->
+          <!-- Blocked User Warning -->
           <div
-            *ngIf="active() && myRole() === 'producer' && isRejectedByActor()"
+            *ngIf="active() && isCounterpartBlocked()"
+            class="p-3 sm:p-4 pt-6 mb-4 border-t transition-colors duration-300 flex items-center justify-center shrink-0 rounded-b-2xl"
+            [ngClass]="{
+              'border-purple-900/10 bg-purple-950/10': myRole() === 'actor',
+              'border-white/5 bg-neutral-900/60': myRole() !== 'actor'
+            }"
+          >
+            <div class="text-red-400 text-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+              </svg>
+              <span>You have blocked this user. Unblock to send messages.</span>
+            </div>
+          </div>
+
+          <!-- Rejected by Actor Warning -->
+          <div
+            *ngIf="active() && !isCounterpartBlocked() && myRole() === 'producer' && isRejectedByActor()"
             class="p-3 sm:p-4 pt-6 mb-4 border-t border-white/5 flex items-center justify-center shrink-0 bg-neutral-900/60 rounded-b-2xl"
           >
             <div class="text-red-400 text-sm flex items-center gap-2">
@@ -497,7 +579,7 @@ import { PresenceService } from '../services/presence.service';
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60 rounded-b-2xl"
-            *ngIf="active() && ((myRole() !== 'actor' && !isRejectedByActor()) || active()!.actorAccepted)"
+            *ngIf="active() && !isCounterpartBlocked() && ((myRole() !== 'actor' && !isRejectedByActor()) || active()!.actorAccepted)"
           >
             <input
               id="message-draft"
@@ -555,6 +637,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private actor = inject(ActorService);
   private user = inject(UserService);
   private presence = inject(PresenceService);
+  private blockService = inject(BlockService);
 
   // Signals for reactive state
   conversations = signal<Conversation[]>([]);
@@ -565,7 +648,71 @@ export class ChatComponent implements OnInit, OnDestroy {
   initialLoading = signal(true);
   requestsLoading = signal(true);
 
+  // Block functionality
+  isCounterpartBlocked = signal(false);
+  showBlockMenu = signal(false);
+
   meUid: string | null = null;
+
+  // Check block status when conversation is selected
+  private async checkBlockStatus() {
+    const activeConv = this.active();
+    if (!activeConv || !this.meUid) {
+      this.isCounterpartBlocked.set(false);
+      return;
+    }
+
+    const counterpartId = this.counterpartByRoom.get(activeConv.id);
+    if (!counterpartId) {
+      this.isCounterpartBlocked.set(false);
+      return;
+    }
+
+    try {
+      const isBlocked = await this.blockService.isUserBlockedAsync(this.meUid, counterpartId);
+      this.isCounterpartBlocked.set(isBlocked);
+    } catch (error) {
+      console.error('Error checking block status:', error);
+      this.isCounterpartBlocked.set(false);
+    }
+  }
+
+  // Block current user
+  async blockCurrentUser() {
+    const activeConv = this.active();
+    if (!activeConv || !this.meUid) return;
+
+    const counterpartId = this.counterpartByRoom.get(activeConv.id);
+    if (!counterpartId) return;
+
+    try {
+      await this.blockService.blockUser(this.meUid, counterpartId);
+      this.isCounterpartBlocked.set(true);
+      this.showBlockMenu.set(false);
+      alert('User has been blocked');
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      alert('Failed to block user');
+    }
+  }
+
+  // Unblock current user
+  async unblockCurrentUser() {
+    const activeConv = this.active();
+    if (!activeConv || !this.meUid) return;
+
+    const counterpartId = this.counterpartByRoom.get(activeConv.id);
+    if (!counterpartId) return;
+
+    try {
+      await this.blockService.unblockUser(this.meUid, counterpartId);
+      this.isCounterpartBlocked.set(false);
+      alert('User has been unblocked');
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      alert('Failed to unblock user');
+    }
+  }
   myRole = signal<UserRole>('user');
   private roomsSub = new Subscription();
   private msgsSub = new Subscription();
@@ -904,6 +1051,9 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Set active conversation immediately
     this.active.set(c);
     this.activeRoomId$.next(c.id);
+
+    // Check if counterpart is blocked
+    this.checkBlockStatus();
 
     // Mark messages as read when opening a conversation
     if (this.meUid) {
