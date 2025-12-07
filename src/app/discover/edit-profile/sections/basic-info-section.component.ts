@@ -142,6 +142,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 form.get(isActor ? 'stageName' : 'name')?.touched
               "
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              (blur)="onFieldBlur()"
               [placeholder]="isActor ? 'lil rahul nair' : 'enter name'"
             />
           </div>
@@ -189,18 +190,25 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 </svg>
               </div>
               <input
-                type="text"
+                type="number"
                 formControlName="height"
+                min="0"
+                step="0.1"
                 [class.border-red-500]="
                   form.get('height')?.invalid && form.get('height')?.touched
                 "
-                class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                placeholder="180cm or 5.9ft"
+                class="w-full pl-12 pr-16 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                (blur)="onFieldBlur()"
+                placeholder="180"
               />
+              <span
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium"
+                >cms</span
+              >
             </div>
             @if (form.get('height')?.invalid && form.get('height')?.touched) {
             <p class="text-xs text-red-400 mt-1.5 ml-1">
-              Use numbers optionally followed by units (e.g., 180, 180cm, 5.9ft)
+              Please enter height in centimeters
             </p>
             }
           </div>
@@ -230,18 +238,25 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 </svg>
               </div>
               <input
-                type="text"
+                type="number"
                 formControlName="weight"
+                min="0"
+                step="0.1"
                 [class.border-red-500]="
                   form.get('weight')?.invalid && form.get('weight')?.touched
                 "
-                class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                placeholder="85kg"
+                class="w-full pl-12 pr-16 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                (blur)="onFieldBlur()"
+                placeholder="75"
               />
+              <span
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium"
+                >kg</span
+              >
             </div>
             @if (form.get('weight')?.invalid && form.get('weight')?.touched) {
             <p class="text-xs text-red-400 mt-1.5 ml-1">
-              Use numbers optionally followed by kg (e.g., 75 or 75kg)
+              Please enter weight in kilograms
             </p>
             }
           </div>
@@ -282,6 +297,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('age')?.invalid && form.get('age')?.touched
                 "
                 class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                (blur)="onFieldBlur()"
                 placeholder="25"
               />
             </div>
@@ -325,13 +341,14 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('gender')?.invalid && form.get('gender')?.touched
                 "
                 class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
+                (blur)="onFieldBlur()"
               >
                 <option
                   value=""
                   disabled
                   class="bg-neutral-900 text-neutral-500"
                 >
-                  Select gender
+                  Select gender identity
                 </option>
                 <option value="male" class="bg-neutral-900 text-white">
                   male
@@ -341,6 +358,24 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 </option>
                 <option value="non-binary" class="bg-neutral-900 text-white">
                   non-binary
+                </option>
+                <option value="transgender" class="bg-neutral-900 text-white">
+                  transgender
+                </option>
+                <option value="genderqueer" class="bg-neutral-900 text-white">
+                  genderqueer
+                </option>
+                <option value="genderfluid" class="bg-neutral-900 text-white">
+                  genderfluid
+                </option>
+                <option value="agender" class="bg-neutral-900 text-white">
+                  agender
+                </option>
+                <option value="two-spirit" class="bg-neutral-900 text-white">
+                  two-spirit
+                </option>
+                <option value="other" class="bg-neutral-900 text-white">
+                  other
                 </option>
                 <option
                   value="prefer-not-to-say"
@@ -402,6 +437,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               type="text"
               formControlName="designation"
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              (blur)="onFieldBlur()"
               placeholder="director"
             />
           </div>
@@ -435,6 +471,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               type="text"
               formControlName="productionHouse"
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              (blur)="onFieldBlur()"
               placeholder="dharma productions"
             />
           </div>
@@ -467,6 +504,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
             <select
               formControlName="industryType"
               class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
+              (blur)="onFieldBlur()"
             >
               <option value="" disabled class="bg-neutral-900 text-neutral-500">
                 Select industry type
@@ -558,6 +596,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 form.get('location')?.invalid && form.get('location')?.touched
               "
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              (blur)="onFieldBlur()"
               placeholder="ernakulam"
             />
           </div>
@@ -568,20 +607,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
             Location must be at least 2 characters }
           </p>
           }
-        </div>
-
-        <!-- Save Button -->
-        <div class="flex justify-end pt-4">
-          <button
-            type="button"
-            (click)="onSave()"
-            [disabled]="
-              form.pristine || (form.invalid && form.dirty) || isSaving()
-            "
-            class="px-8 py-3.5 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 text-base"
-          >
-            {{ isSaving() ? 'Saving...' : 'Save Changes' }}
-          </button>
         </div>
       </form>
     </div>
@@ -600,6 +625,7 @@ export class BasicInfoSectionComponent implements OnInit {
   profileImageUrl = signal<string | null>(null);
   isUploading = signal(false);
   isSaving = signal(false);
+  private autosaveTimeout: any;
 
   ngOnInit() {
     this.initializeForm();
@@ -617,8 +643,8 @@ export class BasicInfoSectionComponent implements OnInit {
             Validators.maxLength(50),
           ],
         ],
-        height: ['', [Validators.pattern(/^\d+(\.\d+)?\s*(cm|ft|in|'|")?$/i)]],
-        weight: ['', [Validators.pattern(/^\d+(\.\d+)?\s*(kg)?$/i)]],
+        height: ['', [Validators.min(0), Validators.max(300)]],
+        weight: ['', [Validators.min(0), Validators.max(500)]],
         age: [
           '',
           [Validators.required, Validators.min(16), Validators.max(100)],
@@ -648,10 +674,20 @@ export class BasicInfoSectionComponent implements OnInit {
     if (!this.profile) return;
 
     if (this.isActor && this.profile.actorProfile) {
+      // Parse height and weight to extract numeric values
+      const heightValue = this.profile.actorProfile.height
+        ? parseFloat(this.profile.actorProfile.height.replace(/[^\d.]/g, '')) ||
+          ''
+        : '';
+      const weightValue = this.profile.actorProfile.weight
+        ? parseFloat(this.profile.actorProfile.weight.replace(/[^\d.]/g, '')) ||
+          ''
+        : '';
+
       this.form.patchValue({
         stageName: this.profile.actorProfile.stageName || '',
-        height: this.profile.actorProfile.height || '',
-        weight: this.profile.actorProfile.weight || '',
+        height: heightValue,
+        weight: weightValue,
         age: this.profile.age || '',
         gender: this.profile.gender || '',
         location: this.profile.location || '',
@@ -710,6 +746,7 @@ export class BasicInfoSectionComponent implements OnInit {
       const downloadURL = await getDownloadURL(storageRef);
 
       this.profileImageUrl.set(downloadURL);
+      this.onSave();
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image. Please try again.');
@@ -785,8 +822,8 @@ export class BasicInfoSectionComponent implements OnInit {
       data.age = formValue.age;
       data.gender = formValue.gender;
       data.stageName = formValue.stageName;
-      data.height = formValue.height;
-      data.weight = formValue.weight;
+      data.height = formValue.height ? `${formValue.height} cms` : '';
+      data.weight = formValue.weight ? `${formValue.weight} kg` : '';
     } else {
       data.name = formValue.name;
       data.designation = formValue.designation;
@@ -794,8 +831,32 @@ export class BasicInfoSectionComponent implements OnInit {
       data.industryType = formValue.industryType;
     }
 
+    data.autosave = true;
+
     this.save.emit(data);
 
-    setTimeout(() => this.isSaving.set(false), 1000);
+    setTimeout(() => {
+      this.isSaving.set(false);
+      this.form.markAsPristine();
+      this.form.markAsUntouched();
+    }, 800);
+  }
+
+  onFieldBlur() {
+    if (this.form.invalid || this.isSaving()) {
+      return;
+    }
+
+    if (!this.form.dirty) {
+      return;
+    }
+
+    if (this.autosaveTimeout) {
+      clearTimeout(this.autosaveTimeout);
+    }
+
+    this.autosaveTimeout = setTimeout(() => {
+      this.onSave();
+    }, 400);
   }
 }
