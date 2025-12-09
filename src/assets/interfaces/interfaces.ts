@@ -125,11 +125,16 @@ export interface VideoMetadata {
   mediaType: string;
   description: string;
   thumbnailUrl?: string;
+  duration?: number; // Video duration in seconds
+  compressed?: boolean; // Track if video was compressed
+  originalSize?: number; // Original file size for analytics
+  compressedSize?: number; // Compressed file size
 }
 
 export interface ImageMetadata {
   caption?: string;
   tags?: string[];
+  description?: string; // Image description
 }
 
 //ANALYTICS INTERFACES
