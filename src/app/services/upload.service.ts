@@ -1,23 +1,24 @@
 import { Injectable, inject } from '@angular/core';
 import { Storage, ref, uploadBytesResumable, getDownloadURL, UploadTask } from '@angular/fire/storage';
-import { 
-  Firestore, 
-  collection, 
-  addDoc, 
+import {
+  Firestore,
+  collection,
+  addDoc,
   doc,
   setDoc,
-  serverTimestamp, 
-  query, 
-  where, 
-  orderBy, 
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
   limit,
   getDocs,
   collectionGroup,
-  QueryConstraint 
+  QueryConstraint
 } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
 import { UploadProgress, MediaUpload, VideoMetadata, ImageMetadata } from '../../assets/interfaces/interfaces';
+import { VideoCompressionService } from './video-compression.service';
 
 
 @Injectable({
@@ -27,6 +28,7 @@ export class UploadService {
   private storage = inject(Storage);
   private db = inject(Firestore);
   private auth = inject(Auth);
+  private videoCompressionService = inject(VideoCompressionService);
 
   /**
    * Upload a video file to Firebase Storage and save metadata to Firestore
@@ -332,6 +334,39 @@ export class UploadService {
    */
   validateFileType(file: File, allowedTypes: string[]): boolean {
     return allowedTypes.some(type => file.type.startsWith(type));
+  }
+
+  /**
+   * Validate video duration
+   * @param file Video file to validate
+   * @param maxDurationMinutes Maximum duration in minutes
+   * @returns Promise with validation result
+   */
+  async validateVideoDuration(
+    file: File,
+    maxDurationMinutes: number
+  ): Promise<{ valid: boolean; duration?: number; error?: string }> {
+    try {
+      const duration = await this.videoCompressionService.getVideoDuration(file);
+      const maxSeconds = maxDurationMinutes * 60;
+
+      if (duration > maxSeconds) {
+        const minutes = Math.floor(duration / 60);
+        const seconds = Math.floor(duration % 60);
+        return {
+          valid: false,
+          duration,
+          error: `Video duration must be less than ${maxDurationMinutes} minutes. Current: ${minutes}:${seconds.toString().padStart(2, '0')}`
+        };
+      }
+
+      return { valid: true, duration };
+    } catch (error: any) {
+      return {
+        valid: false,
+        error: `Failed to read video duration: ${error.message}`
+      };
+    }
   }
 
   /**

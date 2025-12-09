@@ -1001,7 +1001,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   // Subscription management methods
-  upgradeSubscription() {
+  upgradeSubscription(plan: 'monthly' | 'yearly') {
     // TODO: Implement subscription upgrade flow
     // This would involve:
     // 1. Redirecting to payment gateway
@@ -1010,6 +1010,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     console.log('✓ Upgrade subscription initiated');
     // For now, just show success message
   }
+
+  // Handlers passed to child components as callbacks
+  upgradeToMonthlyHandler = () => this.upgradeSubscription('monthly');
+  upgradeToYearlyHandler = () => this.upgradeSubscription('yearly');
+  upgradeToYearlyFromAnalyticsHandler = () =>
+    this.upgradeSubscription('yearly');
 
   manageSubscription() {
     // TODO: Implement subscription management

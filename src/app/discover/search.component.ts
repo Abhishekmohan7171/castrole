@@ -1,4 +1,5 @@
- import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
+ import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,6 +12,7 @@ import { LoggerService } from '../services/logger.service';
 import { ProfileUrlService } from '../services/profile-url.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
+import { FilterPersistenceService } from '../services/filter-persistence.service';
 
 interface ActorSearchResult {
   uid: string;
@@ -189,10 +191,10 @@ interface ParsedSearchQuery {
               <!-- Skills -->
               <div class="mb-6">
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Skills</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   [value]="skillsInput()"
-                  (input)="skillsInput.set($any($event.target).value)"
+                  (input)="onSkillsInputChange($any($event.target).value)"
                   (keyup.enter)="applyFilters()"
                   placeholder="e.g., Acting, Dancing, Boxing"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
@@ -202,10 +204,10 @@ interface ParsedSearchQuery {
               <!-- Languages -->
               <div class="mb-6">
                 <label class="block text-sm font-medium text-neutral-300 mb-2">Languages</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   [value]="languageInput()"
-                  (input)="languageInput.set($any($event.target).value)"
+                  (input)="onLanguageInputChange($any($event.target).value)"
                   (keyup.enter)="applyFilters()"
                   placeholder="e.g., English, Hindi, Tamil"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
@@ -585,7 +587,10 @@ export class SearchComponent implements OnInit, OnDestroy {
   private profileUrlService = inject(ProfileUrlService);
   private analyticsService = inject(AnalyticsService);
   private blockService = inject(BlockService);
+  private platformId = inject(PLATFORM_ID);
+  private filterPersistence = inject(FilterPersistenceService);
   private destroy$ = new Subject<void>();
+  private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
 
@@ -778,23 +783,69 @@ export class SearchComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Get current user
     this.currentUserId = this.auth.currentUser?.uid || null;
-    
+
     // Set wishlist loading if user is logged in
     if (this.currentUserId) {
       this.wishlistLoading.set(true);
     }
-    
+
+    // Restore saved filters from localStorage (SSR-safe)
+    if (isPlatformBrowser(this.platformId)) {
+      const savedState = this.filterPersistence.loadFilters();
+      this.filters.set(savedState.filters);
+      this.searchQuery.set(savedState.searchQuery);
+      this.languageInput.set(savedState.languageInput);
+      this.skillsInput.set(savedState.skillsInput);
+      this.logger.log('Restored filters from localStorage:', savedState);
+    }
+
+    // Setup auto-save for filter changes
+    this.setupAutoSave();
+
     // Load actors in background but don't display until search
     // Wishlist will be loaded after actors are loaded
     this.loadActors();
     this.setupSearchDebounce();
   }
 
+  /**
+   * Setup debounced auto-save for filter changes
+   * Saves filters after 300ms of inactivity to reduce localStorage writes
+   */
+  private setupAutoSave(): void {
+    this.saveSubject.pipe(
+      debounceTime(300),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.persistFilters();
+    });
+  }
+
+  /**
+   * Persist current filter state to localStorage
+   */
+  private persistFilters(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.filterPersistence.saveFilters({
+        filters: this.filters(),
+        searchQuery: this.searchQuery(),
+        languageInput: this.languageInput(),
+        skillsInput: this.skillsInput()
+      });
+      this.logger.log('Saved filters to localStorage');
+    }
+  }
+
   ngOnDestroy(): void {
+    // Save filters before destroying component
+    this.persistFilters();
+
+    // Cleanup subscriptions
     this.destroy$.next();
     this.destroy$.complete();
     this.searchSubject.complete();
-    
+    this.saveSubject.complete();
+
     // Unsubscribe from wishlist listener
     if (this.wishlistUnsubscribe) {
       this.wishlistUnsubscribe();
@@ -952,6 +1003,8 @@ export class SearchComponent implements OnInit, OnDestroy {
   onSearchChange(): void {
     const query = this.searchQuery();
     this.searchSubject.next(query);
+    // Trigger debounced save for search query
+    this.saveSubject.next();
   }
 
   /**
@@ -1180,6 +1233,26 @@ export class SearchComponent implements OnInit, OnDestroy {
       [key]: value
     });
     this.logger.log(`Filter updated: ${key} = ${value}`);
+    // Trigger debounced save
+    this.saveSubject.next();
+  }
+
+  /**
+   * Handle language input changes
+   */
+  onLanguageInputChange(value: string): void {
+    this.languageInput.set(value);
+    // Trigger debounced save
+    this.saveSubject.next();
+  }
+
+  /**
+   * Handle skills input changes
+   */
+  onSkillsInputChange(value: string): void {
+    this.skillsInput.set(value);
+    // Trigger debounced save
+    this.saveSubject.next();
   }
 
   /**
@@ -1218,6 +1291,8 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.applySkillsFilter();
     this.logger.log('Filters applied:', this.filters());
     this.logger.log('Active filters count:', this.getActiveFilterCount());
+    // Immediate save (no debounce) when user explicitly applies filters
+    this.persistFilters();
   }
 
   /**
