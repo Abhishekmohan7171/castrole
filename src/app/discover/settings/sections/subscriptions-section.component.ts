@@ -67,10 +67,10 @@ import { CommonModule } from '@angular/common';
             'text-neutral-500': !isActor()
           }"
         >
-          Better Option – Yearly Plan:
+          Choose your plan:
         </div>
 
-        <!-- Yearly Plan Benefits -->
+        <!-- Plan Benefits Summary -->
         <div class="space-y-3 text-sm">
           <div class="flex items-center gap-2">
             <span
@@ -86,28 +86,68 @@ import { CommonModule } from '@angular/common';
                 'text-neutral-200': !isActor()
               }"
             >
-              Yearly Plan: ₹2,222 per year
+              Monthly: ₹222 per month (₹2,664 per year)
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-            <span class="text-green-400 font-medium">
-              That means you save ₹442 compared to paying monthly!
+            <span
+              class="w-1.5 h-1.5 rounded-full"
+              [ngClass]="{
+                'bg-purple-400': isActor(),
+                'bg-neutral-400': !isActor()
+              }"
+            ></span>
+            <span
+              [ngClass]="{
+                'text-purple-200': isActor(),
+                'text-neutral-200': !isActor()
+              }"
+            >
+              Yearly: ₹2,222 per year (save ₹442 vs monthly)
             </span>
           </div>
         </div>
 
-        <!-- Upgrade Button -->
-        <div class="pt-4">
+        <!-- Plan Selection Buttons -->
+        <div class="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Monthly Plan -->
           <button
-            (click)="upgradeSubscription()"
-            class="w-full max-w-xs mx-auto block px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200"
+            (click)="upgradeToMonthly()"
+            class="w-full px-6 py-4 rounded-2xl text-sm font-semibold text-left transition-all duration-200 border"
             [ngClass]="{
-              'bg-purple-600 hover:bg-purple-700 text-white': isActor(),
-              'bg-neutral-600 hover:bg-neutral-700 text-white': !isActor()
+              'bg-black/30 border-purple-900/40 hover:bg-black/40 text-purple-100':
+                isActor(),
+              'bg-black/30 border-neutral-700/60 hover:bg-black/40 text-neutral-100':
+                !isActor()
             }"
           >
-            yearly ₹2222
+            <div class="flex items-baseline justify-between gap-2">
+              <span>Monthly</span>
+              <span class="text-base font-bold">₹222</span>
+            </div>
+            <div class="mt-1 text-xs opacity-70">
+              per month · ₹2,664 over a full year
+            </div>
+          </button>
+
+          <!-- Yearly Plan -->
+          <button
+            (click)="upgradeToYearly()"
+            class="w-full px-6 py-4 rounded-2xl text-sm font-semibold text-left transition-all duration-200 border"
+            [ngClass]="{
+              'bg-purple-600/80 hover:bg-purple-700 text-white border-purple-400/60':
+                isActor(),
+              'bg-neutral-600/80 hover:bg-neutral-700 text-white border-neutral-400/60':
+                !isActor()
+            }"
+          >
+            <div class="flex items-baseline justify-between gap-2">
+              <span>Yearly</span>
+              <span class="text-base font-bold">₹2,222</span>
+            </div>
+            <div class="mt-1 text-xs text-green-400 font-medium">
+              Save ₹442 compared to paying monthly
+            </div>
           </button>
         </div>
       </div>
@@ -159,8 +199,8 @@ import { CommonModule } from '@angular/common';
               }"
             >
               Enjoy high visibility, ad-free experience, upload up to 10
-              audition reels, and full analytics without worrying about
-              monthly renewals.
+              audition reels, and full analytics without worrying about monthly
+              renewals.
             </span>
           </div>
 
@@ -306,11 +346,12 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
     </div>
-  `
+  `,
 })
 export class SubscriptionsSectionComponent {
   isActor = input.required<boolean>();
-  upgradeSubscription = input.required<() => void>();
+  upgradeToMonthly = input.required<() => void>();
+  upgradeToYearly = input.required<() => void>();
   manageSubscription = input.required<() => void>();
   viewPaymentHistory = input.required<() => void>();
 }
