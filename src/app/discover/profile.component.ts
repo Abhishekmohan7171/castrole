@@ -228,11 +228,14 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   @if (profileData()?.gender) {
                   <span>{{ profileData()?.gender }}</span>
                   }
+                  @if (profileData()?.age) {
+                  <span>{{ profileData()?.age }} yrs</span>
+                  }
                   @if (profileData()?.actorProfile?.height) {
-                  <span>{{ profileData()?.actorProfile?.height }}</span>
+                  <span>{{ formatHeight(profileData()?.actorProfile?.height) }}</span>
                   }
                   @if (profileData()?.actorProfile?.weight) {
-                  <span>{{ profileData()?.actorProfile?.weight }}</span>
+                  <span>{{ formatWeight(profileData()?.actorProfile?.weight) }}</span>
                   }
                 </div>
                 } @else {
@@ -1534,5 +1537,35 @@ export class ProfileComponent implements OnInit {
     } finally {
       this.isConnecting.set(false);
     }
+  }
+
+  /**
+   * Format height to ensure it has 'cms' suffix
+   */
+  formatHeight(height: string | undefined): string {
+    if (!height) return '';
+
+    // If already has cms suffix, return as is
+    if (height.toLowerCase().includes('cms') || height.toLowerCase().includes('cm')) {
+      return height;
+    }
+
+    // Otherwise, add cms suffix
+    return `${height} cms`;
+  }
+
+  /**
+   * Format weight to ensure it has 'kg' suffix
+   */
+  formatWeight(weight: string | undefined): string {
+    if (!weight) return '';
+
+    // If already has kg suffix, return as is
+    if (weight.toLowerCase().includes('kg')) {
+      return weight;
+    }
+
+    // Otherwise, add kg suffix
+    return `${weight} kg`;
   }
 }

@@ -154,7 +154,8 @@
           } @case ('subscriptions') {
           <app-subscriptions-section
             [isActor]="isActor()"
-            [upgradeSubscription]="upgradeSubscription"
+            [upgradeToMonthly]="upgradeToMonthlyHandler"
+            [upgradeToYearly]="upgradeToYearlyHandler"
             [manageSubscription]="manageSubscription"
             [viewPaymentHistory]="viewPaymentHistory"
           />
@@ -162,7 +163,7 @@
           <app-analytics-section
             [isSubscribed]="isSubscribed()"
             [analyticsData]="analyticsData()"
-            [upgradeSubscription]="upgradeSubscription"
+            [upgradeSubscription]="upgradeToYearlyFromAnalyticsHandler"
           />
           } @case ('support') {
           <app-support-section
@@ -361,7 +362,8 @@
             <span class="justify-self-center">Role</span>
             <span class="justify-self-end">Action</span>
           </div>
-          @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy) {
+          @for (blockedUser of blockedUsersList(); track blockedUser.blockedBy)
+          {
           <article
             class="rounded-2xl border px-4 py-3"
             [ngClass]="{
