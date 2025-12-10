@@ -1,14 +1,10 @@
 {
   "hosting": {
     "public": "dist/castrole/browser",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {
-        "source": "**",
+        "source": "/discover/upload",
         "headers": [
           {
             "key": "Cross-Origin-Opener-Policy",
