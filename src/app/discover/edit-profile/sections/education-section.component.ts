@@ -111,6 +111,19 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         />
                       </div>
                     </div>
+
+                    <!-- Project Link -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">project link</label>
+                      <div class="relative">
+                        <input
+                          type="url"
+                          formControlName="projectLink"
+                          placeholder="https://www.imdb.com/title/..."
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
                   }
 
                   <!-- Year and Certificate -->
@@ -299,6 +312,19 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         </div>
                       </div>
 
+                      <!-- Project Link -->
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-neutral-300">project link</label>
+                        <div class="relative">
+                          <input
+                            type="url"
+                            formControlName="projectLink"
+                            placeholder="https://www.imdb.com/title/..."
+                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+
                       <!-- Year -->
                       <div class="space-y-2">
                         <label class="block text-sm font-medium text-neutral-300">year</label>
@@ -469,7 +495,8 @@ export class EducationSectionComponent implements OnInit {
     return this.fb.group({
       projectName: [work?.projectName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
       genre: [work?.genre || '', [Validators.maxLength(100)]],
-      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]]
+      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]],
+      projectLink: [work?.projectLink || '', [Validators.maxLength(500)]]
     });
   }
 
