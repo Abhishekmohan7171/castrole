@@ -1,4 +1,4 @@
-import { Component, PLATFORM_ID, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, PLATFORM_ID, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -6,13 +6,16 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
 import { DiscoverService } from '../services/discover.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 import { FirestoreDiagnosticService } from '../services/firestore-diagnostic.service';
+import { AuthService } from '../services/auth.service';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { UserDoc } from '../../assets/interfaces/interfaces';
 
 @Component({
   selector: 'app-discover-feed',
   standalone: true,
   imports: [CommonModule, LoaderComponent],
   template: `
-    <div class="min-h-screen" (keydown)="onKeyDown($event)" tabindex="0">
+    <div class="min-h-screen bg-transparent" (keydown)="onKeyDown($event)" tabindex="0">
       <!-- Loading State -->
       <app-loader [show]="isLoading()" message="Loading posts..."></app-loader>
       
@@ -43,7 +46,8 @@ import { FirestoreDiagnosticService } from '../services/firestore-diagnostic.ser
             type="button" 
             class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 capitalize"
             [ngClass]="{
-              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === category,
+              'bg-[#946BA9]/20 text-[#946BA9] ring-2 ring-[#946BA9]/40': tab === category && isActor(),
+              'bg-[#515D69] text-white ring-2 ring-[#515D69]/60': tab === category && !isActor(),
               'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== category
             }"
             (click)="tab = category">
@@ -57,7 +61,11 @@ import { FirestoreDiagnosticService } from '../services/firestore-diagnostic.ser
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ng-container *ngFor="let item of filteredItems; let i = index">
             <article 
-              class="group rounded-2xl bg-neutral-900/40 backdrop-blur-sm border border-white/5 overflow-hidden cursor-pointer transition-all duration-300 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-xl hover:shadow-black/20"
+              class="group rounded-2xl backdrop-blur-sm overflow-hidden cursor-pointer transition-all duration-300"
+              [ngClass]="{
+                'bg-purple-950/20 border border-purple-900/20 hover:bg-purple-950/30 hover:border-purple-800/30 hover:shadow-xl hover:shadow-purple-900/20': isActor(),
+                'bg-neutral-900/40 border border-white/5 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-xl hover:shadow-black/20': !isActor()
+              }"
               (click)="openModal(i)">
               <!-- Image -->
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
@@ -207,7 +215,11 @@ import { FirestoreDiagnosticService } from '../services/firestore-diagnostic.ser
               <div class="mt-8 flex items-center justify-end gap-4">
                 <button 
                   type="button"
-                  class="px-6 py-3 rounded-full bg-indigo-500/20 text-indigo-200 font-medium text-sm ring-2 ring-indigo-500/40 hover:bg-indigo-500/30 hover:ring-indigo-500/60 transition-all duration-200">
+                  class="px-6 py-3 rounded-full font-medium text-sm ring-2 transition-all duration-200"
+                  [ngClass]="{
+                    'bg-[#946BA9]/20 text-[#946BA9] ring-[#946BA9]/40 hover:bg-[#946BA9]/30 hover:ring-[#946BA9]/60': isActor(),
+                    'bg-[#90ACC8] text-white ring-[#90ACC8]/60 hover:bg-[#7A9AB8]': !isActor()
+                  }">
                   go to page
                 </button>
               </div>
@@ -263,9 +275,15 @@ export class FeedComponent implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private discoverService = inject(DiscoverService);
   private diagnosticService = inject(FirestoreDiagnosticService);
+  private auth = inject(AuthService);
+  private firestore = inject(Firestore);
   private subscriptions = new Subscription();
 
   role: 'actor' | 'producer' = 'actor';
+  
+  // User role signals for theming
+  userRole = signal<string>('actor');
+  isActor = computed(() => this.userRole() === 'actor');
   tab = 'all';
   search = '';
   currentModalIndex: number | null = null;
@@ -312,11 +330,33 @@ export class FeedComponent implements OnInit, OnDestroy {
     if (qpRole && isPlatformBrowser(this.platformId)) localStorage.setItem('role', this.role);
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     // Uncomment the line below to run diagnostics
     // this.diagnosticService.runDiagnostics();
     
+    await this.loadUserRole();
     this.fetchDiscoverPosts();
+  }
+
+  /**
+   * Load user role from Firestore
+   */
+  private async loadUserRole(): Promise<void> {
+    const user = this.auth.getCurrentUser();
+    if (user) {
+      try {
+        const userDocRef = doc(this.firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserDoc;
+          this.userRole.set(userData.currentRole || 'actor');
+          this.role = userData.currentRole === 'producer' ? 'producer' : 'actor';
+        }
+      } catch (error) {
+        console.error('Error loading user role:', error);
+        this.userRole.set('actor');
+      }
+    }
   }
 
   ngOnDestroy(): void {

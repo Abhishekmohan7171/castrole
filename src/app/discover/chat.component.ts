@@ -34,8 +34,8 @@ import { BlockService } from '../services/block.service';
         <aside
           class="rounded-2xl ring-1 border overflow-hidden flex flex-col h-full transition-all duration-300 z-40 backdrop-blur-xl"
           [ngClass]="{
-            'bg-purple-950/95 ring-purple-900/20 border-purple-900/20': myRole() === 'actor',
-            'bg-neutral-900/95 ring-white/10 border-white/5': myRole() !== 'actor',
+            'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole() === 'actor',
+            'bg-[#101214]/95 ring-[#53565F]/20 border-[#364361]/30': myRole() !== 'actor',
             'fixed inset-y-0 left-0 w-80 lg:relative lg:w-auto': true,
             'translate-x-0': sidebarOpen(),
             '-translate-x-full lg:translate-x-0': !sidebarOpen()
@@ -195,7 +195,7 @@ import { BlockService } from '../services/block.service';
                       class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full text-white animate-pulse"
                       [ngClass]="{
                         'bg-purple-500': myRole() === 'actor',
-                        'bg-fuchsia-600': myRole() !== 'actor'
+                        'bg-[#90ACC8]': myRole() !== 'actor'
                       }"
                       >{{ c.unreadCount[meUid] }}</span
                     >
@@ -299,11 +299,27 @@ import { BlockService } from '../services/block.service';
                   <span>{{ counterpartLastSeen() }}</span>
                 </span>
                 <!-- Typing indicator -->
-                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex items-center text-fuchsia-300">
+                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex items-center"
+                  [ngClass]="{
+                    'text-purple-300': myRole() === 'actor',
+                    'text-[#90ACC8]': myRole() !== 'actor'
+                  }">
                   <span class="inline-flex space-x-1 mr-1">
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 0ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 150ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 300ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
                   </span>
                   typing...
                 </span>
@@ -390,8 +406,10 @@ import { BlockService } from '../services/block.service';
                   [ngClass]="{
                     'bg-white/10 text-neutral-100 rounded-tr-sm':
                       m.from === 'them',
-                    'bg-fuchsia-600/20 text-fuchsia-100 rounded-tl-sm':
-                      m.from === 'me'
+                    'bg-[#946BA9]/20 text-[#946BA9] rounded-tl-sm':
+                      m.from === 'me' && myRole() === 'actor',
+                    'bg-[#90ACC8]/20 text-[#90ACC8] rounded-tl-sm':
+                      m.from === 'me' && myRole() !== 'actor'
                   }"
                 >
                   <div>{{ m.text }}</div>
@@ -423,9 +441,21 @@ import { BlockService } from '../services/block.service';
                 <div class="bg-white/5 text-neutral-300 rounded-2xl px-4 py-2 text-sm">
                   <div class="flex items-center">
                     <span class="inline-flex space-x-1 mr-2">
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 0ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 150ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 300ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
                     </span>
                   </div>
                 </div>

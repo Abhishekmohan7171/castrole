@@ -27,7 +27,7 @@ import { ToastService } from '../../services/toast.service';
     SocialsSectionComponent,
   ],
   template: `
-    <div class="min-h-screen bg-neutral-950">
+    <div class="min-h-screen bg-transparent">
       <!-- Mobile Header -->
       <div
         class="lg:hidden sticky top-0 z-40 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800"
@@ -82,33 +82,36 @@ import { ToastService } from '../../services/toast.service';
           (click)="onSidebarBackdropClick($event)"
         >
           <div
-            class="bg-neutral-900 h-full overflow-y-auto"
+            class="h-full overflow-y-auto bg-transparent"
             (click)="$event.stopPropagation()"
           >
             <!-- Desktop Header -->
-            <div class="hidden lg:block px-6 py-6 border-b border-neutral-800">
-              <h1 class="text-xl font-semibold text-white">edit profile</h1>
+            <div
+              class="hidden lg:block px-6 py-6"
+            >
+              <h1 class="text-lg font-semibold text-white">edit profile</h1>
             </div>
 
             <!-- Navigation Items -->
-            <nav class="space-y-1">
+            <nav class="space-y-2 px-4">
               @for (item of navigationItems(); track item.id) {
               <button
                 (click)="navigateToSection(item.id)"
-                [class]="
-                  activeSection() === item.id
-                    ? 'w-full text-left px-4 py-3 rounded-lg bg-purple-600/20 border-l-2 border-purple-500 transition-all duration-200'
-                    : 'w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 border-l-2 border-transparent transition-all duration-200'
-                "
+                class="w-full text-left px-4 py-4 rounded-xl border-l-2 transition-all duration-200"
+                [ngClass]="{
+                  'bg-[#2D1C36] text-white border-[#946BA9]': activeSection() === item.id && isActor(),
+                  'bg-[#515D69]/30 text-white border-[#90ACC8]': activeSection() === item.id && !isActor(),
+                  'text-[#5E5E67] hover:bg-white/5 border-transparent': activeSection() !== item.id
+                }"
               >
                 <div class="flex items-start gap-3">
                   <!-- Icon -->
                   <div
-                    [class]="
-                      activeSection() === item.id
-                        ? 'text-purple-400 mt-0.5'
-                        : 'text-neutral-500 mt-0.5'
-                    "
+                    class="mt-0.5"
+                    [ngClass]="{
+                      'text-white': activeSection() === item.id,
+                      'text-[#5E5E67]': activeSection() !== item.id
+                    }"
                   >
                     @switch (item.id) { @case ('basic-info') {
                     <svg
@@ -192,15 +195,15 @@ import { ToastService } from '../../services/toast.service';
                   <!-- Text -->
                   <div class="flex-1 space-y-0.5">
                     <h3
-                      [class]="
-                        activeSection() === item.id
-                          ? 'text-base font-medium text-white'
-                          : 'text-base font-medium text-neutral-300'
-                      "
+                      class="text-base font-medium"
+                      [ngClass]="{
+                        'text-white': activeSection() === item.id,
+                        'text-[#5E5E67]': activeSection() !== item.id
+                      }"
                     >
                       {{ item.label }}
                     </h3>
-                    <p class="text-xs text-neutral-500 leading-tight">
+                    <p class="text-xs text-[#5E5E67] leading-tight">
                       {{ item.description }}
                     </p>
                   </div>
