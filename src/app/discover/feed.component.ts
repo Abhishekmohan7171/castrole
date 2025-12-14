@@ -1,56 +1,53 @@
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Discover, PostType } from '../../assets/interfaces/discover.interface';
+import { DiscoverService } from '../services/discover.service';
+import { LoaderComponent } from '../common-components/loader/loader.component';
+import { FirestoreDiagnosticService } from '../services/firestore-diagnostic.service';
 
 @Component({
   selector: 'app-discover-feed',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LoaderComponent],
   template: `
     <div class="min-h-screen" (keydown)="onKeyDown($event)" tabindex="0">
-      <!-- Tabs -->
+      <!-- Loading State -->
+      <app-loader [show]="isLoading()" message="Loading posts..."></app-loader>
+      
+      <!-- Error State -->
+      <div *ngIf="errorMessage()" class="text-center py-20">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-900/20 ring-1 ring-red-500/30 mb-4">
+          <svg class="h-8 w-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <p class="text-red-400 text-lg">{{ errorMessage() }}</p>
+        <button 
+          type="button"
+          (click)="retryFetch()"
+          class="mt-4 px-6 py-2.5 rounded-full text-sm font-medium bg-red-500/20 text-red-200 ring-2 ring-red-500/40 hover:bg-red-500/30 transition-all duration-200">
+          Retry
+        </button>
+      </div>
+      
+      <ng-container *ngIf="!isLoading() && !errorMessage()">
+      <!-- Tabs - Dynamic Categories -->
       <section class="mb-8">
         <div class="flex flex-wrap items-center justify-center gap-3">
           <button 
+            *ngFor="let category of categories()"
             type="button" 
-            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 capitalize"
             [ngClass]="{
-              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'all',
-              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'all'
+              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === category,
+              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== category
             }"
-            (click)="tab='all'">
-            all
-          </button>
-          <button 
-            type="button" 
-            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
-            [ngClass]="{
-              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'academic',
-              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'academic'
-            }"
-            (click)="tab='academic'">
-            academic
-          </button>
-          <button 
-            type="button" 
-            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
-            [ngClass]="{
-              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'news',
-              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'news'
-            }"
-            (click)="tab='news'">
-            news
-          </button>
-          <button 
-            type="button" 
-            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
-            [ngClass]="{
-              'bg-indigo-500/20 text-indigo-200 ring-2 ring-indigo-500/40': tab === 'trending',
-              'bg-neutral-800/50 text-neutral-400 ring-1 ring-white/10 hover:bg-neutral-800 hover:text-neutral-200': tab !== 'trending'
-            }"
-            (click)="tab='trending'">
-            trending
+            (click)="tab = category">
+            {{ category }}
           </button>
         </div>
       </section>
@@ -65,11 +62,21 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
               <!-- Image -->
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
                 <img 
+                  *ngIf="item.imageUrl"
                   [src]="item.imageUrl" 
-                  [alt]="item.title"
+                  [alt]="item.title || 'Post image'"
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
+                  (error)="onImageError($event)"
                 />
+                <!-- Fallback for missing image -->
+                <div *ngIf="!item.imageUrl" class="w-full h-full flex items-center justify-center">
+                  <svg class="h-16 w-16 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                </div>
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
               </div>
 
@@ -208,6 +215,7 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
           </div>
         </div>
       </div>
+      </ng-container>
     </div>
   `,
   styles: [`
@@ -250,155 +258,26 @@ import { Discover, PostType } from '../../assets/interfaces/discover.interface';
     }
   `]
 })
-export class FeedComponent {
+export class FeedComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private platformId = inject(PLATFORM_ID);
+  private discoverService = inject(DiscoverService);
+  private diagnosticService = inject(FirestoreDiagnosticService);
+  private subscriptions = new Subscription();
 
   role: 'actor' | 'producer' = 'actor';
-  tab: 'all' | 'academic' | 'news' | 'trending' = 'all';
+  tab = 'all';
   search = '';
   currentModalIndex: number | null = null;
   isModalOpen = false;
 
-  private actorItems: Discover[] = [
-    { 
-      id: 'a1',
-      authorId: 'auth001',
-      authorName: 'Film News Daily',
-      postDate: new Date('2024-10-28'),
-      title: 'director of Manache Shlok renaming the film after it was halted, actor anjali Sivaraman responding to trolls',
-      subtitle: 'tiger shroff new film lion captured by zoo in luthiana',
-      content: 'Today\'s film news includes the Malayalam film Kalamkaval receiving a U/A 16+ certificate, the Hindi film Thamma continuing its box office run, and several celebrity updates including Priyanka Chopra\'s birthday wish for Parineeti Chopra and an apology from Lucky Ali to Javed Akhtar. In Hollywood, the Evil Dead Burn sequel has finished shooting and Tron: Ares debuted at the box office.',
-      imageUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400',
-      category: 'news',
-      tags: ['news', 'film', 'bollywood'],
-      type: PostType.article,
-      isFeatured: true,
-      isActive: true,
-      createdAt: new Date('2024-10-28'),
-      updatedAt: new Date('2024-10-28')
-    },
-    { 
-      id: 'a2',
-      authorId: 'auth002',
-      authorName: 'Casting Director',
-      postDate: new Date('2024-10-25'),
-      title: 'Web series supporting cast needed',
-      subtitle: 'Female, 22-35 • Remote • Paid',
-      content: 'Looking for talented actors for a new web series. This is a paid opportunity with flexible shooting schedules. The role requires strong dramatic skills and comfort with emotional scenes.',
-      imageUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400',
-      category: 'all',
-      tags: ['audition', 'web-series', 'paid'],
-      type: PostType.text,
-      isFeatured: false,
-      location: 'Remote',
-      isActive: true,
-      createdAt: new Date('2024-10-25'),
-      updatedAt: new Date('2024-10-25')
-    },
-    { 
-      id: 'a3',
-      authorId: 'auth003',
-      authorName: 'Ad Agency',
-      postDate: new Date('2024-10-26'),
-      title: 'TV ad - fitness brand campaign',
-      subtitle: 'All genders, 18-28 • Bangalore • Paid',
-      content: 'Major fitness brand looking for energetic talent for upcoming TV commercial. 2-day shoot in Bangalore. Competitive compensation and great exposure opportunity.',
-      imageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400',
-      category: 'trending',
-      tags: ['ad', 'fitness', 'commercial'],
-      type: PostType.ad,
-      isFeatured: true,
-      location: 'Bangalore',
-      isActive: true,
-      createdAt: new Date('2024-10-26'),
-      updatedAt: new Date('2024-10-26')
-    },
-    { 
-      id: 'a4',
-      authorId: 'auth004',
-      authorName: 'Acting Academy',
-      postDate: new Date('2024-10-20'),
-      title: 'Academic workshop on method acting',
-      subtitle: 'All levels • Online • Free',
-      content: 'Join renowned acting coach for an intensive workshop on method acting techniques. Learn from industry professionals and enhance your craft.',
-      imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400',
-      category: 'academic',
-      tags: ['workshop', 'training', 'method-acting'],
-      type: PostType.text,
-      isFeatured: false,
-      location: 'Online',
-      isActive: true,
-      createdAt: new Date('2024-10-20'),
-      updatedAt: new Date('2024-10-20')
-    },
-  ];
+  // Signals for reactive state
+  isLoading = signal<boolean>(true);
+  errorMessage = signal<string>('');
+  allPosts = signal<Discover[]>([]);
+  categories = signal<string[]>(['all']);
 
-  private producerItems: Discover[] = [
-    { 
-      id: 'p1',
-      authorId: 'actor001',
-      authorName: 'Arjun K',
-      postDate: new Date('2024-10-15'),
-      title: 'Arjun K • 5y experience',
-      subtitle: 'Action | Drama | Hindi, English',
-      content: 'Versatile actor with 5 years of experience in action and drama genres. Fluent in Hindi and English. Based in Mumbai with strong portfolio in commercial and independent films.',
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-      category: 'all',
-      tags: ['actor', 'action', 'drama'],
-      type: PostType.text,
-      isFeatured: false,
-      location: 'Mumbai',
-      isActive: true,
-      createdAt: new Date('2024-10-15'),
-      updatedAt: new Date('2024-10-15')
-    },
-    { 
-      id: 'p2',
-      authorId: 'actor002',
-      authorName: 'Meera S',
-      postDate: new Date('2024-10-18'),
-      title: 'Meera S • 3y experience',
-      subtitle: 'Romance | Comedy | Tamil, Telugu',
-      content: 'Talented actress specializing in romantic comedies. 3 years of experience in Tamil and Telugu cinema. Known for natural acting style and strong screen presence.',
-      imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-      category: 'trending',
-      tags: ['actor', 'romance', 'comedy'],
-      type: PostType.text,
-      isFeatured: true,
-      location: 'Chennai',
-      isActive: true,
-      createdAt: new Date('2024-10-18'),
-      updatedAt: new Date('2024-10-18')
-    },
-    { 
-      id: 'p3',
-      authorId: 'actor003',
-      authorName: 'Ravi T',
-      postDate: new Date('2024-10-22'),
-      title: 'Ravi T • Newcomer',
-      subtitle: 'Theatre | Hindi',
-      content: 'Fresh talent from Delhi theatre scene. Strong foundation in classical acting techniques. Looking for breakthrough role in Hindi cinema.',
-      imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-      category: 'news',
-      tags: ['actor', 'theatre', 'newcomer'],
-      type: PostType.text,
-      isFeatured: false,
-      location: 'Delhi',
-      isActive: true,
-      createdAt: new Date('2024-10-22'),
-      updatedAt: new Date('2024-10-22')
-    },
-  ];
-
-  get items() { return this.role === 'actor' ? this.actorItems : this.producerItems; }
+  get items() { return this.allPosts(); }
 
   get filteredItems(): Discover[] {
     const q = this.search.trim().toLowerCase();
@@ -433,6 +312,89 @@ export class FeedComponent {
     if (qpRole && isPlatformBrowser(this.platformId)) localStorage.setItem('role', this.role);
   }
 
+  ngOnInit(): void {
+    // Uncomment the line below to run diagnostics
+    // this.diagnosticService.runDiagnostics();
+    
+    this.fetchDiscoverPosts();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+    // Restore scroll on component destroy
+    if (this.isModalOpen) {
+      document.body.style.overflow = '';
+    }
+  }
+
+  /**
+   * Fetch discover posts from Firestore
+   */
+  private fetchDiscoverPosts(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    // Fetch all posts (we'll filter by tab on the client side)
+    this.subscriptions.add(
+      this.discoverService.getDiscoverPosts('all', 100).subscribe({
+        next: (posts) => {
+          console.log('Fetched posts:', posts);
+          console.log('First post imageUrl:', posts[0]?.imageUrl);
+          this.allPosts.set(posts);
+          this.extractCategories(posts);
+          this.isLoading.set(false);
+        },
+        error: (error) => {
+          // Log detailed error for debugging
+          console.error('Firestore error details:', error);
+          console.error('Error code:', error?.code);
+          console.error('Error message:', error?.message);
+          
+          // Set user-friendly error message
+          let errorMsg = 'Failed to load posts. Please try again.';
+          
+          // Provide specific error messages for common issues
+          if (error?.code === 'permission-denied') {
+            errorMsg = 'Permission denied. Please check Firestore security rules.';
+          } else if (error?.code === 'failed-precondition') {
+            errorMsg = 'Missing Firestore index. Please create the required index.';
+          } else if (error?.code === 'unavailable') {
+            errorMsg = 'Firestore is currently unavailable. Please try again later.';
+          } else if (error?.message) {
+            errorMsg = `Error: ${error.message}`;
+          }
+          
+          this.errorMessage.set(errorMsg);
+          this.isLoading.set(false);
+        },
+      })
+    );
+  }
+
+  /**
+   * Extract unique categories from posts
+   */
+  private extractCategories(posts: Discover[]): void {
+    const uniqueCategories = new Set<string>();
+    
+    posts.forEach(post => {
+      if (post.category) {
+        uniqueCategories.add(post.category);
+      }
+    });
+    
+    // Always include 'all' as the first category
+    const categoriesArray = ['all', ...Array.from(uniqueCategories).sort()];
+    this.categories.set(categoriesArray);
+  }
+
+  /**
+   * Retry fetching posts after an error
+   */
+  retryFetch(): void {
+    this.fetchDiscoverPosts();
+  }
+
   onSearch(q: string) { this.search = q; }
 
   onPrimary(item: Discover) {
@@ -441,6 +403,16 @@ export class FeedComponent {
     } else {
       // Shortlist logic
     }
+  }
+
+  /**
+   * Handle image loading errors
+   */
+  onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    console.warn('Failed to load image:', img.src);
+    // Optionally set a fallback image
+    // img.src = 'assets/images/placeholder.png';
   }
 
   openModal(index: number) {

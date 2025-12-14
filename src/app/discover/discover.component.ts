@@ -66,11 +66,11 @@ import {
         [ngClass]="{ 'bg-black/70': !isActor(), 'bg-black/60': isActor() }"
       >
         <div
-          class="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between"
+          class="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-2"
         >
           <a
             routerLink="/discover"
-            class="text-3xl font-black tracking-wider select-none transition-colors duration-300"
+            class="text-xl sm:text-3xl font-black tracking-wider select-none transition-colors duration-300"
             [ngClass]="{
               'text-purple-200/80': isActor(),
               'text-neutral-300': !isActor()
@@ -78,7 +78,7 @@ import {
           >
             kalacast
           </a>
-          <nav class="flex items-center gap-8 text-sm">
+          <nav class="flex items-center gap-3 sm:gap-8 text-xs sm:text-sm">
             <a
               routerLink="/discover"
               #discoverLink="routerLinkActive"
