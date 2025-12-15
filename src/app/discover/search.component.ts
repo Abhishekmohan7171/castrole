@@ -59,9 +59,9 @@ interface ParsedSearchQuery {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="min-h-screen bg-black text-neutral-200">
+    <div class="min-h-screen bg-transparent text-neutral-200">
       <!-- Search Bar -->
-      <div class="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-neutral-800">
+      <div class="sticky top-0 z-30 bg-transparent backdrop-blur-md border-b border-neutral-800/30">
         <div class="max-w-7xl mx-auto px-4 py-4">
           <div class="relative">
             <input
@@ -69,16 +69,16 @@ interface ParsedSearchQuery {
               [(ngModel)]="searchQuery"
               (input)="onSearchChange()"
               placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills"
-              class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-fuchsia-500 transition-colors">
+              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors">
             
             <!-- Voice and AI icons -->
             <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
-              <button class="p-2 rounded-lg hover:bg-neutral-800 transition-colors text-neutral-400 hover:text-fuchsia-400">
+              <button class="p-2 rounded-lg hover:bg-white/10 transition-colors text-neutral-400 hover:text-[#90ACC8]">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </button>
-              <button class="p-2 rounded-lg bg-fuchsia-500 hover:bg-fuchsia-600 transition-colors text-white">
+              <button class="p-2 rounded-lg bg-[#90ACC8] hover:bg-[#7A9AB8] transition-colors text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -145,7 +145,7 @@ interface ParsedSearchQuery {
                       (input)="updateFilter('maxAge', +$any($event.target).value)"
                       min="0" 
                       max="100"
-                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-fuchsia-500">
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
                   </div>
                   <span class="w-12 text-center text-neutral-300">{{ filters().maxAge }}</span>
                 </div>
@@ -229,7 +229,7 @@ interface ParsedSearchQuery {
               <div class="space-y-2">
                 <button 
                   (click)="applyFilters()"
-                  class="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium py-3 rounded-lg transition-colors">
+                  class="w-full bg-[#90ACC8] hover:bg-[#7A9AB8] text-white font-medium py-3 rounded-lg transition-colors">
                   Apply Filters
                   @if (hasActiveFilters()) {
                     <span class="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">

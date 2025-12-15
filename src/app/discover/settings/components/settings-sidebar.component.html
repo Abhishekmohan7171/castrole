@@ -1,16 +1,8 @@
 <aside
-  class="rounded-2xl p-4 transition-all duration-300"
-  [ngClass]="{
-    'bg-purple-950/10 ring-1 ring-purple-900/10 border border-purple-950/10': isActor(),
-    'bg-black/40 ring-2 ring-white/10 border border-neutral-800': !isActor()
-  }"
+  class="rounded-2xl p-4 transition-all duration-300 bg-transparent"
 >
   <h2
-    class="text-sm font-semibold mb-3"
-    [ngClass]="{
-      'text-purple-200/70': isActor(),
-      'text-neutral-300': !isActor()
-    }"
+    class="text-lg font-semibold mb-4 px-2 text-white"
   >
     settings
   </h2>
@@ -19,22 +11,17 @@
     @for (tab of availableTabs(); track tab) {
       <button
         (click)="onTabClick(tab)"
-        class="w-full text-left rounded-xl px-4 py-4 transition-all duration-200 flex items-start gap-3"
+        class="w-full text-left rounded-xl px-4 py-4 transition-all duration-200 flex items-start gap-3 border-l-2"
         [ngClass]="{
-          'bg-purple-900/20 text-purple-100/80': isActor() && activeTab() === tab,
-          'text-purple-300/60 hover:bg-purple-950/10': isActor() && activeTab() !== tab,
-          'bg-white/5 text-neutral-200': !isActor() && activeTab() === tab,
-          'text-neutral-300 hover:bg-white/5': !isActor() && activeTab() !== tab
+          'bg-[#2D1C36] text-white border-[#946BA9]': isActor() && activeTab() === tab,
+          'bg-[#515D69]/30 text-white border-[#90ACC8]': !isActor() && activeTab() === tab,
+          'text-[#5E5E67] hover:bg-white/5 border-transparent': activeTab() !== tab
         }"
       >
         <!-- Icon -->
         <div class="flex-shrink-0 mt-0.5">
           <svg
-            class="w-5 h-5"
-            [ngClass]="{
-              'text-purple-300': isActor(),
-              'text-neutral-400': !isActor()
-            }"
+            class="w-5 h-5 text-white"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
@@ -46,13 +33,7 @@
         <!-- Content -->
         <div class="flex-1 min-w-0">
           <div class="font-medium text-sm">{{ getTabLabel(tab) }}</div>
-          <div
-            class="text-xs mt-1 leading-relaxed"
-            [ngClass]="{
-              'text-purple-200/60': isActor(),
-              'text-neutral-500': !isActor()
-            }"
-          >
+          <div class="text-xs mt-1 leading-relaxed text-[#5E5E67]">
             {{ getTabDescription(tab) }}
           </div>
         </div>

@@ -21,7 +21,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-black text-white">
+    <div class="min-h-screen bg-transparent text-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 lg:gap-8">
           <!-- Left: Profile card + media -->
@@ -117,7 +117,8 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                       [disabled]="isConnecting()"
                       class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
                       [ngClass]="{
-                        'bg-fuchsia-600 hover:bg-fuchsia-700 text-white': !isConnecting(),
+                        'bg-[#90ACC8] hover:bg-[#7A9AB8] text-white': !isConnecting() && !isActor(),
+                        'bg-purple-600 hover:bg-purple-700 text-white': !isConnecting() && isActor(),
                         'bg-neutral-700 text-neutral-400 cursor-not-allowed': isConnecting()
                       }"
                     >
@@ -257,7 +258,8 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   <button
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
-                      'border-white text-white': mediaTab === 'videos',
+                      'border-purple-400 text-purple-200': mediaTab === 'videos' && isActor(),
+                      'border-white text-white': mediaTab === 'videos' && !isActor(),
                       'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'videos'
                     }"
                     (click)="mediaTab = 'videos'"
@@ -267,7 +269,8 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   <button
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
-                      'border-white text-white': mediaTab === 'photos',
+                      'border-purple-400 text-purple-200': mediaTab === 'photos' && isActor(),
+                      'border-white text-white': mediaTab === 'photos' && !isActor(),
                       'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'photos'
                     }"
                     (click)="mediaTab = 'photos'"
@@ -284,7 +287,11 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   @for (videoUrl of videoUrls(); track videoUrl; let idx = $index) {
                     @if (idx < 4) {
                     <div
-                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 hover:ring-neutral-600 transition-all"
+                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                      [ngClass]="{
+                        'hover:ring-purple-500/50': isActor(),
+                        'hover:ring-neutral-600': !isActor()
+                      }"
                       (click)="openPreviewModal(videoUrl, 'video')"
                     >
                       <video [src]="videoUrl" class="w-full h-full object-cover pointer-events-none"></video>
@@ -320,7 +327,11 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   @for (imageUrl of imageUrls(); track imageUrl; let idx = $index) {
                     @if (idx < 4) {
                     <div
-                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 hover:ring-neutral-600 transition-all"
+                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                      [ngClass]="{
+                        'hover:ring-purple-500/50': isActor(),
+                        'hover:ring-neutral-600': !isActor()
+                      }"
                       (click)="openPreviewModal(imageUrl, 'image')"
                     >
                       <img [src]="imageUrl" alt="Portfolio image" class="w-full h-full object-cover"/>

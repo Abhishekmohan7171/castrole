@@ -54,37 +54,7 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
     AddAccountModalComponent,
   ],
   templateUrl: './settings.component.html',
-  styles: [
-    `
-      :host {
-        display: block;
-      }
-      /* Subtle purple gradient background for actors */
-      .actor-theme::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            ellipse at top left,
-            rgba(147, 51, 234, 0.03) 0%,
-            transparent 40%
-          ),
-          radial-gradient(
-            ellipse at bottom right,
-            rgba(168, 85, 247, 0.02) 0%,
-            transparent 40%
-          );
-        pointer-events: none;
-        z-index: 0;
-      }
-      .actor-theme {
-        position: relative;
-      }
-    `,
-  ],
+  styles: [],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
