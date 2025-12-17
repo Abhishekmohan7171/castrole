@@ -83,6 +83,7 @@ export interface Work {
   year: string;
   projectName: string;
   genre?: string;
+  projectLink?: string;
 }
 
 export interface Social {

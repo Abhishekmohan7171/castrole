@@ -469,9 +469,11 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   <div class="text-xs text-neutral-500 mt-0.5">
                     {{ work.genre || 'supporting role' }} | {{ work.year }}
                   </div>
-                  <a href="#" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
-                    www.linkofproject.com
+                  @if (work.projectLink) {
+                  <a [href]="work.projectLink" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
+                    {{ work.projectLink }}
                   </a>
+                  }
                 </div>
                 }
               </div>
