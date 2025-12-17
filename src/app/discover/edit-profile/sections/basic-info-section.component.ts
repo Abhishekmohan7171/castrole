@@ -667,7 +667,7 @@ export class BasicInfoSectionComponent implements OnInit {
       data.age = formValue.age;
       data.gender = formValue.gender;
       data.stageName = formValue.stageName;
-      data.height = formValue.height ? `${formValue.height} cms` : '';
+      data.height = formValue.height ? `${formValue.height} cm` : '';
       data.weight = formValue.weight ? `${formValue.weight} kg` : '';
     } else {
       data.name = formValue.name;
