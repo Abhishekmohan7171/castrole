@@ -442,7 +442,7 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                 @for (edu of profileData()?.actorProfile?.listEducation; track edu) {
                 <div>
                   <div class="text-sm text-neutral-300 font-medium">{{ edu.courseName }}</div>
-                  <div class="text-xs text-neutral-500 mt-0.5">{{ edu.schoolName }}</div>
+                  <div class="text-xs text-neutral-500 mt-0.5">{{ edu.schoolName }} | {{ edu.yearCompleted }}</div>
                   @if (edu.certificateUrl) {
                   <a
                     [href]="edu.certificateUrl"
@@ -467,7 +467,11 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                 <div>
                   <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
                   <div class="text-xs text-neutral-500 mt-0.5">
-                    {{ work.genre || 'supporting role' }} | {{ work.year }}
+                    @if (work.role) {
+                      {{ work.role }}@if (work.genre) {<span> | {{ work.genre }}</span>} | {{ work.year }}
+                    } @else {
+                      {{ work.genre || 'supporting role' }} | {{ work.year }}
+                    }
                   </div>
                   @if (work.projectLink) {
                   <a [href]="work.projectLink" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
@@ -574,7 +578,18 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                 @for (work of profileData()?.producerProfile?.producerWorks; track work) {
                 <div>
                   <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
-                  <div class="text-xs text-neutral-500 mt-0.5">{{ work.genre || 'Genre not specified' }} • {{ work.year }}</div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    @if (work.role) {
+                      {{ work.role }}@if (work.genre) {<span> • {{ work.genre }}</span>} • {{ work.year }}
+                    } @else {
+                      {{ work.genre || 'Genre not specified' }} • {{ work.year }}
+                    }
+                  </div>
+                  @if (work.projectLink) {
+                  <a [href]="work.projectLink" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
+                    {{ work.projectLink }}
+                  </a>
+                  }
                 </div>
                 }
               </div>
