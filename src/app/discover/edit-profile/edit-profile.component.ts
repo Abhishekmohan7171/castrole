@@ -536,7 +536,7 @@ export class EditProfileComponent implements OnInit {
   // Computed navigation items based on role
   navigationItems = computed(() => {
     const items = this.isActor()
-      ? this.allNavigationItems
+      ? this.allNavigationItems.filter((item) => item.id !== 'profile-info')
       : this.allNavigationItems.filter(
           (item) =>
             item.id !== 'voice-intro' &&
