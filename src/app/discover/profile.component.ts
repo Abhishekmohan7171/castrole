@@ -6,15 +6,24 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
-import { Firestore, doc, getDoc, updateDoc, query, where, collection, getDocs, limit } from '@angular/fire/firestore';
 import {
-  Storage,
-  ref,
-  listAll,
-  getDownloadURL,
-} from '@angular/fire/storage';
+  Firestore,
+  doc,
+  getDoc,
+  updateDoc,
+  query,
+  where,
+  collection,
+  getDocs,
+  limit,
+} from '@angular/fire/firestore';
+import { Storage, ref, listAll, getDownloadURL } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
-import { Profile, Language, Skill } from '../../assets/interfaces/profile.interfaces';
+import {
+  Profile,
+  Language,
+  Skill,
+} from '../../assets/interfaces/profile.interfaces';
 
 @Component({
   selector: 'app-discover-profile',
@@ -22,32 +31,60 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
   imports: [CommonModule],
   template: `
     <div class="min-h-screen bg-transparent text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 lg:gap-8">
+      <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
           <!-- Left: Profile card + media -->
           <section class="space-y-4">
             <!-- Profile card -->
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <!-- Settings Icon (top right) -->
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50 relative"
+            >
+              <!-- Settings Icon (top left, absolute) -->
               @if (isViewingOwnProfile()) {
-              <div class="flex justify-end mb-3">
-                <button
-                  class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
-                  aria-label="settings"
-                  (click)="navigateToSettings()"
+              <button
+                class="absolute top-4 left-4 h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                aria-label="settings"
+                (click)="navigateToSettings()"
+              >
+                <svg
+                  class="h-4 w-4 text-neutral-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
                 >
-                  <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/>
-                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
-                  </svg>
-                </button>
-              </div>
+                  <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+                  />
+                </svg>
+              </button>
+
+              <!-- Edit Profile Icon (top right, absolute) -->
+              <button
+                class="absolute top-4 right-4 h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                aria-label="edit profile"
+                (click)="openEditProfile()"
+              >
+                <svg
+                  class="h-4 w-4 text-neutral-400"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
+                  />
+                </svg>
+              </button>
               }
 
-              <!-- Profile Image (centered, larger) -->
-              <div class="flex flex-col items-center mb-4">
-                <div class="relative group mb-3">
-                  <div class="h-32 w-32 rounded-full overflow-hidden ring-2 ring-neutral-700/50">
+              <!-- Two-column layout: Profile Picture | Info -->
+              <div class="grid grid-cols-[140px_1fr] gap-6 items-start pt-8">
+                <!-- Left Column: Profile Picture -->
+                <div class="relative group">
+                  <div
+                    class="h-32 w-32 rounded-full overflow-hidden ring-2 ring-neutral-700/50"
+                  >
                     @if (getProfileImageUrl()) {
                     <img
                       [src]="getProfileImageUrl()"
@@ -60,86 +97,214 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                       class="w-full h-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center cursor-pointer"
                       aria-label="Set profile picture"
                     >
-                      <svg class="w-12 h-12 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      <svg
+                        class="w-12 h-12 text-neutral-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
                       </svg>
                     </button>
                     } @else {
-                    <!-- Display placeholder avatar for other users -->
-                    <div class="w-full h-full bg-neutral-800/50 flex items-center justify-center">
-                      <svg class="w-12 h-12 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    <div
+                      class="w-full h-full bg-neutral-800/50 flex items-center justify-center"
+                    >
+                      <svg
+                        class="w-12 h-12 text-neutral-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
                       </svg>
                     </div>
                     }
                   </div>
-                  
+
                   @if (isViewingOwnProfile() && getProfileImageUrl()) {
-                  <!-- Edit/Remove overlay on hover -->
                   <button
                     (click)="removeProfilePicture()"
                     class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-full"
                     aria-label="Remove profile picture"
                   >
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                   }
                 </div>
 
-                <!-- Name and Edit/Connect Button -->
-                <div class="flex flex-col items-center gap-2 mb-1">
+                <!-- Right Column: Info -->
+                <div class="space-y-3">
+                  <!-- Name -->
+                  <h1 class="text-2xl font-medium text-neutral-200">
+                    {{ getDisplayName() }}
+                  </h1>
+
+                  <!-- Voice Intro (if actor) -->
+                  @if (isActor() && profileData()?.actorProfile?.voiceIntro) {
                   <div class="flex items-center gap-2">
-                    <h1 class="text-xl font-medium text-neutral-200">
-                      {{ getDisplayName() }}
-                    </h1>
-                    @if (isViewingOwnProfile()) {
                     <button
-                      class="h-6 w-6 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
-                      aria-label="edit profile"
-                      (click)="openEditProfile()"
+                      class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors"
+                      [attr.aria-label]="
+                        isVoicePlaying()
+                          ? 'pause voice intro'
+                          : 'play voice intro'
+                      "
+                      (click)="toggleVoiceIntro()"
                     >
-                      <svg class="h-3 w-3 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+                      @if (isVoicePlaying()) {
+                      <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                        <path
+                          fill="currentColor"
+                          d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"
+                        />
+                      </svg>
+                      } @else {
+                      <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                        <path fill="currentColor" d="M8 5v14l11-7z" />
+                      </svg>
+                      }
+                      <span class="text-xs text-neutral-400">voice intro</span>
+                    </button>
+                    @if (isVoicePlaying()) {
+                    <button
+                      class="h-7 w-7 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                      aria-label="stop voice intro"
+                      (click)="stopVoiceIntro()"
+                    >
+                      <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
+                        <path fill="currentColor" d="M6 6h12v12H6z" />
                       </svg>
                     </button>
                     }
                   </div>
+                  }
 
-                  <!-- Connect Button and Block Menu Row (for viewing other profiles) -->
-                  @if (!isViewingOwnProfile() && (canConnect() || targetUserId())) {
-                  <div class="flex items-center gap-2">
-                    <!-- Connect Button -->
+                  <!-- Basic Stats - Updated Order: Age → Height → Weight → Gender -->
+                  @if (isActor()) {
+                  <div class="grid grid-cols-4 gap-2 text-center">
+                    @if (profileData()?.age) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        profileData()?.age
+                      }}</span>
+                      <span class="text-xs text-neutral-500">age</span>
+                    </div>
+                    } @if (profileData()?.actorProfile?.height) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        formatHeight(profileData()?.actorProfile?.height)
+                      }}</span>
+                      <span class="text-xs text-neutral-500">height</span>
+                    </div>
+                    } @if (profileData()?.actorProfile?.weight) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        formatWeight(profileData()?.actorProfile?.weight)
+                      }}</span>
+                      <span class="text-xs text-neutral-500">weight</span>
+                    </div>
+                    } @if (profileData()?.gender) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        profileData()?.gender
+                      }}</span>
+                      <span class="text-xs text-neutral-500">gender</span>
+                    </div>
+                    }
+                  </div>
+                  } @else {
+                  <div class="flex items-center gap-4 text-xs text-neutral-400">
+                    @if (profileData()?.age) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        profileData()?.age
+                      }}</span>
+                      <span class="text-xs text-neutral-500">age</span>
+                    </div>
+                    } @if (profileData()?.gender) {
+                    <div class="flex flex-col">
+                      <span class="text-base font-medium text-neutral-200">{{
+                        profileData()?.gender
+                      }}</span>
+                      <span class="text-xs text-neutral-500">gender</span>
+                    </div>
+                    }
+                  </div>
+                  }
+
+                  <!-- Connect Button and Block Menu (for viewing other profiles) -->
+                  @if (!isViewingOwnProfile() && (canConnect() ||
+                  targetUserId())) {
+                  <div class="flex items-center gap-2 pt-2">
                     @if (canConnect()) {
                     <button
                       (click)="connectWithUser()"
                       [disabled]="isConnecting()"
                       class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
                       [ngClass]="{
-                        'bg-[#90ACC8] hover:bg-[#7A9AB8] text-white': !isConnecting() && !isActor(),
-                        'bg-purple-600 hover:bg-purple-700 text-white': !isConnecting() && isActor(),
-                        'bg-neutral-700 text-neutral-400 cursor-not-allowed': isConnecting()
+                        'bg-[#90ACC8] hover:bg-[#7A9AB8] text-white':
+                          !isConnecting() && !isActor(),
+                        'bg-purple-600 hover:bg-purple-700 text-white':
+                          !isConnecting() && isActor(),
+                        'bg-neutral-700 text-neutral-400 cursor-not-allowed':
+                          isConnecting()
                       }"
                     >
                       @if (isConnecting()) {
-                        <span class="inline-flex space-x-1">
-                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                          <span class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-                        </span>
-                        <span>connecting...</span>
+                      <span class="inline-flex space-x-1">
+                        <span
+                          class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce"
+                          style="animation-delay: 0ms"
+                        ></span>
+                        <span
+                          class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce"
+                          style="animation-delay: 150ms"
+                        ></span>
+                        <span
+                          class="w-1 h-1 bg-neutral-300 rounded-full animate-bounce"
+                          style="animation-delay: 300ms"
+                        ></span>
+                      </span>
+                      <span>connecting...</span>
                       } @else {
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span>connect</span>
+                      <svg
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                        ></path>
+                      </svg>
+                      <span>connect</span>
                       }
                     </button>
-                    }
-
-                    <!-- Block/Unblock Menu -->
-                    @if (targetUserId()) {
+                    } @if (targetUserId()) {
                     <div class="relative">
                       <button
                         type="button"
@@ -147,120 +312,104 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                         class="p-1.5 rounded-full hover:bg-neutral-800/50 transition-colors"
                         title="More options"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="text-neutral-400"
+                        >
                           <circle cx="12" cy="12" r="1"></circle>
                           <circle cx="12" cy="5" r="1"></circle>
                           <circle cx="12" cy="19" r="1"></circle>
                         </svg>
                       </button>
 
-                      <!-- Dropdown Menu -->
                       @if (showBlockMenu()) {
-                        <div class="absolute left-1/2 -translate-x-1/2 mt-2 w-40 rounded-lg shadow-xl z-10 border bg-neutral-900 border-white/10">
-                          @if (!isUserBlocked()) {
-                            <button
-                              type="button"
-                              (click)="blockUser()"
-                              class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-red-400"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                              </svg>
-                              Block User
-                            </button>
-                          } @else {
-                            <button
-                              type="button"
-                              (click)="unblockUser()"
-                              class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-green-400"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                              </svg>
-                              Unblock User
-                            </button>
-                          }
-                        </div>
+                      <div
+                        class="absolute left-1/2 -translate-x-1/2 mt-2 w-40 rounded-lg shadow-xl z-10 border bg-neutral-900 border-white/10"
+                      >
+                        @if (!isUserBlocked()) {
+                        <button
+                          type="button"
+                          (click)="blockUser()"
+                          class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-red-400"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line
+                              x1="4.93"
+                              y1="4.93"
+                              x2="19.07"
+                              y2="19.07"
+                            ></line>
+                          </svg>
+                          Block User
+                        </button>
+                        } @else {
+                        <button
+                          type="button"
+                          (click)="unblockUser()"
+                          class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2 hover:bg-white/5 text-green-400"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path
+                              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                            ></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          Unblock User
+                        </button>
+                        }
+                      </div>
                       }
                     </div>
                     }
                   </div>
                   }
                 </div>
-
-                <!-- Voice Intro (if actor) -->
-                @if (isActor() && profileData()?.actorProfile?.voiceIntro) {
-                <div class="flex items-center gap-2 mb-3">
-                  <button
-                    class="flex items-center gap-1 px-3 py-1 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors"
-                    [attr.aria-label]="isVoicePlaying() ? 'pause voice intro' : 'play voice intro'"
-                    (click)="toggleVoiceIntro()"
-                  >
-                    @if (isVoicePlaying()) {
-                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
-                      <path fill="currentColor" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                    </svg>
-                    } @else {
-                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
-                      <path fill="currentColor" d="M8 5v14l11-7z"/>
-                    </svg>
-                    }
-                    <span class="text-xs text-neutral-400">voice intro</span>
-                  </button>
-                  @if (isVoicePlaying()) {
-                  <button
-                    class="h-7 w-7 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
-                    aria-label="stop voice intro"
-                    (click)="stopVoiceIntro()"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-neutral-300">
-                      <path fill="currentColor" d="M6 6h12v12H6z"/>
-                    </svg>
-                  </button>
-                  }
-                </div>
-                }
-
-                <!-- Basic Stats -->
-                @if (isActor()) {
-                <div class="flex items-center gap-3 text-xs text-neutral-400">
-                  @if (profileData()?.gender) {
-                  <span>{{ profileData()?.gender }}</span>
-                  }
-                  @if (profileData()?.age) {
-                  <span>{{ profileData()?.age }} yrs</span>
-                  }
-                  @if (profileData()?.actorProfile?.height) {
-                  <span>{{ formatHeight(profileData()?.actorProfile?.height) }}</span>
-                  }
-                  @if (profileData()?.actorProfile?.weight) {
-                  <span>{{ formatWeight(profileData()?.actorProfile?.weight) }}</span>
-                  }
-                </div>
-                } @else {
-                <div class="flex items-center gap-3 text-xs text-neutral-400">
-                  @if (profileData()?.age) {
-                  <span>{{ profileData()?.age }} yrs</span>
-                  }
-                  @if (profileData()?.gender) {
-                  <span>{{ profileData()?.gender }}</span>
-                  }
-                </div>
-                }
               </div>
 
               <!-- Media tabs - Actor only -->
               @if (isActor()) {
-              <div class="mb-3">
-                <div class="flex items-center gap-2 border-b border-neutral-800">
+              <div class="my-3">
+                <div
+                  class="flex items-center gap-2 border-b border-neutral-800"
+                >
                   <button
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
-                      'border-purple-400 text-purple-200': mediaTab === 'videos' && isActor(),
-                      'border-white text-white': mediaTab === 'videos' && !isActor(),
-                      'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'videos'
+                      'border-purple-400 text-purple-200':
+                        mediaTab === 'videos' && isActor(),
+                      'border-white text-white':
+                        mediaTab === 'videos' && !isActor(),
+                      'border-transparent text-neutral-500 hover:text-neutral-300':
+                        mediaTab !== 'videos'
                     }"
                     (click)="mediaTab = 'videos'"
                   >
@@ -269,9 +418,12 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                   <button
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
-                      'border-purple-400 text-purple-200': mediaTab === 'photos' && isActor(),
-                      'border-white text-white': mediaTab === 'photos' && !isActor(),
-                      'border-transparent text-neutral-500 hover:text-neutral-300': mediaTab !== 'photos'
+                      'border-purple-400 text-purple-200':
+                        mediaTab === 'photos' && isActor(),
+                      'border-white text-white':
+                        mediaTab === 'photos' && !isActor(),
+                      'border-transparent text-neutral-500 hover:text-neutral-300':
+                        mediaTab !== 'photos'
                     }"
                     (click)="mediaTab = 'photos'"
                   >
@@ -281,85 +433,125 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
               </div>
 
               <!-- Videos Tab Content -->
-              @if (mediaTab === 'videos') {
-                @if (hasVideos()) {
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                  @for (videoUrl of videoUrls(); track videoUrl; let idx = $index) {
-                    @if (idx < 4) {
-                    <div
-                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
-                      [ngClass]="{
-                        'hover:ring-purple-500/50': isActor(),
-                        'hover:ring-neutral-600': !isActor()
-                      }"
-                      (click)="openPreviewModal(videoUrl, 'video')"
-                    >
-                      <video [src]="videoUrl" class="w-full h-full object-cover pointer-events-none"></video>
-                    </div>
-                    }
-                  }
-                </div>
-                } @else if (isViewingOwnProfile()) {
-                <button
-                  (click)="navigateToUpload()"
-                  class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
+              @if (mediaTab === 'videos') { @if (hasVideos()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
+                { @if (idx < 4) {
+                <div
+                  class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                  [ngClass]="{
+                    'hover:ring-purple-500/50': isActor(),
+                    'hover:ring-neutral-600': !isActor()
+                  }"
+                  (click)="openPreviewModal(videoUrl, 'video')"
                 >
-                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                  <span class="text-xs text-neutral-500 uppercase tracking-wide">Add Video</span>
-                </button>
-                } @else {
-                <!-- Empty state for other users' profiles -->
-                <div class="w-full aspect-video rounded-lg bg-neutral-800/20 flex flex-col items-center justify-center gap-2 mb-4">
-                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/>
-                  </svg>
-                  <span class="text-xs text-neutral-500 text-center">No videos uploaded yet</span>
+                  <video
+                    [src]="videoUrl"
+                    class="w-full h-full object-cover pointer-events-none"
+                  ></video>
                 </div>
-                }
-              }
+                } }
+              </div>
+              } @else if (isViewingOwnProfile()) {
+              <button
+                (click)="navigateToUpload()"
+                class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
+              >
+                <svg
+                  class="h-8 w-8 text-neutral-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span class="text-xs text-neutral-500 uppercase tracking-wide"
+                  >Add Video</span
+                >
+              </button>
+              } @else {
+              <!-- Empty state for other users' profiles -->
+              <div
+                class="w-full aspect-video rounded-lg bg-neutral-800/20 flex flex-col items-center justify-center gap-2 mb-4"
+              >
+                <svg
+                  class="h-8 w-8 text-neutral-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"
+                  />
+                </svg>
+                <span class="text-xs text-neutral-500 text-center"
+                  >No videos uploaded yet</span
+                >
+              </div>
+              } }
 
               <!-- Photos Tab Content -->
-              @if (mediaTab === 'photos') {
-                @if (hasImages()) {
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                  @for (imageUrl of imageUrls(); track imageUrl; let idx = $index) {
-                    @if (idx < 4) {
-                    <div
-                      class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
-                      [ngClass]="{
-                        'hover:ring-purple-500/50': isActor(),
-                        'hover:ring-neutral-600': !isActor()
-                      }"
-                      (click)="openPreviewModal(imageUrl, 'image')"
-                    >
-                      <img [src]="imageUrl" alt="Portfolio image" class="w-full h-full object-cover"/>
-                    </div>
-                    }
-                  }
-                </div>
-                } @else if (isViewingOwnProfile()) {
-                <button
-                  (click)="navigateToUpload()"
-                  class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
+              @if (mediaTab === 'photos') { @if (hasImages()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (imageUrl of imageUrls(); track imageUrl; let idx = $index)
+                { @if (idx < 4) {
+                <div
+                  class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                  [ngClass]="{
+                    'hover:ring-purple-500/50': isActor(),
+                    'hover:ring-neutral-600': !isActor()
+                  }"
+                  (click)="openPreviewModal(imageUrl, 'image')"
                 >
-                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                  <span class="text-xs text-neutral-500 uppercase tracking-wide">Add Image</span>
-                </button>
-                } @else {
-                <!-- Empty state for other users' profiles -->
-                <div class="w-full aspect-video rounded-lg bg-neutral-800/20 flex flex-col items-center justify-center gap-2 mb-4">
-                  <svg class="h-8 w-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                  <span class="text-xs text-neutral-500 text-center">No photos uploaded yet</span>
+                  <img
+                    [src]="imageUrl"
+                    alt="Portfolio image"
+                    class="w-full h-full object-cover"
+                  />
                 </div>
-                }
-              }
-              }
+                } }
+              </div>
+              } @else if (isViewingOwnProfile()) {
+              <button
+                (click)="navigateToUpload()"
+                class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
+              >
+                <svg
+                  class="h-8 w-8 text-neutral-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span class="text-xs text-neutral-500 uppercase tracking-wide"
+                  >Add Image</span
+                >
+              </button>
+              } @else {
+              <!-- Empty state for other users' profiles -->
+              <div
+                class="w-full aspect-video rounded-lg bg-neutral-800/20 flex flex-col items-center justify-center gap-2 mb-4"
+              >
+                <svg
+                  class="h-8 w-8 text-neutral-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span class="text-xs text-neutral-500 text-center"
+                  >No photos uploaded yet</span
+                >
+              </div>
+              } } }
 
               <!-- Social Links -->
               @if (hasSocialLinks() || isActor()) {
@@ -373,49 +565,78 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                     class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
                     aria-label="Instagram"
                   >
-                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                      <path
+                        d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"
+                      />
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                     </svg>
                   </a>
-                  }
-                  @if (profileData()?.social?.youtubeIdUrl) {
+                  } @if (profileData()?.social?.youtubeIdUrl) {
                   <a
                     [href]="profileData()?.social?.youtubeIdUrl"
                     target="_blank"
                     class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
                     aria-label="YouTube"
                   >
-                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
+                      />
                     </svg>
                   </a>
-                  }
-                  @if (profileData()?.social?.externalLinkUrl) {
+                  } @if (profileData()?.social?.externalLinkUrl) {
                   <a
                     [href]="profileData()?.social?.externalLinkUrl"
                     target="_blank"
                     class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
                     aria-label="External Link"
                   >
-                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                      <polyline points="15 3 21 3 21 9"/>
-                      <line x1="10" y1="14" x2="21" y2="3"/>
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                      />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
                     </svg>
                   </a>
-                  }
-                  @if (profileData()?.social?.addLinkUrl) {
+                  } @if (profileData()?.social?.addLinkUrl) {
                   <a
                     [href]="profileData()?.social?.addLinkUrl"
                     target="_blank"
                     class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
                     aria-label="Additional Link"
                   >
-                    <svg class="h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                      />
+                      <path
+                        d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                      />
                     </svg>
                   </a>
                   }
@@ -429,20 +650,39 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
           <section class="space-y-4">
             @if (isActor()) {
             <!-- Location -->
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">location</div>
-              <div class="text-sm text-neutral-300">{{ profileData()?.location || 'Not specified' }}</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+              >
+                location
+              </div>
+              <div class="text-sm text-neutral-300">
+                {{ profileData()?.location || 'Not specified' }}
+              </div>
             </div>
 
             <!-- Acting Education -->
             @if (hasEducation()) {
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">acting education</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                acting education
+              </div>
               <div class="space-y-3">
-                @for (edu of profileData()?.actorProfile?.listEducation; track edu) {
+                @for (edu of profileData()?.actorProfile?.listEducation; track
+                edu) {
                 <div>
-                  <div class="text-sm text-neutral-300 font-medium">{{ edu.courseName }}</div>
-                  <div class="text-xs text-neutral-500 mt-0.5">{{ edu.schoolName }}</div>
+                  <div class="text-sm text-neutral-300 font-medium">
+                    {{ edu.courseName }}
+                  </div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    {{ edu.schoolName }} | {{ edu.yearCompleted }}
+                  </div>
                   @if (edu.certificateUrl) {
                   <a
                     [href]="edu.certificateUrl"
@@ -460,17 +700,37 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
 
             <!-- Experiences -->
             @if (hasActorWorks()) {
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">experiences</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                experiences
+              </div>
               <div class="space-y-3">
-                @for (work of profileData()?.actorProfile?.actorWorks; track work) {
+                @for (work of profileData()?.actorProfile?.actorWorks; track
+                work) {
                 <div>
-                  <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
+                  <div class="text-sm text-neutral-300 font-medium">
+                    {{ work.projectName }}
+                  </div>
                   <div class="text-xs text-neutral-500 mt-0.5">
+                    @if (work.role) {
+                    {{ work.role }}@if (work.genre) {<span>
+                      | {{ work.genre }}</span
+                    >} | {{ work.year }}
+                    } @else {
                     {{ work.genre || 'supporting role' }} | {{ work.year }}
+                    }
                   </div>
                   @if (work.projectLink) {
-                  <a [href]="work.projectLink" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1">
+                  <a
+                    [href]="work.projectLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                  >
                     {{ work.projectLink }}
                   </a>
                   }
@@ -482,25 +742,36 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
 
             <!-- Languages -->
             @if (hasLanguages()) {
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">languages</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                languages
+              </div>
               <div class="space-y-2">
-                @for (language of profileData()?.actorProfile?.languages; track language) {
+                @for (language of profileData()?.actorProfile?.languages; track
+                language) {
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-neutral-300">{{ getLanguageName(language) }}</span>
+                  <span class="text-sm text-neutral-300">{{
+                    getLanguageName(language)
+                  }}</span>
                   @if (hasLanguageRating(language)) {
                   <div class="flex items-center gap-0.5">
                     @for (star of [1,2,3,4,5]; track star) {
-                    <svg 
+                    <svg
                       class="w-3 h-3"
                       [ngClass]="{
                         'text-yellow-400': star <= getLanguageRating(language),
                         'text-neutral-700': star > getLanguageRating(language)
                       }"
-                      fill="currentColor" 
+                      fill="currentColor"
                       viewBox="0 0 20 20"
                     >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                      <path
+                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+                      />
                     </svg>
                     }
                   </div>
@@ -513,25 +784,36 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
 
             <!-- Extra Curricular / Skills -->
             @if (hasSkills()) {
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">extra curricular</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                extra curricular
+              </div>
               <div class="space-y-2">
-                @for (skill of profileData()?.actorProfile?.skills; track skill) {
+                @for (skill of profileData()?.actorProfile?.skills; track skill)
+                {
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-neutral-300">{{ getSkillName(skill) }}</span>
+                  <span class="text-sm text-neutral-300">{{
+                    getSkillName(skill)
+                  }}</span>
                   @if (hasSkillRating(skill)) {
                   <div class="flex items-center gap-0.5">
                     @for (star of [1,2,3,4,5]; track star) {
-                    <svg 
+                    <svg
                       class="w-3 h-3"
                       [ngClass]="{
                         'text-yellow-400': star <= getSkillRating(skill),
                         'text-neutral-700': star > getSkillRating(skill)
                       }"
-                      fill="currentColor" 
+                      fill="currentColor"
                       viewBox="0 0 20 20"
                     >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                      <path
+                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+                      />
                     </svg>
                     }
                   </div>
@@ -540,47 +822,106 @@ import { Profile, Language, Skill } from '../../assets/interfaces/profile.interf
                 }
               </div>
             </div>
-            }
-
-            } @else {
+            } } @else {
             <!-- Producer Sections -->
             <!-- Location -->
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">location</div>
-                  <div class="text-sm text-neutral-300">{{ profileData()?.location || 'Not specified' }}</div>
+                  <div
+                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                  >
+                    location
+                  </div>
+                  <div class="text-sm text-neutral-300">
+                    {{ profileData()?.location || 'Not specified' }}
+                  </div>
                 </div>
                 <div>
-                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">designation</div>
-                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.designation || 'Not specified' }}</div>
+                  <div
+                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                  >
+                    designation
+                  </div>
+                  <div class="text-sm text-neutral-300">
+                    {{
+                      profileData()?.producerProfile?.designation ||
+                        'Not specified'
+                    }}
+                  </div>
                 </div>
                 <div>
-                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">production house</div>
-                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.productionHouse || 'Not specified' }}</div>
+                  <div
+                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                  >
+                    production house
+                  </div>
+                  <div class="text-sm text-neutral-300">
+                    {{
+                      profileData()?.producerProfile?.productionHouse ||
+                        'Not specified'
+                    }}
+                  </div>
                 </div>
                 <div>
-                  <div class="text-xs text-neutral-500 uppercase tracking-wide mb-2">industry type</div>
-                  <div class="text-sm text-neutral-300">{{ profileData()?.producerProfile?.industryType || 'Not specified' }}</div>
+                  <div
+                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                  >
+                    industry type
+                  </div>
+                  <div class="text-sm text-neutral-300">
+                    {{
+                      profileData()?.producerProfile?.industryType ||
+                        'Not specified'
+                    }}
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- Previous Works -->
             @if (hasProducerWorks()) {
-            <div class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50">
-              <div class="text-xs text-neutral-500 uppercase tracking-wide mb-3">previous works</div>
+            <div
+              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+            >
+              <div
+                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                previous works
+              </div>
               <div class="space-y-3">
-                @for (work of profileData()?.producerProfile?.producerWorks; track work) {
+                @for (work of profileData()?.producerProfile?.producerWorks;
+                track work) {
                 <div>
-                  <div class="text-sm text-neutral-300 font-medium">{{ work.projectName }}</div>
-                  <div class="text-xs text-neutral-500 mt-0.5">{{ work.genre || 'Genre not specified' }} • {{ work.year }}</div>
+                  <div class="text-sm text-neutral-300 font-medium">
+                    {{ work.projectName }}
+                  </div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    @if (work.role) {
+                    {{ work.role }}@if (work.genre) {<span>
+                      • {{ work.genre }}</span
+                    >} • {{ work.year }}
+                    } @else {
+                    {{ work.genre || 'Genre not specified' }} • {{ work.year }}
+                    }
+                  </div>
+                  @if (work.projectLink) {
+                  <a
+                    [href]="work.projectLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                  >
+                    {{ work.projectLink }}
+                  </a>
+                  }
                 </div>
                 }
               </div>
             </div>
-            }
-            }
+            } }
           </section>
         </div>
       </div>
@@ -741,13 +1082,13 @@ export class ProfileComponent implements OnInit {
   profileData = signal<Profile | null>(null);
   isActor = computed(() => this.userRole() === 'actor');
   userData = signal<UserDoc | null>(null);
-  
+
   // Profile viewing signals
   isViewingOwnProfile = signal<boolean>(true);
   targetUsername = signal<string | null>(null);
   targetUserId = signal<string | null>(null);
   currentUserRole = signal<string | null>(null);
-  
+
   // Connect button state
   isConnecting = signal<boolean>(false);
   canConnect = computed(() => {
@@ -759,11 +1100,13 @@ export class ProfileComponent implements OnInit {
     // 2. Current user is a producer
     // 3. Target user is an actor
     // 4. Both users exist
-    return !this.isViewingOwnProfile() &&
-           currentUser !== null &&
-           targetId !== null &&
-           this.currentUserRole() === 'producer' &&
-           this.userRole() === 'actor';
+    return (
+      !this.isViewingOwnProfile() &&
+      currentUser !== null &&
+      targetId !== null &&
+      this.currentUserRole() === 'producer' &&
+      this.userRole() === 'actor'
+    );
   });
 
   // Block functionality
@@ -864,7 +1207,9 @@ export class ProfileComponent implements OnInit {
     const currentUser = this.auth.getCurrentUser();
     if (currentUser) {
       try {
-        const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+        const currentUserDoc = await getDoc(
+          doc(this.firestore, 'users', currentUser.uid)
+        );
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data() as UserDoc;
           this.currentUserRole.set(currentUserData.currentRole || null);
@@ -873,11 +1218,11 @@ export class ProfileComponent implements OnInit {
         console.error('Error loading current user role:', error);
       }
     }
-    
+
     // Check if we have a slugUid parameter (viewing someone else's profile)
     const slugUid = this.route.snapshot.paramMap.get('slugUid');
     console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
-    
+
     if (slugUid) {
       // Viewing someone else's profile via stored slug-uid URL
       console.log('Loading profile for slugUid:', slugUid);
@@ -898,51 +1243,59 @@ export class ProfileComponent implements OnInit {
   private async loadUserProfileBySlugUid(slugUid: string) {
     try {
       console.log('Loading profile by slugUid:', slugUid);
-      
+
       // Query profiles collection by slug field (which contains slug-uid)
       const profilesRef = collection(this.firestore, 'profiles');
-      const profileQuery = query(profilesRef, where('slug', '==', slugUid), limit(1));
+      const profileQuery = query(
+        profilesRef,
+        where('slug', '==', slugUid),
+        limit(1)
+      );
       const profileDocs = await getDocs(profileQuery);
-      
+
       if (profileDocs.empty) {
         // Profile not found by slug, try finding by UID suffix match
         console.warn('Profile not found by slug, trying UID suffix match...');
-        
+
         const shortUid = this.profileUrlService.extractUid(slugUid);
-        
+
         if (!shortUid) {
           console.error('Invalid slug-uid format');
           this.router.navigate(['/discover']);
           return;
         }
-        
-        console.log('Extracted short UID:', shortUid, 'searching for matching profile...');
-        
+
+        console.log(
+          'Extracted short UID:',
+          shortUid,
+          'searching for matching profile...'
+        );
+
         // Query all profiles and find one where UID ends with shortUid
         const allProfilesQuery = query(collection(this.firestore, 'profiles'));
         const allProfiles = await getDocs(allProfilesQuery);
-        
-        const matchingProfile = allProfiles.docs.find(doc => {
+
+        const matchingProfile = allProfiles.docs.find((doc) => {
           const profile = doc.data() as Profile;
           return profile.uid.endsWith(shortUid);
         });
-        
+
         if (!matchingProfile) {
           console.error('No profile found with matching UID suffix');
           this.router.navigate(['/discover']);
           return;
         }
-        
+
         const profileData = matchingProfile.data() as Profile;
         console.log('Profile found via UID suffix match:', profileData);
-        
+
         // Set profile data
         this.profileData.set(profileData);
-        
+
         // Load user data
         const userDocRef = doc(this.firestore, 'users', profileData.uid);
         const userDoc = await getDoc(userDocRef);
-        
+
         if (userDoc.exists()) {
           const userData = userDoc.data() as UserDoc;
           this.userData.set(userData);
@@ -950,7 +1303,7 @@ export class ProfileComponent implements OnInit {
           this.targetUsername.set(userData.name);
           this.targetUserId.set(profileData.uid);
         }
-        
+
         // Load media
         this.loadMediaFromStorage(profileData.uid);
 
@@ -965,14 +1318,14 @@ export class ProfileComponent implements OnInit {
       const profileDoc = profileDocs.docs[0];
       const profileData = profileDoc.data() as Profile;
       console.log('Profile found by slug:', profileData);
-      
+
       // Set profile data
       this.profileData.set(profileData);
 
       // Load user data
       const userDocRef = doc(this.firestore, 'users', profileData.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
         // User not found
         console.error('User not found for UID:', profileData.uid);
@@ -982,7 +1335,7 @@ export class ProfileComponent implements OnInit {
 
       const userData = userDoc.data() as UserDoc;
       console.log('User found:', userData);
-      
+
       // Set user data
       this.userData.set(userData);
       this.userRole.set(userData.currentRole || 'actor');
@@ -997,7 +1350,6 @@ export class ProfileComponent implements OnInit {
 
       // Check block status
       this.checkBlockStatus();
-
     } catch (error) {
       // Error loading profile, redirect to discover
       console.error('Error loading profile:', error);
@@ -1151,7 +1503,7 @@ export class ProfileComponent implements OnInit {
 
     // Create new audio element
     this.currentAudio = new Audio(voiceIntroUrl);
-    
+
     // Cleanup when audio ends
     this.currentAudio.addEventListener('ended', () => {
       this.isVoicePlaying.set(false);
@@ -1163,7 +1515,7 @@ export class ProfileComponent implements OnInit {
       this.isVoicePlaying.set(false);
       this.currentAudio = null;
     });
-    
+
     this.isVoicePlaying.set(true);
   }
 
@@ -1244,7 +1596,6 @@ export class ProfileComponent implements OnInit {
   openEditProfile() {
     this.router.navigate(['/discover/profile/edit']);
   }
-
 
   navigateToSettings() {
     this.router.navigate(['/discover/settings']);
@@ -1344,7 +1695,7 @@ export class ProfileComponent implements OnInit {
     } else {
       // If no images, redirect to upload page with return URL
       this.router.navigate(['/discover/upload'], {
-        queryParams: { returnUrl: '/discover/profile' }
+        queryParams: { returnUrl: '/discover/profile' },
       });
     }
   }
@@ -1417,11 +1768,11 @@ export class ProfileComponent implements OnInit {
    */
   getProfileUrl(): string {
     const profile = this.profileData();
-    
+
     if (!profile || !profile.slug) {
       return '/discover/profile';
     }
-    
+
     return this.profileUrlService.generateProfileUrl(profile.slug);
   }
 
@@ -1459,7 +1810,10 @@ export class ProfileComponent implements OnInit {
     }
 
     try {
-      const isBlocked = await this.blockService.isUserBlockedAsync(currentUser.uid, targetId);
+      const isBlocked = await this.blockService.isUserBlockedAsync(
+        currentUser.uid,
+        targetId
+      );
       this.isUserBlocked.set(isBlocked);
     } catch (error) {
       console.error('Error checking block status:', error);
@@ -1514,13 +1868,15 @@ export class ProfileComponent implements OnInit {
   async connectWithUser() {
     const currentUser = this.auth.getCurrentUser();
     const targetId = this.targetUserId();
-    
+
     if (!currentUser || !targetId || this.isConnecting()) {
       return;
     }
 
     // Check if current user is a producer
-    const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+    const currentUserDoc = await getDoc(
+      doc(this.firestore, 'users', currentUser.uid)
+    );
     if (!currentUserDoc.exists()) {
       return;
     }
@@ -1534,15 +1890,18 @@ export class ProfileComponent implements OnInit {
 
     try {
       // Create chat room without sending initial message
-      const roomId = await this.chatService.producerStartChat(targetId, currentUser.uid);
-      
+      const roomId = await this.chatService.producerStartChat(
+        targetId,
+        currentUser.uid
+      );
+
       // Store the room ID in localStorage so chat component opens it directly
       try {
         localStorage.setItem('chat:lastRoomId', roomId);
       } catch (storageError) {
         console.warn('Could not save room ID to localStorage:', storageError);
       }
-      
+
       // Navigate to chat page - it will automatically open the stored room
       this.router.navigate(['/discover/chat']);
     } catch (error) {
@@ -1553,18 +1912,18 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Format height to ensure it has 'cms' suffix
+   * Format height to ensure it has 'cm' suffix
    */
   formatHeight(height: string | undefined): string {
     if (!height) return '';
 
-    // If already has cms suffix, return as is
-    if (height.toLowerCase().includes('cms') || height.toLowerCase().includes('cm')) {
+    // If already has cm suffix, return as is
+    if (height.toLowerCase().includes('cm')) {
       return height;
     }
 
-    // Otherwise, add cms suffix
-    return `${height} cms`;
+    // Otherwise, add cm suffix
+    return `${height} cm`;
   }
 
   /**

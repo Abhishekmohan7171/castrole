@@ -5,6 +5,7 @@ import {
   EventEmitter,
   OnInit,
   signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -43,26 +44,39 @@ import {
         <div
           class="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700/50 space-y-4"
         >
-          <select
-            [value]="newLanguageName()"
-            (change)="onLanguageSelect($event)"
-            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer appearance-none"
-            autofocus
-          >
-            <option
-              value=""
-              disabled
-              selected
-              class="bg-neutral-900 text-neutral-500"
-            >
-              select language
-            </option>
-            @for (lang of availableLanguagesFiltered(); track lang) {
-            <option [value]="lang" class="bg-neutral-900 text-white">
-              {{ lang }}
-            </option>
+          <div class="relative">
+            <input
+              type="text"
+              [value]="newLanguageName()"
+              (input)="onLanguageInput($event)"
+              (focus)="showLanguageDropdown.set(true)"
+              (blur)="onLanguageBlur()"
+              (keydown.arrowdown)="onLanguageKeyDown($event, 'down')"
+              (keydown.arrowup)="onLanguageKeyDown($event, 'up')"
+              (keydown.enter)="onLanguageKeyDown($event, 'enter')"
+              (keydown.escape)="showLanguageDropdown.set(false)"
+              placeholder="Type to search languages..."
+              class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              autofocus
+            />
+
+            <!-- Autocomplete Dropdown -->
+            @if (showLanguageDropdown() && filteredLanguages().length > 0) {
+            <div class="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl">
+              @for (lang of filteredLanguages(); track lang; let i = $index) {
+              <button
+                type="button"
+                (mousedown)="selectLanguageFromDropdown(lang)"
+                [class]="languageDropdownIndex() === i
+                  ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
+                  : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
+              >
+                {{ lang }}
+              </button>
+              }
+            </div>
             }
-          </select>
+          </div>
 
           <!-- Star Rating -->
           <div class="flex items-center gap-2">
@@ -259,15 +273,39 @@ import {
         <div
           class="bg-neutral-800/30 rounded-xl p-4 border border-neutral-700/50 space-y-4"
         >
-          <input
-            type="text"
-            [value]="newSkillName()"
-            (input)="onSkillNameInput($event)"
-            (keyup.enter)="addSkill()"
-            placeholder="Enter skill name"
-            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            autofocus
-          />
+          <div class="relative">
+            <input
+              type="text"
+              [value]="newSkillName()"
+              (input)="onSkillInput($event)"
+              (focus)="showSkillDropdown.set(true)"
+              (blur)="onSkillBlur()"
+              (keydown.arrowdown)="onSkillKeyDown($event, 'down')"
+              (keydown.arrowup)="onSkillKeyDown($event, 'up')"
+              (keydown.enter)="onSkillKeyDown($event, 'enter')"
+              (keydown.escape)="showSkillDropdown.set(false)"
+              placeholder="Type to search skills..."
+              class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              autofocus
+            />
+
+            <!-- Autocomplete Dropdown -->
+            @if (showSkillDropdown() && filteredSkills().length > 0) {
+            <div class="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl">
+              @for (skill of filteredSkills(); track skill; let i = $index) {
+              <button
+                type="button"
+                (mousedown)="selectSkillFromDropdown(skill)"
+                [class]="skillDropdownIndex() === i
+                  ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
+                  : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
+              >
+                {{ skill }}
+              </button>
+              }
+            </div>
+            }
+          </div>
 
           <!-- Star Rating -->
           <div class="flex items-center gap-2">
@@ -460,6 +498,12 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   newSkillName = signal('');
   newSkillRating = signal(3);
 
+  // Autocomplete dropdown signals
+  showLanguageDropdown = signal(false);
+  showSkillDropdown = signal(false);
+  languageDropdownIndex = signal(0);
+  skillDropdownIndex = signal(0);
+
   // Standardized list of common languages (Indian + global)
   readonly availableLanguages: string[] = [
     // Indian languages
@@ -496,6 +540,88 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     'Arabic',
   ];
 
+  // Standardized list of common acting skills
+  readonly availableSkills: string[] = [
+    'Acting',
+    'Dance',
+    'Singing',
+    'Voice Acting',
+    'Dubbing',
+    'Stage Performance',
+    'Classical Dance',
+    'Contemporary Dance',
+    'Hip Hop',
+    'Ballet',
+    'Bharatanatyam',
+    'Kathak',
+    'Kuchipudi',
+    'Odissi',
+    'Mohiniyattam',
+    'Kathakali',
+    'Martial Arts',
+    'Stunts',
+    'Horse Riding',
+    'Swimming',
+    'Gymnastics',
+    'Acrobatics',
+    'Comedy',
+    'Stand-up Comedy',
+    'Improv',
+    'Mimicry',
+    'Musical Instrument',
+    'Guitar',
+    'Piano',
+    'Drums',
+    'Tabla',
+    'Flute',
+    'Harmonium',
+    'Method Acting',
+    'Classical Acting',
+    'Physical Theatre',
+    'Puppetry',
+    'Mime',
+    'Sketch Comedy',
+    'Voice Modulation',
+    'Dialect/Accent',
+    'Action Choreography',
+    'Fight Choreography',
+  ];
+
+  // Computed filtered lists
+  filteredLanguages = computed(() => {
+    const searchTerm = this.newLanguageName().toLowerCase().trim();
+    const selected = this.languages().map((l) => l.language.toLowerCase());
+
+    if (!searchTerm) {
+      return this.availableLanguages.filter(
+        (lang) => !selected.includes(lang.toLowerCase())
+      );
+    }
+
+    return this.availableLanguages.filter(
+      (lang) =>
+        !selected.includes(lang.toLowerCase()) &&
+        lang.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  filteredSkills = computed(() => {
+    const searchTerm = this.newSkillName().toLowerCase().trim();
+    const selected = this.skills().map((s) => s.skill.toLowerCase());
+
+    if (!searchTerm) {
+      return this.availableSkills.filter(
+        (skill) => !selected.includes(skill.toLowerCase())
+      );
+    }
+
+    return this.availableSkills.filter(
+      (skill) =>
+        !selected.includes(skill.toLowerCase()) &&
+        skill.toLowerCase().includes(searchTerm)
+    );
+  });
+
   ngOnInit() {
     this.populateData();
   }
@@ -520,23 +646,94 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     );
   }
 
-  // Language dropdown helpers
-  availableLanguagesFiltered(): string[] {
-    const selected = this.languages().map((l) => l.language.toLowerCase());
-    return this.availableLanguages.filter(
-      (lang) => !selected.includes(lang.toLowerCase())
-    );
+  // Language autocomplete handlers
+  onLanguageInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.newLanguageName.set(input.value);
+    this.showLanguageDropdown.set(true);
+    this.languageDropdownIndex.set(0);
   }
 
-  onLanguageSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    this.newLanguageName.set(select.value);
+  onLanguageBlur() {
+    // Delay to allow click on dropdown item
+    setTimeout(() => {
+      this.showLanguageDropdown.set(false);
+      this.languageDropdownIndex.set(0);
+    }, 200);
   }
 
-  // Skill input handler
-  onSkillNameInput(event: Event) {
+  onLanguageKeyDown(event: Event, action: 'up' | 'down' | 'enter') {
+    const keyEvent = event as KeyboardEvent;
+    const filtered = this.filteredLanguages();
+
+    if (action === 'down') {
+      keyEvent.preventDefault();
+      const newIndex = Math.min(this.languageDropdownIndex() + 1, filtered.length - 1);
+      this.languageDropdownIndex.set(newIndex);
+    } else if (action === 'up') {
+      keyEvent.preventDefault();
+      const newIndex = Math.max(this.languageDropdownIndex() - 1, 0);
+      this.languageDropdownIndex.set(newIndex);
+    } else if (action === 'enter') {
+      keyEvent.preventDefault();
+      if (this.showLanguageDropdown() && filtered.length > 0) {
+        const selectedLang = filtered[this.languageDropdownIndex()];
+        this.selectLanguageFromDropdown(selectedLang);
+      } else {
+        this.addLanguage();
+      }
+    }
+  }
+
+  selectLanguageFromDropdown(language: string) {
+    this.newLanguageName.set(language);
+    this.showLanguageDropdown.set(false);
+    this.languageDropdownIndex.set(0);
+  }
+
+  // Skill autocomplete handlers
+  onSkillInput(event: Event) {
     const input = event.target as HTMLInputElement;
     this.newSkillName.set(input.value);
+    this.showSkillDropdown.set(true);
+    this.skillDropdownIndex.set(0);
+  }
+
+  onSkillBlur() {
+    // Delay to allow click on dropdown item
+    setTimeout(() => {
+      this.showSkillDropdown.set(false);
+      this.skillDropdownIndex.set(0);
+    }, 200);
+  }
+
+  onSkillKeyDown(event: Event, action: 'up' | 'down' | 'enter') {
+    const keyEvent = event as KeyboardEvent;
+    const filtered = this.filteredSkills();
+
+    if (action === 'down') {
+      keyEvent.preventDefault();
+      const newIndex = Math.min(this.skillDropdownIndex() + 1, filtered.length - 1);
+      this.skillDropdownIndex.set(newIndex);
+    } else if (action === 'up') {
+      keyEvent.preventDefault();
+      const newIndex = Math.max(this.skillDropdownIndex() - 1, 0);
+      this.skillDropdownIndex.set(newIndex);
+    } else if (action === 'enter') {
+      keyEvent.preventDefault();
+      if (this.showSkillDropdown() && filtered.length > 0) {
+        const selectedSkill = filtered[this.skillDropdownIndex()];
+        this.selectSkillFromDropdown(selectedSkill);
+      } else {
+        this.addSkill();
+      }
+    }
+  }
+
+  selectSkillFromDropdown(skill: string) {
+    this.newSkillName.set(skill);
+    this.showSkillDropdown.set(false);
+    this.skillDropdownIndex.set(0);
   }
 
   // Language Methods
@@ -544,6 +741,8 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     this.isAddingLanguage.set(true);
     this.newLanguageName.set('');
     this.newLanguageProficiency.set(3);
+    this.showLanguageDropdown.set(false);
+    this.languageDropdownIndex.set(0);
   }
 
   addLanguage() {
@@ -596,6 +795,8 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     this.isAddingSkill.set(true);
     this.newSkillName.set('');
     this.newSkillRating.set(3);
+    this.showSkillDropdown.set(false);
+    this.skillDropdownIndex.set(0);
   }
 
   addSkill() {

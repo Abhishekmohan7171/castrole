@@ -178,20 +178,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
           </div>
         }
       </div>
-
-      <!-- Save Button -->
-      @if (hasChanges()) {
-        <div class="flex justify-end">
-          <button
-            type="button"
-            (click)="onSave()"
-            [disabled]="isSaving()"
-            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
-          >
-            {{ isSaving() ? 'Saving...' : 'Save Changes' }}
-          </button>
-        </div>
-      }
     </div>
   `,
   styles: `
@@ -335,9 +321,12 @@ export class VoiceIntroSectionComponent implements OnInit {
       
       await uploadBytes(storageRef, audioBlob);
       const downloadURL = await getDownloadURL(storageRef);
-      
+
       this.currentVoiceUrl.set(downloadURL);
       this.hasChanges.set(true);
+
+      // Auto-save immediately after upload completes
+      this.onSave();
     } catch (error) {
       console.error('Error uploading audio:', error);
       alert('Failed to upload audio. Please try again.');
@@ -396,6 +385,10 @@ export class VoiceIntroSectionComponent implements OnInit {
     if (confirm('Are you sure you want to remove your voice intro?')) {
       this.currentVoiceUrl.set(null);
       this.hasChanges.set(true);
+
+      // Auto-save immediately after removal
+      this.onSave();
+
       if (this.audioElement) {
         this.audioElement.pause();
         this.isPlaying.set(false);
@@ -415,7 +408,8 @@ export class VoiceIntroSectionComponent implements OnInit {
     this.isSaving.set(true);
 
     this.save.emit({
-      voiceIntro: this.currentVoiceUrl()
+      voiceIntro: this.currentVoiceUrl(),
+      autosave: true
     });
 
     setTimeout(() => {
