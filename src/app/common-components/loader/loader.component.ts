@@ -16,11 +16,23 @@ import { CommonModule } from '@angular/common';
         <div class="w-16 h-16 rounded-full border-2 border-t-transparent border-neutral-700 animate-spin"></div>
         
         <!-- Inner ring -->
-        <div class="absolute top-1 left-1 w-14 h-14 rounded-full border-2 border-b-transparent border-fuchsia-500 animate-spin-reverse"></div>
+        <div 
+          class="absolute top-1 left-1 w-14 h-14 rounded-full border-2 border-b-transparent animate-spin-reverse"
+          [ngClass]="{
+            'border-[#946BA9]': isActor,
+            'border-[#90ACC8]': !isActor
+          }"
+        ></div>
         
         <!-- Center dot -->
         <div class="absolute top-[0.4rem] left-[0.4rem] w-12 h-12 rounded-full bg-black flex items-center justify-center">
-          <div class="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse"></div>
+          <div 
+            class="w-2 h-2 rounded-full animate-pulse"
+            [ngClass]="{
+              'bg-[#946BA9]': isActor,
+              'bg-[#90ACC8]': !isActor
+            }"
+          ></div>
         </div>
         
         <!-- Message below loader -->
@@ -44,4 +56,5 @@ export class LoaderComponent {
   @Input() show: boolean = true;
   @Input() overlay: boolean = true;
   @Input() message: string = '';
+  @Input() isActor: boolean = true;
 }

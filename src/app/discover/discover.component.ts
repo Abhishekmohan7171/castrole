@@ -59,18 +59,21 @@ import {
   template: `
     <div class="min-h-screen bg-black text-neutral-200" [ngClass]="navTheme()">
       <!-- Loader -->
-      <app-loader [show]="isLoggingOut" message="Logging out..."></app-loader>
+      <app-loader [show]="isLoggingOut" [isActor]="isActor()" message="Logging out..."></app-loader>
       <!-- Top bar -->
       <header
-        class="sticky top-0 z-40 backdrop-blur"
-        [ngClass]="{ 'bg-black/70': !isActor(), 'bg-black/60': isActor() }"
+        class="sticky top-0 z-40 backdrop-blur-xl border-b"
+        [ngClass]="{
+          'bg-gradient-to-b from-purple-950/40 via-purple-950/20 to-transparent border-purple-900/20': isActor(),
+          'bg-gradient-to-b from-[#101214]/80 via-[#101214]/40 to-transparent border-neutral-800/30': !isActor()
+        }"
       >
         <div
-          class="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex items-center justify-between"
+          class="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-2"
         >
           <a
             routerLink="/discover"
-            class="text-3xl font-black tracking-wider select-none transition-colors duration-300"
+            class="text-xl sm:text-3xl font-black tracking-wider select-none transition-colors duration-300"
             [ngClass]="{
               'text-purple-200/80': isActor(),
               'text-neutral-300': !isActor()
@@ -78,7 +81,7 @@ import {
           >
             kalacast
           </a>
-          <nav class="flex items-center gap-8 text-sm">
+          <nav class="flex items-center gap-3 sm:gap-8 text-xs sm:text-sm">
             <a
               routerLink="/discover"
               #discoverLink="routerLinkActive"
@@ -274,8 +277,8 @@ import {
                 *ngIf="showDropdown"
                 class="absolute right-0 mt-2 w-56 rounded-md shadow-lg ring-1 z-50 transition-all duration-200 overflow-hidden"
                 [ngClass]="{
-                  'bg-[#23043c] ring-purple-900/10 backdrop-blur-xl': isActor(),
-                  'bg-neutral-800/95 ring-neutral-700/50 backdrop-blur-sm':
+                  'bg-[#2D1C36]/95 ring-[#946BA9]/20 backdrop-blur-xl': isActor(),
+                  'bg-[#101214]/95 ring-[#53565F]/50 backdrop-blur-xl':
                     !isActor()
                 }"
               >
@@ -313,12 +316,12 @@ import {
                     routerLink="/discover/profile"
                     (click)="closeDropdown()"
                     [routerLinkActive]="
-                      isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'
+                      isActor() ? 'bg-[#946BA9]/20' : 'bg-[#515D69]/30'
                     "
                     class="block px-4 py-2 text-sm transition-colors duration-200"
                     [ngClass]="{
-                      'text-purple-200/90 hover:bg-purple-900/15': isActor(),
-                      'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                      'text-white hover:bg-[#946BA9]/15': isActor(),
+                      'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
                     Profile
@@ -327,12 +330,12 @@ import {
                     routerLink="/discover/settings"
                     (click)="closeDropdown()"
                     [routerLinkActive]="
-                      isActor() ? 'bg-purple-900/25' : 'bg-fuchsia-500/10'
+                      isActor() ? 'bg-[#946BA9]/20' : 'bg-[#515D69]/30'
                     "
                     class="block px-4 py-2 text-sm transition-colors duration-200"
                     [ngClass]="{
-                      'text-purple-200/90 hover:bg-purple-900/15': isActor(),
-                      'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                      'text-white hover:bg-[#946BA9]/15': isActor(),
+                      'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
                     Settings
@@ -341,8 +344,8 @@ import {
                     (click)="logout()"
                     class="w-full text-left block px-4 py-2 text-sm transition-colors duration-200"
                     [ngClass]="{
-                      'text-purple-200/90 hover:bg-purple-900/25': isActor(),
-                      'text-neutral-200 hover:bg-fuchsia-500/10': !isActor()
+                      'text-white hover:bg-[#946BA9]/15': isActor(),
+                      'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
                     Logout
@@ -377,7 +380,7 @@ import {
       :host {
         display: block;
       }
-      /* Subtle purple gradient background for actors */
+      /* Actor gradient background - subtle like producer */
       .actor-theme::before {
         content: '';
         position: fixed;
@@ -385,20 +388,34 @@ import {
         left: 0;
         right: 0;
         bottom: 0;
-        background: radial-gradient(
-            ellipse at top left,
-            rgba(147, 51, 234, 0.025) 0%,
-            transparent 35%
-          ),
-          radial-gradient(
-            ellipse at bottom right,
-            rgba(168, 85, 247, 0.015) 0%,
-            transparent 35%
-          );
+        background: linear-gradient(
+          180deg,
+          #14081bff 0%,
+          #000000 100%
+        );
         pointer-events: none;
         z-index: 0;
       }
       .actor-theme {
+        position: relative;
+      }
+      /* Producer gradient background */
+      .producer-theme::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          180deg,
+          #101214 0%,
+          #000000 100%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .producer-theme {
         position: relative;
       }
       /* Ensure header stays above the gradient */
@@ -424,7 +441,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   // User role signals
   userRole = signal<string>('actor');
   isActor = computed(() => this.userRole() === 'actor');
-  navTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
+  navTheme = computed(() => (this.isActor() ? 'actor-theme' : 'producer-theme'));
 
   // Notification drawer
   showNotificationDrawer = signal<boolean>(false);

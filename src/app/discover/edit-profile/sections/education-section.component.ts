@@ -67,6 +67,7 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         <input
                           type="text"
                           formControlName="schoolName"
+                          (blur)="onFieldBlur()"
                           placeholder="Swami Vivekananda Institute of film production"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -80,6 +81,7 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         <input
                           type="text"
                           formControlName="courseName"
+                          (blur)="onFieldBlur()"
                           placeholder="diploma in screen acting"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -93,6 +95,7 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         <input
                           type="text"
                           formControlName="projectName"
+                          (blur)="onFieldBlur()"
                           placeholder="KGF Chapter 2"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -106,7 +109,21 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         <input
                           type="text"
                           formControlName="genre"
+                          (blur)="onFieldBlur()"
                           placeholder="action thriller"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Project Link -->
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-neutral-300">project link</label>
+                      <div class="relative">
+                        <input
+                          type="url"
+                          formControlName="projectLink"
+                          placeholder="https://www.imdb.com/title/..."
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
                       </div>
@@ -121,6 +138,7 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                         <input
                           type="text"
                           [formControlName]="isActor ? 'yearCompleted' : 'year'"
+                          (blur)="onFieldBlur()"
                           placeholder="2021"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -280,7 +298,22 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                           <input
                             type="text"
                             formControlName="projectName"
+                            (blur)="onFieldBlur()"
                             placeholder="KGF Chapter 2"
+                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <!-- Role -->
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-neutral-300">role</label>
+                        <div class="relative">
+                          <input
+                            type="text"
+                            formControlName="role"
+                            (blur)="onFieldBlur()"
+                            placeholder="Lead Actor"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -293,7 +326,21 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                           <input
                             type="text"
                             formControlName="genre"
+                            (blur)="onFieldBlur()"
                             placeholder="action thriller"
+                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <!-- Project Link -->
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-neutral-300">project link</label>
+                        <div class="relative">
+                          <input
+                            type="url"
+                            formControlName="projectLink"
+                            placeholder="https://www.imdb.com/title/..."
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -306,6 +353,7 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                           <input
                             type="text"
                             formControlName="year"
+                            (blur)="onFieldBlur()"
                             placeholder="2021"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
@@ -365,20 +413,6 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
           </button>
         </div>
       }
-
-      <!-- Save All Button -->
-      @if (educationArray.length > 0 || experienceArray.length > 0) {
-        <div class="flex justify-end pt-4">
-          <button
-            type="button"
-            (click)="onSaveAll()"
-            [disabled]="isSaving()"
-            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
-          >
-            {{ isSaving() ? 'Saving...' : 'Save All Changes' }}
-          </button>
-        </div>
-      }
     </div>
   `,
   styles: ``
@@ -390,6 +424,7 @@ export class EducationSectionComponent implements OnInit {
 
   private fb = inject(FormBuilder);
   private storage = inject(Storage);
+  private autosaveTimeout: any;
 
   form!: FormGroup;
   editingIndex = signal<number | null>(null);
@@ -468,8 +503,10 @@ export class EducationSectionComponent implements OnInit {
   createWorkFormGroup(work?: Work): FormGroup {
     return this.fb.group({
       projectName: [work?.projectName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+      role: [work?.role || '', [Validators.maxLength(100)]],
       genre: [work?.genre || '', [Validators.maxLength(100)]],
-      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]]
+      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]],
+      projectLink: [work?.projectLink || '', [Validators.maxLength(500)]]
     });
   }
 
@@ -508,10 +545,12 @@ export class EducationSectionComponent implements OnInit {
       
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      
+
       this.getFormGroup(index).patchValue({
         certificateUrl: downloadURL
       });
+
+      this.onFieldBlur();
     } catch (error) {
       console.error('Error uploading certificate:', error);
       alert('Failed to upload certificate. Please try again.');
@@ -525,6 +564,7 @@ export class EducationSectionComponent implements OnInit {
     if (itemGroup.invalid) return;
 
     this.editingIndex.set(null);
+    this.onFieldBlur();
   }
 
   removeEducation(index: number) {
@@ -555,6 +595,7 @@ export class EducationSectionComponent implements OnInit {
     if (itemGroup.invalid) return;
 
     this.editingExperienceIndex.set(null);
+    this.onFieldBlur();
   }
 
   removeExperience(index: number) {
@@ -564,11 +605,20 @@ export class EducationSectionComponent implements OnInit {
     }
   }
 
-  onSaveAll() {
-    if (this.form.invalid) return;
+  onFieldBlur() {
+    if (this.isSaving()) return;
+    if (this.educationArray.length === 0 && this.experienceArray.length === 0) return;
 
-    this.isSaving.set(true);
+    if (this.autosaveTimeout) {
+      clearTimeout(this.autosaveTimeout);
+    }
 
+    this.autosaveTimeout = setTimeout(() => {
+      this.autosaveAll();
+    }, 400);
+  }
+
+  private autosaveAll() {
     if (this.isActor) {
       const educationData = this.educationArray.value.filter((edu: Education) =>
         edu.schoolName && edu.courseName && edu.yearCompleted
@@ -576,14 +626,25 @@ export class EducationSectionComponent implements OnInit {
       const experienceData = this.experienceArray.value.filter((work: Work) =>
         work.projectName && work.year
       );
-      this.save.emit({ education: educationData, actorWorks: experienceData });
+
+      if (educationData.length > 0 || experienceData.length > 0) {
+        this.save.emit({
+          education: educationData,
+          actorWorks: experienceData,
+          autosave: true
+        });
+      }
     } else {
       const worksData = this.educationArray.value.filter((work: Work) =>
         work.projectName && work.year
       );
-      this.save.emit({ works: worksData });
-    }
 
-    setTimeout(() => this.isSaving.set(false), 1000);
+      if (worksData.length > 0) {
+        this.save.emit({
+          works: worksData,
+          autosave: true
+        });
+      }
+    }
   }
 }

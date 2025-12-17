@@ -82,7 +82,9 @@ export interface Education {
 export interface Work {
   year: string;
   projectName: string;
+  role?: string;
   genre?: string;
+  projectLink?: string;
 }
 
 export interface Social {

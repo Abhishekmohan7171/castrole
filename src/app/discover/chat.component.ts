@@ -18,19 +18,47 @@ import { BlockService } from '../services/block.service';
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent],
   template: `
-    <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col"
+    <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col relative"
          [ngClass]="{'actor-theme': myRole() === 'actor'}">
+      
+      <!-- Mobile: Overlay (when sidebar is open) -->
+      @if (sidebarOpen()) {
+        <div
+          class="lg:hidden fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+          (click)="closeSidebar()"
+        ></div>
+      }
+      
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-full flex-1 overflow-hidden pb-6">
         <!-- Conversations (sidebar) -->
         <aside
-          class="rounded-2xl ring-1 border overflow-hidden hidden lg:flex lg:flex-col h-full transition-all duration-300"
+          class="rounded-2xl ring-1 border overflow-hidden flex flex-col h-full transition-all duration-300 z-40 backdrop-blur-xl"
           [ngClass]="{
             'bg-purple-950/10 ring-purple-900/10 border-purple-950/10': myRole() === 'actor',
-            'bg-neutral-900/60 ring-white/10 border-white/5': myRole() !== 'actor'
+            'bg-[#101214]/95 ring-[#53565F]/20 border-[#364361]/30': myRole() !== 'actor',
+            'fixed inset-y-0 left-0 w-80 lg:relative lg:w-auto': true,
+            'translate-x-0': sidebarOpen(),
+            '-translate-x-full lg:translate-x-0': !sidebarOpen()
           }"
         >
           <div class="p-4 border-b relative transition-colors duration-300"
                [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}">
+            
+            <!-- Mobile: Close Sidebar Button -->
+            <button
+              type="button"
+              (click)="closeSidebar()"
+              class="lg:hidden absolute top-4 right-4 p-2 rounded-full transition-colors duration-300"
+              [ngClass]="{
+                'text-purple-300/60 hover:bg-purple-950/10 hover:text-purple-200': myRole() === 'actor',
+                'text-neutral-400 hover:bg-white/5 hover:text-neutral-200': myRole() !== 'actor'
+              }"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
             <!-- Universal Search Input -->
             <input
               type="search"
@@ -167,7 +195,7 @@ import { BlockService } from '../services/block.service';
                       class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full text-white animate-pulse"
                       [ngClass]="{
                         'bg-purple-500': myRole() === 'actor',
-                        'bg-fuchsia-600': myRole() !== 'actor'
+                        'bg-[#90ACC8]': myRole() !== 'actor'
                       }"
                       >{{ c.unreadCount[meUid] }}</span
                     >
@@ -212,70 +240,31 @@ import { BlockService } from '../services/block.service';
             'bg-neutral-900/60 ring-white/10 border-white/5': myRole() !== 'actor'
           }"
         >
-          <!-- Mobile conversations header -->
+          <!-- Mobile header with hamburger and active conversation name -->
           <div
-            class="lg:hidden p-4 border-b border-white/5 flex items-center gap-3"
+            class="lg:hidden p-4 border-b flex items-center gap-3 transition-colors duration-300"
+            [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}"
           >
+            <!-- Hamburger button (inline) -->
             <button
               type="button"
-              (click)="mobileListOpen = !mobileListOpen"
-              class="px-3 py-1.5 rounded-full text-xs ring-1 ring-white/10 text-neutral-300 bg-white/5"
+              (click)="toggleSidebar()"
+              class="p-2 rounded-full ring-1 border transition-all duration-300 flex-shrink-0"
+              [ngClass]="{
+                'bg-purple-950/50 ring-purple-900/30 border-purple-900/30 text-purple-200 hover:bg-purple-900/50': myRole() === 'actor',
+                'bg-neutral-800/50 ring-white/10 border-white/5 text-neutral-200 hover:bg-neutral-700/50': myRole() !== 'actor'
+              }"
             >
-              conversations
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
             </button>
-            <div class="text-sm text-neutral-400">
+            
+            <!-- Active conversation name -->
+            <div class="text-sm font-medium"
+                 [ngClass]="{'text-purple-200': myRole() === 'actor', 'text-neutral-200': myRole() !== 'actor'}">
               {{ active()?.name || 'select a chat' }}
             </div>
-          </div>
-
-          <!-- Mobile conversations drawer -->
-          <div *ngIf="mobileListOpen" class="lg:hidden border-b border-white/5">
-            <ul class="max-h-[40vh] overflow-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-              <li
-                *ngFor="let c of conversations()"
-                [ngClass]="{ 'bg-white/10': c.id === active()?.id, 'cursor-pointer hover:bg-white/5': myRole() !== 'actor' || viewMode() !== 'requests' }"
-                class="px-4 py-3 transition flex items-center gap-3"
-              >
-                <!-- Avatar -->
-                <div
-                  class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400"
-                >
-                  {{ c.name[0] | uppercase }}
-                </div>
-
-                <!-- Content -->
-                <div
-                  class="flex-1 min-w-0 cursor-pointer"
-                  (click)="handleMobileItemClick(c)"
-                >
-                  <p class="truncate text-sm text-neutral-100">{{ c.name }}</p>
-                  <p class="truncate text-xs text-neutral-400">{{ c.last }}</p>
-                </div>
-
-                <!-- Accept/Reject buttons for actor requests -->
-                <div *ngIf="myRole() === 'actor' && viewMode() === 'requests'" class="flex gap-2">
-                  <button
-                    (click)="acceptRequest(c); mobileListOpen = false"
-                    class="w-8 h-8 flex items-center justify-center rounded-full bg-green-600/20 text-green-400 hover:bg-green-600/30 transition"
-                    title="Accept"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </button>
-                  <button
-                    (click)="rejectRequest(c); mobileListOpen = false"
-                    class="w-8 h-8 flex items-center justify-center rounded-full bg-red-600/20 text-red-400 hover:bg-red-600/30 transition"
-                    title="Reject"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            </ul>
           </div>
 
           <!-- Chat header -->
@@ -310,11 +299,27 @@ import { BlockService } from '../services/block.service';
                   <span>{{ counterpartLastSeen() }}</span>
                 </span>
                 <!-- Typing indicator -->
-                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex items-center text-fuchsia-300">
+                <span *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex items-center"
+                  [ngClass]="{
+                    'text-purple-300': myRole() === 'actor',
+                    'text-[#90ACC8]': myRole() !== 'actor'
+                  }">
                   <span class="inline-flex space-x-1 mr-1">
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                    <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 0ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 150ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
+                    <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 300ms"
+                      [ngClass]="{
+                        'bg-purple-300': myRole() === 'actor',
+                        'bg-[#90ACC8]': myRole() !== 'actor'
+                      }"></span>
                   </span>
                   typing...
                 </span>
@@ -401,8 +406,10 @@ import { BlockService } from '../services/block.service';
                   [ngClass]="{
                     'bg-white/10 text-neutral-100 rounded-tr-sm':
                       m.from === 'them',
-                    'bg-fuchsia-600/20 text-fuchsia-100 rounded-tl-sm':
-                      m.from === 'me'
+                    'bg-[#946BA9]/20 text-[#946BA9] rounded-tl-sm':
+                      m.from === 'me' && myRole() === 'actor',
+                    'bg-[#90ACC8]/20 text-[#90ACC8] rounded-tl-sm':
+                      m.from === 'me' && myRole() !== 'actor'
                   }"
                 >
                   <div>{{ m.text }}</div>
@@ -434,9 +441,21 @@ import { BlockService } from '../services/block.service';
                 <div class="bg-white/5 text-neutral-300 rounded-2xl px-4 py-2 text-sm">
                   <div class="flex items-center">
                     <span class="inline-flex space-x-1 mr-2">
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                      <span class="w-1 h-1 bg-fuchsia-300 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 0ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 150ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
+                      <span class="w-1 h-1 rounded-full animate-bounce" style="animation-delay: 300ms"
+                        [ngClass]="{
+                          'bg-purple-300': myRole() === 'actor',
+                          'bg-[#90ACC8]': myRole() !== 'actor'
+                        }"></span>
                     </span>
                   </div>
                 </div>
@@ -647,6 +666,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   loading = signal(false);
   initialLoading = signal(true);
   requestsLoading = signal(true);
+  
+  // Mobile sidebar state
+  sidebarOpen = signal(false);
 
   // Block functionality
   isCounterpartBlocked = signal(false);
@@ -713,6 +735,20 @@ export class ChatComponent implements OnInit, OnDestroy {
       alert('Failed to unblock user');
     }
   }
+  
+  // Mobile sidebar controls
+  toggleSidebar() {
+    this.sidebarOpen.set(!this.sidebarOpen());
+  }
+  
+  closeSidebar() {
+    this.sidebarOpen.set(false);
+  }
+  
+  openSidebar() {
+    this.sidebarOpen.set(true);
+  }
+  
   myRole = signal<UserRole>('user');
   private roomsSub = new Subscription();
   private msgsSub = new Subscription();
@@ -1051,6 +1087,9 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Set active conversation immediately
     this.active.set(c);
     this.activeRoomId$.next(c.id);
+    
+    // Close sidebar on mobile when conversation is selected
+    this.closeSidebar();
 
     // Check if counterpart is blocked
     this.checkBlockStatus();
