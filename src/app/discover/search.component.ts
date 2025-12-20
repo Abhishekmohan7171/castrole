@@ -13,6 +13,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
 import { FilterPersistenceService } from '../services/filter-persistence.service';
+import { CHARACTER_TYPES, GENDER_OPTIONS, AVAILABLE_SKILLS, AVAILABLE_LANGUAGES } from './search-constants';
 
 interface ActorSearchResult {
   uid: string;
@@ -35,12 +36,14 @@ interface ActorSearchResult {
 }
 
 interface SearchFilters {
-  characterType: string;  // Single character type dropdown
+  characterTypes: string[];  // Multi-select character types
   minAge: number;
   maxAge: number;
   gender: string;
-  heightCm: string;  // Changed from heightFt/heightIn to single cm value
-  weightKg: string;  // Renamed for clarity
+  minHeight: number;  // Min height in cm
+  maxHeight: number;  // Max height in cm
+  minWeight: number;  // Min weight in kg
+  maxWeight: number;  // Max weight in kg
   languages: string[];
   skills: string[];
   location: string;
@@ -78,10 +81,18 @@ interface ParsedSearchQuery {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </button>
-              <button class="p-2 rounded-lg bg-[#90ACC8] hover:bg-[#7A9AB8] transition-colors text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <!-- Smart Search (AI) - Locked -->
+              <button 
+                class="p-2 rounded-lg bg-neutral-700 cursor-not-allowed relative group"
+                disabled
+                title="Coming Soon">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
+                <!-- Tooltip -->
+                <span class="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-neutral-800 text-neutral-300 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-neutral-700">
+                  AI Smart Search - Coming Soon
+                </span>
               </button>
             </div>
           </div>
@@ -112,19 +123,60 @@ interface ParsedSearchQuery {
             <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-6">Filters</h2>
 
-              <!-- Character Type (Dropdown) -->
+              <!-- Character Types (Searchable Multi-select) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Character Type</label>
-                <select 
-                  [value]="filters().characterType"
-                  (change)="updateFilter('characterType', $any($event.target).value)"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
-                  <option value="any">Any</option>
-                  <option value="lead">Lead</option>
-                  <option value="supporting">Supporting</option>
-                  <option value="extra">Extra</option>
-                  <option value="cameo">Cameo</option>
-                </select>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">
+                  Character Types
+                  @if (filters().characterTypes.length > 0) {
+                    <span class="ml-2 text-xs text-fuchsia-400">({{ filters().characterTypes.length }} selected)</span>
+                  }
+                </label>
+                
+                <!-- Search Input -->
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="characterTypeSearch()"
+                    (input)="onCharacterTypeSearchChange($any($event.target).value)"
+                    (focus)="showCharacterTypeDropdown.set(true)"
+                    (blur)="onCharacterTypeBlur()"
+                    placeholder="Search character types..."
+                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-fuchsia-500 mb-2">
+                  
+                  <!-- Dropdown List -->
+                  @if (showCharacterTypeDropdown() && filteredCharacterTypes().length > 0) {
+                    <div 
+                      (mousedown)="$event.preventDefault()"
+                      class="absolute z-10 w-full max-h-48 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 space-y-1 shadow-xl">
+                      @for (type of filteredCharacterTypes(); track type) {
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 px-2 py-1.5 rounded transition-colors">
+                          <input 
+                            type="checkbox"
+                            [checked]="filters().characterTypes.includes(type)"
+                            (change)="toggleCharacterType(type)"
+                            class="w-4 h-4 rounded border-neutral-600 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-0 bg-neutral-700 cursor-pointer">
+                          <span class="text-sm text-neutral-200 capitalize">{{ type }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
+                </div>
+                
+                <!-- Selected Types Tags -->
+                @if (filters().characterTypes.length > 0) {
+                  <div class="flex flex-wrap gap-1.5">
+                    @for (type of filters().characterTypes; track type) {
+                      <span class="inline-flex items-center gap-1 bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded text-xs capitalize">
+                        {{ type }}
+                        <button (click)="toggleCharacterType(type)" class="hover:text-fuchsia-100">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
               </div>
 
               <!-- Age Range -->
@@ -158,33 +210,57 @@ interface ParsedSearchQuery {
                   [value]="filters().gender"
                   (change)="updateFilter('gender', $any($event.target).value)"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
-                  <option value="any">Any</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  @for (option of genderOptions; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
                 </select>
               </div>
 
-              <!-- Height (cm) / Weight (kg) -->
+              <!-- Height Range (cm) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Height / Weight</label>
-                <div class="grid grid-cols-2 gap-2">
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Height (cm)</label>
+                <div class="flex items-center gap-3">
                   <input 
                     type="number" 
-                    [value]="filters().heightCm"
-                    (input)="updateFilter('heightCm', $any($event.target).value)"
-                    placeholder="Height (cm)"
-                    min="0"
+                    [value]="filters().minHeight"
+                    (input)="updateFilter('minHeight', +$any($event.target).value)"
+                    min="100" 
                     max="250"
-                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
+                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-fuchsia-500">
+                  <div class="flex-1 relative">
+                    <input 
+                      type="range" 
+                      [value]="filters().maxHeight"
+                      (input)="updateFilter('maxHeight', +$any($event.target).value)"
+                      min="100" 
+                      max="250"
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
+                  </div>
+                  <span class="w-12 text-center text-neutral-300 text-sm">{{ filters().maxHeight }}</span>
+                </div>
+              </div>
+
+              <!-- Weight Range (kg) -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Weight (kg)</label>
+                <div class="flex items-center gap-3">
                   <input 
                     type="number" 
-                    [value]="filters().weightKg"
-                    (input)="updateFilter('weightKg', $any($event.target).value)"
-                    placeholder="Weight (kg)"
-                    min="0"
-                    max="200"
-                    class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
+                    [value]="filters().minWeight"
+                    (input)="updateFilter('minWeight', +$any($event.target).value)"
+                    min="30" 
+                    max="150"
+                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-fuchsia-500">
+                  <div class="flex-1 relative">
+                    <input 
+                      type="range" 
+                      [value]="filters().maxWeight"
+                      (input)="updateFilter('maxWeight', +$any($event.target).value)"
+                      min="30" 
+                      max="150"
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
+                  </div>
+                  <span class="w-12 text-center text-neutral-300 text-sm">{{ filters().maxWeight }}</span>
                 </div>
               </div>
 
@@ -267,15 +343,17 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().characterType !== 'any') {
-                  <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
-                    Type: {{ filters().characterType }}
-                    <button (click)="updateFilter('characterType', 'any')" class="hover:text-neutral-100">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </span>
+                @if (filters().characterTypes.length > 0) {
+                  @for (type of filters().characterTypes; track type) {
+                    <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm capitalize">
+                      {{ type }}
+                      <button (click)="toggleCharacterType(type)" class="hover:text-neutral-100">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </span>
+                  }
                 }
                 
                 @if (filters().gender !== 'any') {
@@ -300,10 +378,10 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().heightCm) {
+                @if (filters().minHeight !== 140 || filters().maxHeight !== 200) {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
-                    Height: {{ filters().heightCm }}cm
-                    <button (click)="updateFilter('heightCm', '')" class="hover:text-neutral-100">
+                    Height: {{ filters().minHeight }}-{{ filters().maxHeight }}cm
+                    <button (click)="updateFilter('minHeight', 140); updateFilter('maxHeight', 200)" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -311,10 +389,10 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().weightKg) {
+                @if (filters().minWeight !== 40 || filters().maxWeight !== 120) {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
-                    Weight: {{ filters().weightKg }}kg
-                    <button (click)="updateFilter('weightKg', '')" class="hover:text-neutral-100">
+                    Weight: {{ filters().minWeight }}-{{ filters().maxWeight }}kg
+                    <button (click)="updateFilter('minWeight', 40); updateFilter('maxWeight', 120)" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -594,6 +672,12 @@ export class SearchComponent implements OnInit, OnDestroy {
   private currentUserId: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
 
+  // Expose constants for template
+  readonly characterTypes = CHARACTER_TYPES;
+  readonly genderOptions = GENDER_OPTIONS;
+  readonly availableSkills = AVAILABLE_SKILLS;
+  readonly availableLanguages = AVAILABLE_LANGUAGES;
+
   // Search state
   searchQuery = signal('');
   searchTags = signal<string[]>([]);
@@ -612,12 +696,14 @@ export class SearchComponent implements OnInit, OnDestroy {
   
   // Filters
   filters = signal<SearchFilters>({
-    characterType: 'any',  // Single character type dropdown
-    minAge: 0,  // Changed from 18 to 0
-    maxAge: 100,  // Changed from 50 to 100
+    characterTypes: [],  // Multi-select character types
+    minAge: 0,
+    maxAge: 100,
     gender: 'any',
-    heightCm: '',  // Single height value in cm
-    weightKg: '',  // Weight in kg
+    minHeight: 140,  // Min height in cm
+    maxHeight: 200,  // Max height in cm
+    minWeight: 40,   // Min weight in kg
+    maxWeight: 120,  // Max weight in kg
     languages: [],
     skills: [],
     location: ''
@@ -626,6 +712,21 @@ export class SearchComponent implements OnInit, OnDestroy {
   // Temporary inputs for comma-separated fields
   languageInput = signal('');
   skillsInput = signal('');
+  
+  // Character type search
+  characterTypeSearch = signal('');
+  showCharacterTypeDropdown = signal(false);
+  
+  // Filtered character types based on search
+  filteredCharacterTypes = computed(() => {
+    const search = this.characterTypeSearch().toLowerCase().trim();
+    if (!search) {
+      return this.characterTypes;
+    }
+    return this.characterTypes.filter(type => 
+      type.toLowerCase().includes(search)
+    );
+  });
 
   // Wishlist
   wishlist = signal<ActorSearchResult[]>([]);
@@ -644,12 +745,14 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Don't show results if no search query and default filters
     const hasSearchQuery = searchText.trim().length > 0;
     const hasNonDefaultFilters = 
-      currentFilters.characterType !== 'any' ||
+      currentFilters.characterTypes.length > 0 ||
       currentFilters.gender !== 'any' ||
       currentFilters.minAge !== 0 ||
       currentFilters.maxAge !== 100 ||
-      currentFilters.heightCm !== '' ||
-      currentFilters.weightKg !== '' ||
+      currentFilters.minHeight !== 140 ||
+      currentFilters.maxHeight !== 200 ||
+      currentFilters.minWeight !== 40 ||
+      currentFilters.maxWeight !== 120 ||
       currentFilters.languages.length > 0 ||
       currentFilters.skills.length > 0 ||
       currentFilters.location !== '';
@@ -710,32 +813,26 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.logger.log(`Age filter (${currentFilters.minAge}-${currentFilters.maxAge}): ${beforeCount} → ${actors.length} actors`);
     }
 
-    // Apply height filter if specified (in cm)
-    if (currentFilters.heightCm) {
-      const targetHeightCm = parseInt(currentFilters.heightCm);
-      if (targetHeightCm > 0) {
-        const beforeCount = actors.length;
-        actors = actors.filter(actor => {
-          const actorHeightCm = this.parseHeightToCm(actor.height || '');
-          // Allow ±5 cm tolerance
-          return Math.abs(actorHeightCm - targetHeightCm) <= 5;
-        });
-        this.logger.log(`Height filter (${currentFilters.heightCm}cm ±5): ${beforeCount} → ${actors.length} actors`);
-      }
+    // Apply height range filter
+    const hasHeightFilter = currentFilters.minHeight !== 140 || currentFilters.maxHeight !== 200;
+    if (hasHeightFilter) {
+      const beforeCount = actors.length;
+      actors = actors.filter(actor => {
+        const actorHeightCm = this.parseHeightToCm(actor.height || '');
+        return actorHeightCm >= currentFilters.minHeight && actorHeightCm <= currentFilters.maxHeight;
+      });
+      this.logger.log(`Height filter (${currentFilters.minHeight}-${currentFilters.maxHeight}cm): ${beforeCount} → ${actors.length} actors`);
     }
 
-    // Apply weight filter if specified (in kg)
-    if (currentFilters.weightKg) {
-      const targetWeight = parseInt(currentFilters.weightKg);
-      if (targetWeight > 0) {
-        const beforeCount = actors.length;
-        actors = actors.filter(actor => {
-          const actorWeight = parseInt(actor.weight || '0');
-          // Allow ±5 kg tolerance
-          return Math.abs(actorWeight - targetWeight) <= 5;
-        });
-        this.logger.log(`Weight filter (${currentFilters.weightKg}kg ±5): ${beforeCount} → ${actors.length} actors`);
-      }
+    // Apply weight range filter
+    const hasWeightFilter = currentFilters.minWeight !== 40 || currentFilters.maxWeight !== 120;
+    if (hasWeightFilter) {
+      const beforeCount = actors.length;
+      actors = actors.filter(actor => {
+        const actorWeight = parseInt(actor.weight || '0');
+        return actorWeight >= currentFilters.minWeight && actorWeight <= currentFilters.maxWeight;
+      });
+      this.logger.log(`Weight filter (${currentFilters.minWeight}-${currentFilters.maxWeight}kg): ${beforeCount} → ${actors.length} actors`);
     }
 
     // Apply skills filter
@@ -790,14 +887,15 @@ export class SearchComponent implements OnInit, OnDestroy {
     }
 
     // Restore saved filters from localStorage (SSR-safe)
-    if (isPlatformBrowser(this.platformId)) {
-      const savedState = this.filterPersistence.loadFilters();
-      this.filters.set(savedState.filters);
-      this.searchQuery.set(savedState.searchQuery);
-      this.languageInput.set(savedState.languageInput);
-      this.skillsInput.set(savedState.skillsInput);
-      this.logger.log('Restored filters from localStorage:', savedState);
-    }
+    // TODO: Update FilterPersistenceService to match new SearchFilters interface
+    // if (isPlatformBrowser(this.platformId)) {
+    //   const savedState = this.filterPersistence.loadFilters();
+    //   this.filters.set(savedState.filters);
+    //   this.searchQuery.set(savedState.searchQuery);
+    //   this.languageInput.set(savedState.languageInput);
+    //   this.skillsInput.set(savedState.skillsInput);
+    //   this.logger.log('Restored filters from localStorage:', savedState);
+    // }
 
     // Setup auto-save for filter changes
     this.setupAutoSave();
@@ -825,15 +923,16 @@ export class SearchComponent implements OnInit, OnDestroy {
    * Persist current filter state to localStorage
    */
   private persistFilters(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.filterPersistence.saveFilters({
-        filters: this.filters(),
-        searchQuery: this.searchQuery(),
-        languageInput: this.languageInput(),
-        skillsInput: this.skillsInput()
-      });
-      this.logger.log('Saved filters to localStorage');
-    }
+    // TODO: Update FilterPersistenceService to match new SearchFilters interface
+    // if (isPlatformBrowser(this.platformId)) {
+    //   this.filterPersistence.saveFilters({
+    //     filters: this.filters(),
+    //     searchQuery: this.searchQuery(),
+    //     languageInput: this.languageInput(),
+    //     skillsInput: this.skillsInput()
+    //   });
+    //   this.logger.log('Saved filters to localStorage');
+    // }
   }
 
   ngOnDestroy(): void {
@@ -1212,12 +1311,14 @@ export class SearchComponent implements OnInit, OnDestroy {
   hasActiveFilters(): boolean {
     const currentFilters = this.filters();
     return (
-      currentFilters.characterType !== 'any' ||
+      currentFilters.characterTypes.length > 0 ||
       currentFilters.gender !== 'any' ||
       currentFilters.minAge !== 0 ||
       currentFilters.maxAge !== 100 ||
-      currentFilters.heightCm !== '' ||
-      currentFilters.weightKg !== '' ||
+      currentFilters.minHeight !== 140 ||
+      currentFilters.maxHeight !== 200 ||
+      currentFilters.minWeight !== 40 ||
+      currentFilters.maxWeight !== 120 ||
       currentFilters.languages.length > 0 ||
       currentFilters.skills.length > 0 ||
       currentFilters.location !== ''
@@ -1235,6 +1336,39 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.logger.log(`Filter updated: ${key} = ${value}`);
     // Trigger debounced save
     this.saveSubject.next();
+  }
+
+  /**
+   * Toggle character type in multi-select
+   */
+  toggleCharacterType(type: string): void {
+    const currentTypes = this.filters().characterTypes;
+    const newTypes = currentTypes.includes(type)
+      ? currentTypes.filter(t => t !== type)
+      : [...currentTypes, type];
+    this.updateFilter('characterTypes', newTypes);
+    this.logger.log(`Character type toggled: ${type}, now selected: ${newTypes.length}`);
+  }
+
+  /**
+   * Handle character type search input changes
+   */
+  onCharacterTypeSearchChange(value: string): void {
+    this.characterTypeSearch.set(value);
+    // Show dropdown when user types
+    if (value.trim().length > 0) {
+      this.showCharacterTypeDropdown.set(true);
+    }
+  }
+
+  /**
+   * Handle character type input blur
+   * Delay closing to allow checkbox clicks
+   */
+  onCharacterTypeBlur(): void {
+    setTimeout(() => {
+      this.showCharacterTypeDropdown.set(false);
+    }, 200);
   }
 
   /**
@@ -1300,18 +1434,21 @@ export class SearchComponent implements OnInit, OnDestroy {
    */
   clearFilters(): void {
     this.filters.set({
-      characterType: 'any',
+      characterTypes: [],
       minAge: 0,
       maxAge: 100,
       gender: 'any',
-      heightCm: '',
-      weightKg: '',
+      minHeight: 140,
+      maxHeight: 200,
+      minWeight: 40,
+      maxWeight: 120,
       languages: [],
       skills: [],
       location: ''
     });
     this.languageInput.set('');
     this.skillsInput.set('');
+    this.characterTypeSearch.set('');
     this.logger.log('All filters cleared');
   }
 
@@ -1322,11 +1459,11 @@ export class SearchComponent implements OnInit, OnDestroy {
     const currentFilters = this.filters();
     let count = 0;
     
-    if (currentFilters.characterType !== 'any') count++;
+    if (currentFilters.characterTypes.length > 0) count++;
     if (currentFilters.gender !== 'any') count++;
     if (currentFilters.minAge !== 0 || currentFilters.maxAge !== 100) count++;
-    if (currentFilters.heightCm) count++;
-    if (currentFilters.weightKg) count++;
+    if (currentFilters.minHeight !== 140 || currentFilters.maxHeight !== 200) count++;
+    if (currentFilters.minWeight !== 40 || currentFilters.maxWeight !== 120) count++;
     if (currentFilters.languages.length > 0) count++;
     if (currentFilters.skills.length > 0) count++;
     if (currentFilters.location) count++;
