@@ -687,8 +687,21 @@ import {
                   <a
                     [href]="edu.certificateUrl"
                     target="_blank"
-                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
                   >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
                     view certificate
                   </a>
                   }
@@ -729,9 +742,22 @@ import {
                     [href]="work.projectLink"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
                   >
-                    {{ work.projectLink }}
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    view certificate
                   </a>
                   }
                 </div>
@@ -912,9 +938,22 @@ import {
                     [href]="work.projectLink"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-block mt-1"
+                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
                   >
-                    {{ work.projectLink }}
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    view certificate
                   </a>
                   }
                 </div>

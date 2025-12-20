@@ -1,22 +1,8 @@
 import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { Profile, Education, Work } from '../../../../assets/interfaces/profile.interfaces';
-
-// Custom validator for year range (1900 to current year)
-function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
-  if (!control.value) return null;
-
-  const year = parseInt(control.value, 10);
-  const currentYear = new Date().getFullYear();
-
-  if (isNaN(year) || year < 1900 || year > currentYear) {
-    return { yearRange: { min: 1900, max: currentYear, actual: control.value } };
-  }
-
-  return null;
-}
 
 @Component({
   selector: 'app-education-section',
@@ -135,21 +121,24 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-neutral-300">{{ isActor ? 'year completed' : 'year' }}</label>
                       <div class="relative">
-                        <input
-                          type="text"
+                        <select
                           [formControlName]="isActor ? 'yearCompleted' : 'year'"
-                          (blur)="onFieldBlur()"
-                          placeholder="2021"
-                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                        />
-                        <button
-                          type="button"
-                          class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                          (change)="onFieldBlur()"
+                          class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
                         >
-                          <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
+                          <option value="" disabled selected class="text-neutral-500">select year</option>
+                          @for (year of availableYears; track year) {
+                            <option [value]="year" class="bg-neutral-800 text-white">{{ year }}</option>
+                          }
+                        </select>
+                        <svg
+                          class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
                       </div>
                     </div>
 
@@ -350,21 +339,24 @@ function yearRangeValidator(control: AbstractControl): ValidationErrors | null {
                       <div class="space-y-2">
                         <label class="block text-sm font-medium text-neutral-300">year</label>
                         <div class="relative">
-                          <input
-                            type="text"
+                          <select
                             formControlName="year"
-                            (blur)="onFieldBlur()"
-                            placeholder="2021"
-                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                          />
-                          <button
-                            type="button"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                            (change)="onFieldBlur()"
+                            class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
                           >
-                            <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
+                            <option value="" disabled selected class="text-neutral-500">select year</option>
+                            @for (year of availableYears; track year) {
+                              <option [value]="year" class="bg-neutral-800 text-white">{{ year }}</option>
+                            }
+                          </select>
+                          <svg
+                            class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
                         </div>
                       </div>
 
@@ -432,6 +424,16 @@ export class EducationSectionComponent implements OnInit {
   isUploading = signal(false);
   isSaving = signal(false);
 
+  // Generate array of years from current year down to 1900
+  availableYears: number[] = (() => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year);
+    }
+    return years;
+  })();
+
   ngOnInit() {
     this.initializeForm();
     this.populateForm();
@@ -495,7 +497,7 @@ export class EducationSectionComponent implements OnInit {
     return this.fb.group({
       schoolName: [edu?.schoolName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
       courseName: [edu?.courseName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
-      yearCompleted: [edu?.yearCompleted || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]],
+      yearCompleted: [edu?.yearCompleted || '', [Validators.required]],
       certificateUrl: [edu?.certificateUrl || '']
     });
   }
@@ -505,7 +507,7 @@ export class EducationSectionComponent implements OnInit {
       projectName: [work?.projectName || '', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
       role: [work?.role || '', [Validators.maxLength(100)]],
       genre: [work?.genre || '', [Validators.maxLength(100)]],
-      year: [work?.year || '', [Validators.required, Validators.pattern(/^\d{4}$/), yearRangeValidator]],
+      year: [work?.year || '', [Validators.required]],
       projectLink: [work?.projectLink || '', [Validators.maxLength(500)]]
     });
   }
