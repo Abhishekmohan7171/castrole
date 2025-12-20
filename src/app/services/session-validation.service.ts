@@ -102,8 +102,11 @@ export class SessionValidationService {
     // Get the server's loggedInTime as a timestamp
     const serverLoggedInTime = userData.loggedInTime?.toMillis?.() || 0;
 
-    // If server's loggedInTime is newer than our session start, we've been logged out
-    if (serverLoggedInTime > sessionStartTime) {
+    // Add 10 second grace period to account for server/client time differences and fresh login timing
+    const GRACE_PERIOD_MS = 10000; // 10 seconds
+
+    // If server's loggedInTime is newer than our session start (with grace period), we've been logged out
+    if (serverLoggedInTime > sessionStartTime + GRACE_PERIOD_MS) {
       console.log('[SessionValidation] Session invalidated. Server time:', new Date(serverLoggedInTime), 'Session start:', new Date(sessionStartTime));
       await this.autoLogout();
     }
@@ -137,8 +140,11 @@ export class SessionValidationService {
       const userData = userDocSnap.data() as UserDoc;
       const serverLoggedInTime = userData.loggedInTime?.toMillis?.() || 0;
 
-      // Session is valid if our session start time is >= server's loggedInTime
-      const isValid = sessionStartTime >= serverLoggedInTime;
+      // Add 10 second grace period to account for server/client time differences and fresh login timing
+      const GRACE_PERIOD_MS = 10000; // 10 seconds
+
+      // Session is valid if our session start time (with grace period) is >= server's loggedInTime
+      const isValid = sessionStartTime + GRACE_PERIOD_MS >= serverLoggedInTime;
 
       if (!isValid) {
         console.log('[SessionValidation] Session validation failed. Server time:', new Date(serverLoggedInTime), 'Session start:', new Date(sessionStartTime));
@@ -160,6 +166,16 @@ export class SessionValidationService {
 
     const storedTime = localStorage.getItem(this.SESSION_START_KEY);
     return storedTime ? parseInt(storedTime, 10) : null;
+  }
+
+  /**
+   * Check if there's an existing session (before auth state initialized it)
+   * Used to distinguish fresh logins from existing sessions on app load
+   */
+  hasExistingSession(): boolean {
+    if (typeof window === 'undefined') return false;
+    const sessionStart = localStorage.getItem(this.SESSION_START_KEY);
+    return sessionStart !== null;
   }
 
   /**
