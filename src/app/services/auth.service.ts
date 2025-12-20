@@ -399,9 +399,9 @@ export class AuthService {
 
     // Update login timestamp and device information if user exists
     if (snap.exists()) {
-      await this.updateLoginTimestamp(cred.user.uid);
-      // Initialize session validation for existing users
+      // Store session start BEFORE updating server timestamp
       this.sessionValidation.initializeSession(cred.user.uid);
+      await this.updateLoginTimestamp(cred.user.uid);
 
       // Ensure profile exists for existing users
       try {
@@ -437,9 +437,9 @@ export class AuthService {
 
     // Update login timestamp and device information if user exists
     if (snap.exists()) {
-      await this.updateLoginTimestamp(cred.user.uid);
-      // Initialize session validation for existing users
+      // Store session start BEFORE updating server timestamp
       this.sessionValidation.initializeSession(cred.user.uid);
+      await this.updateLoginTimestamp(cred.user.uid);
 
       // Ensure profile exists for existing users
       try {
@@ -536,9 +536,9 @@ export class AuthService {
   /** Login with email/password and bump updatedAt. */
   async loginWithEmail(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
-    await this.updateLoginTimestamp(cred.user.uid);
-    // Initialize session validation
+    // Store session start BEFORE updating server timestamp
     this.sessionValidation.initializeSession(cred.user.uid);
+    await this.updateLoginTimestamp(cred.user.uid);
     // Start presence tracking
     this.presence.startTracking(cred.user.uid);
     return cred.user;

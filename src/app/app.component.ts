@@ -54,17 +54,23 @@ export class AppComponent implements OnInit {
 
         // Check if we need to redirect
         if (user) {
-          // User is logged in - validate and initialize session
-          const isValid = await this.sessionValidation.validateSession(user.uid);
+          // Only validate if there's an existing session start time
+          // (indicates this is an existing session, not a fresh login)
+          const existingSession = this.sessionValidation.hasExistingSession();
 
-          if (!isValid) {
-            // Session was invalidated while offline, auto-logout
-            console.log('[AppComponent] Session invalidated, logging out');
-            await this.sessionValidation.autoLogout();
-            return;
+          if (existingSession) {
+            // Existing session - validate it
+            const isValid = await this.sessionValidation.validateSession(user.uid);
+
+            if (!isValid) {
+              // Session was invalidated while offline, auto-logout
+              console.log('[AppComponent] Session invalidated, logging out');
+              await this.sessionValidation.autoLogout();
+              return;
+            }
           }
 
-          // Session is valid, initialize session listener
+          // Initialize/reinitialize session (safe for both fresh and existing)
           this.sessionValidation.initializeSession(user.uid);
 
           if (authOnlyPaths.some(path => currentPath.startsWith(path))) {

@@ -190,11 +190,10 @@ export class LoginComponent implements OnInit {
     this.error = '';
     try {
       const { user, exists } = await this.authService.signInWithGoogle();
-      
-      // If user exists in the database, update login timestamp and navigate to return URL
+
+      // If user exists in the database, navigate to return URL
       if (exists) {
-        // Update login timestamp similar to email login
-        await this.authService.updateLoginTimestamp(user.uid);
+        // Note: Login timestamp is already updated in signInWithGoogle()
         await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding with email pre-filled
@@ -218,11 +217,10 @@ export class LoginComponent implements OnInit {
     this.error = '';
     try {
       const { user, exists } = await this.authService.signInWithApple();
-      
-      // If user exists in the database, update login timestamp and navigate to return URL
+
+      // If user exists in the database, navigate to return URL
       if (exists) {
-        // Update login timestamp similar to email login
-        await this.authService.updateLoginTimestamp(user.uid);
+        // Note: Login timestamp is already updated in signInWithApple()
         await this.router.navigateByUrl(this.returnUrl);
       } else {
         // If user doesn't exist, redirect to onboarding with email pre-filled
