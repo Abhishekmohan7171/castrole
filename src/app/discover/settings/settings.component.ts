@@ -14,6 +14,7 @@ import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { UserService } from '../../services/user.service';
+import { ToastService } from '../../services/toast.service';
 import {
   Firestore,
   doc,
@@ -64,6 +65,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private loadingService = inject(LoadingService);
   private analyticsService = inject(AnalyticsService);
   private userService = inject(UserService);
+  private toastService = inject(ToastService);
   private analyticsSubscription: Subscription | null = null;
 
   // User role signals
@@ -789,24 +791,38 @@ export class SettingsComponent implements OnInit, OnDestroy {
     if (!user) return;
 
     try {
-      // Clear all device tokens and update login time
-      const userDocRef = doc(this.firestore, 'users', user.uid);
-      await updateDoc(userDocRef, {
-        device: [], // Clear all devices
-        loggedInTime: serverTimestamp(), // Update login time to invalidate other sessions
-        isOnline: false,
-        lastSeen: serverTimestamp(),
-      });
+      // Show initial toast notification
+      this.toastService.info('Logging out of all devices...', 4000);
 
       // Close the modal
       this.closeRecentLoginsModal();
 
-      // Sign out the current user and redirect to login
+      // Wait a moment for user to see the initial toast
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Logout from all devices (clears device array and updates loggedInTime)
+      await this.auth.logoutAllDevices(user.uid);
+
+      // Show success toast
+      this.toastService.success('Logged out of all devices successfully', 3000);
+
+      // Wait longer for user to see the success message before navigating away
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Sign out the current user
       await this.auth.logout();
-      this.router.navigate(['/auth/login']);
+
+      // Force redirect to login page
+      await this.router.navigate(['/auth/login'], {
+        queryParams: { reason: 'logout-all-devices' },
+        replaceUrl: true // Replace current URL in history
+      });
     } catch (error) {
       console.error('Error logging out from all devices:', error);
-      alert('Failed to logout from all devices. Please try again.');
+      this.toastService.error('Failed to logout from all devices. Please try again.', 5000);
+
+      // On error, still try to redirect to login
+      await this.router.navigate(['/auth/login']);
     }
   }
 

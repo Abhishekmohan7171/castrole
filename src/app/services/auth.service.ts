@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { UserOnboardingCacheService } from './user-onboarding-cache.service';
 import { BrowserDetectionService } from '../utils/browser-detection';
 import { PresenceService } from './presence.service';
+import { SessionValidationService } from './session-validation.service';
 import {
   Auth,
   User,
@@ -46,6 +47,7 @@ export class AuthService {
   private browserDetection = inject(BrowserDetectionService);
   private presence = inject(PresenceService);
   private onboardingCache = inject(UserOnboardingCacheService);
+  private sessionValidation = inject(SessionValidationService);
 
   constructor() {
     // Auto-track presence based on auth state
@@ -398,6 +400,8 @@ export class AuthService {
     // Update login timestamp and device information if user exists
     if (snap.exists()) {
       await this.updateLoginTimestamp(cred.user.uid);
+      // Initialize session validation for existing users
+      this.sessionValidation.initializeSession(cred.user.uid);
 
       // Ensure profile exists for existing users
       try {
@@ -434,6 +438,8 @@ export class AuthService {
     // Update login timestamp and device information if user exists
     if (snap.exists()) {
       await this.updateLoginTimestamp(cred.user.uid);
+      // Initialize session validation for existing users
+      this.sessionValidation.initializeSession(cred.user.uid);
 
       // Ensure profile exists for existing users
       try {
@@ -531,6 +537,8 @@ export class AuthService {
   async loginWithEmail(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
     await this.updateLoginTimestamp(cred.user.uid);
+    // Initialize session validation
+    this.sessionValidation.initializeSession(cred.user.uid);
     // Start presence tracking
     this.presence.startTracking(cred.user.uid);
     return cred.user;
@@ -612,6 +620,10 @@ export class AuthService {
   /** Logs out the current user and updates their status in Firestore */
   async logout(): Promise<void> {
     const user = this.auth.currentUser;
+
+    // Invalidate session validation
+    this.sessionValidation.invalidateSession();
+
     // Stop presence tracking before logout
     this.presence.stopTracking();
 
@@ -652,6 +664,23 @@ export class AuthService {
     }
     // Sign out from Firebase Auth
     return signOut(this.auth);
+  }
+
+  /** Logout from all devices by clearing device array and updating loggedInTime */
+  async logoutAllDevices(uid: string): Promise<void> {
+    try {
+      // Clear all device tokens and update login time
+      const userDocRef = doc(this.db, 'users', uid);
+      await updateDoc(userDocRef, {
+        device: [], // Clear all devices
+        loggedInTime: serverTimestamp(), // Update login time to invalidate other sessions
+        isOnline: false,
+        lastSeen: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('[AuthService] Error logging out from all devices:', error);
+      throw error;
+    }
   }
 
   /**

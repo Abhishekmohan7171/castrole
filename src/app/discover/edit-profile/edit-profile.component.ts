@@ -784,6 +784,7 @@ export class EditProfileComponent implements OnInit {
             designation: data.designation,
             productionHouse: data.productionHouse,
             industryType: data.industryType,
+            producerWorks: data.producerWorks || currentProfile.producerProfile?.producerWorks || [],
           };
         }
         break;
