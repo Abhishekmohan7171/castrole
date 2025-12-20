@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { DiscoverComponent } from './discover/discover.component';
 import { authCanMatch, loggedOutOnlyGuard } from './guards/auth.guard';
+import { sessionGuard } from './guards/session.guard';
 import { profileVisibilityGuard } from './guards/profile.guard';
 import { AuthLoadingComponent } from './auth/auth-loading.component';
 import { ResetPasswordComponent } from './auth/reset-password/reset-password.component';
@@ -51,6 +52,7 @@ export const routes: Routes = [
     path: 'discover',
     component: DiscoverComponent,
     canMatch: [authCanMatch],
+    canActivate: [sessionGuard],
     children: [
       {
         path: '',
