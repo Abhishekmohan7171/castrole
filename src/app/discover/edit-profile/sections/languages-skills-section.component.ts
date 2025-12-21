@@ -65,7 +65,7 @@ import {
             <div class="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl">
               @for (category of filteredLanguagesCategorized(); track category.category) {
                 <!-- Category Header -->
-                <div class="px-4 py-2 text-xs font-semibold text-neutral-400 bg-neutral-800/50 sticky top-0">
+                <div class="px-4 py-2 text-xs font-semibold text-neutral-400 bg-neutral-900 sticky top-0 border-b border-neutral-700/50">
                   {{ category.category }}
                 </div>
                 <!-- Languages in this category -->
@@ -296,19 +296,26 @@ import {
               autofocus
             />
 
-            <!-- Autocomplete Dropdown -->
-            @if (showSkillDropdown() && filteredSkills().length > 0) {
+            <!-- Autocomplete Dropdown with Categories -->
+            @if (showSkillDropdown() && filteredSkillsFlat().length > 0) {
             <div class="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl">
-              @for (skill of filteredSkills(); track skill; let i = $index) {
-              <button
-                type="button"
-                (mousedown)="selectSkillFromDropdown(skill)"
-                [class]="skillDropdownIndex() === i
-                  ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
-                  : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
-              >
-                {{ skill }}
-              </button>
+              @for (category of filteredSkillsCategorized(); track category.category) {
+                <!-- Category Header -->
+                <div class="px-4 py-2 text-xs font-semibold text-neutral-400 bg-neutral-900 sticky top-0 border-b border-neutral-700/50">
+                  {{ category.category }}
+                </div>
+                <!-- Skills in this category -->
+                @for (skill of category.skills; track skill) {
+                  <button
+                    type="button"
+                    (mousedown)="selectSkillFromDropdown(skill)"
+                    [class]="skillDropdownIndex() === getSkillGlobalIndex(skill)
+                      ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
+                      : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
+                  >
+                    {{ skill }}
+                  </button>
+                }
               }
             </div>
             }
@@ -574,52 +581,110 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     (cat) => cat.languages
   );
 
-  // Standardized list of common acting skills
-  readonly availableSkills: string[] = [
-    'Acting',
-    'Dance',
-    'Singing',
-    'Voice Acting',
-    'Dubbing',
-    'Stage Performance',
-    'Classical Dance',
-    'Contemporary Dance',
-    'Hip Hop',
-    'Ballet',
-    'Bharatanatyam',
-    'Kathak',
-    'Kuchipudi',
-    'Odissi',
-    'Mohiniyattam',
-    'Kathakali',
-    'Martial Arts',
-    'Stunts',
-    'Horse Riding',
-    'Swimming',
-    'Gymnastics',
-    'Acrobatics',
-    'Comedy',
-    'Stand-up Comedy',
-    'Improv',
-    'Mimicry',
-    'Musical Instrument',
-    'Guitar',
-    'Piano',
-    'Drums',
-    'Tabla',
-    'Flute',
-    'Harmonium',
-    'Method Acting',
-    'Classical Acting',
-    'Physical Theatre',
-    'Puppetry',
-    'Mime',
-    'Sketch Comedy',
-    'Voice Modulation',
-    'Dialect/Accent',
-    'Action Choreography',
-    'Fight Choreography',
+  // Categorized skills with subtitles
+  readonly skillCategories: { category: string; skills: string[] }[] = [
+    {
+      category: 'Combat & Action',
+      skills: [
+        'Boxing',
+        'Kickboxing',
+        'Karate',
+        'Taekwondo',
+        'Judo',
+        'Kung Fu',
+        'Kalaripayattu',
+        'Martial Arts',
+        'Stunts',
+        'Stage Combat',
+        'Fight Choreography',
+        'Action Choreography',
+      ],
+    },
+    {
+      category: 'Sports & Physical',
+      skills: [
+        'Gym / Weight Training',
+        'Gymnastics',
+        'Acrobatics',
+        'Parkour',
+        'Athletics',
+        'Yoga',
+        'Swimming',
+        'Diving',
+        'Cycling',
+      ],
+    },
+    {
+      category: 'Adventure & Riding',
+      skills: [
+        'Horse Riding',
+        'Bike Riding',
+        'Car Driving',
+        'Skateboarding',
+        'Roller Skating',
+        'Rock Climbing',
+      ],
+    },
+    {
+      category: 'Music & Voice',
+      skills: [
+        'Singing',
+        'Classical Singing',
+        'Western Singing',
+        'Voice Acting',
+        'Voice Modulation',
+        'Dubbing',
+        'Beatboxing',
+      ],
+    },
+    {
+      category: 'Musical Instruments',
+      skills: [
+        'Guitar',
+        'Electric Guitar',
+        'Bass Guitar',
+        'Piano',
+        'Keyboard',
+        'Drums',
+        'Tabla',
+        'Flute',
+        'Harmonium',
+        'Violin',
+        'Ukulele',
+      ],
+    },
+    {
+      category: 'Performance Add-ons',
+      skills: [
+        'Dance',
+        'Classical Dance',
+        'Contemporary Dance',
+        'Hip Hop',
+        'Freestyle Dance',
+        'Bharatanatyam',
+        'Kathak',
+        'Kuchipudi',
+        'Odissi',
+        'Mohiniyattam',
+        'Kathakali',
+      ],
+    },
+    {
+      category: 'Presentation',
+      skills: [
+        'Stand-up Comedy',
+        'Improv',
+        'Mimicry',
+        'Anchoring',
+        'Public Speaking',
+      ],
+    },
   ];
+
+  // Flattened list for autocomplete filtering
+  readonly availableSkills: string[] = this.skillCategories.flatMap(
+    (cat) => cat.skills
+  );
 
   // Computed filtered lists with categorization
   filteredLanguagesFlat = computed(() => {
@@ -656,7 +721,7 @@ export class LanguagesSkillsSectionComponent implements OnInit {
       .filter((cat) => cat.languages.length > 0);
   });
 
-  filteredSkills = computed(() => {
+  filteredSkillsFlat = computed(() => {
     const searchTerm = this.newSkillName().toLowerCase().trim();
     const selected = this.skills().map((s) => s.skill.toLowerCase());
 
@@ -671,6 +736,23 @@ export class LanguagesSkillsSectionComponent implements OnInit {
         !selected.includes(skill.toLowerCase()) &&
         skill.toLowerCase().includes(searchTerm)
     );
+  });
+
+  // Categorized filtered skills for dropdown display
+  filteredSkillsCategorized = computed(() => {
+    const searchTerm = this.newSkillName().toLowerCase().trim();
+    const selected = this.skills().map((s) => s.skill.toLowerCase());
+
+    return this.skillCategories
+      .map((category) => ({
+        category: category.category,
+        skills: category.skills.filter(
+          (skill) =>
+            !selected.includes(skill.toLowerCase()) &&
+            (!searchTerm || skill.toLowerCase().includes(searchTerm))
+        ),
+      }))
+      .filter((cat) => cat.skills.length > 0);
   });
 
   ngOnInit() {
@@ -766,13 +848,21 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     }, 200);
   }
 
+  // Helper to get global index of a skill in the flattened filtered list
+  getSkillGlobalIndex(skill: string): number {
+    return this.filteredSkillsFlat().indexOf(skill);
+  }
+
   onSkillKeyDown(event: Event, action: 'up' | 'down' | 'enter') {
     const keyEvent = event as KeyboardEvent;
-    const filtered = this.filteredSkills();
+    const filtered = this.filteredSkillsFlat();
 
     if (action === 'down') {
       keyEvent.preventDefault();
-      const newIndex = Math.min(this.skillDropdownIndex() + 1, filtered.length - 1);
+      const newIndex = Math.min(
+        this.skillDropdownIndex() + 1,
+        filtered.length - 1
+      );
       this.skillDropdownIndex.set(newIndex);
     } else if (action === 'up') {
       keyEvent.preventDefault();
