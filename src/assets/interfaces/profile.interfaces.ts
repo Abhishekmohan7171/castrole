@@ -19,6 +19,7 @@ export interface ProducerProfile {
   productionHouse?: string;
   industryType?: string; // Dropdown
   producerProfileImageUrl?: string;
+  listEducation?: Education[]; // Education entries for producers
   producerWorks?: Work[]; // Get the last from the list for recent work
   notifications?: Notification[];
 

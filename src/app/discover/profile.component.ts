@@ -663,7 +663,7 @@ import {
               </div>
             </div>
 
-            <!-- Acting Education -->
+            <!-- Education -->
             @if (hasEducation()) {
             <div
               class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
@@ -671,11 +671,10 @@ import {
               <div
                 class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
               >
-                acting education
+                {{ isActor() ? 'acting education' : 'education' }}
               </div>
               <div class="space-y-3">
-                @for (edu of profileData()?.actorProfile?.listEducation; track
-                edu) {
+                @for (edu of getEducationList(); track edu) {
                 <div>
                   <div class="text-sm text-neutral-300 font-medium">
                     {{ edu.courseName }}
@@ -712,18 +711,17 @@ import {
             }
 
             <!-- Experiences -->
-            @if (hasActorWorks()) {
+            @if (hasWorks()) {
             <div
               class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
             >
               <div
                 class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
               >
-                experiences
+                {{ isActor() ? 'experiences' : 'previous works' }}
               </div>
               <div class="space-y-3">
-                @for (work of profileData()?.actorProfile?.actorWorks; track
-                work) {
+                @for (work of getWorksList(); track work) {
                 <div>
                   <div class="text-sm text-neutral-300 font-medium">
                     {{ work.projectName }}
@@ -731,10 +729,10 @@ import {
                   <div class="text-xs text-neutral-500 mt-0.5">
                     @if (work.role) {
                     {{ work.role }}@if (work.genre) {<span>
-                      | {{ work.genre }}</span
-                    >} | {{ work.year }}
+                      {{ isActor() ? '|' : '•' }} {{ work.genre }}</span
+                    >} {{ isActor() ? '|' : '•' }} {{ work.year }}
                     } @else {
-                    {{ work.genre || 'supporting role' }} | {{ work.year }}
+                    {{ work.genre || 'supporting role' }} {{ isActor() ? '|' : '•' }} {{ work.year }}
                     }
                   </div>
                   @if (work.projectLink) {
@@ -907,60 +905,7 @@ import {
               </div>
             </div>
 
-            <!-- Previous Works -->
-            @if (hasProducerWorks()) {
-            <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
-            >
-              <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
-              >
-                previous works
-              </div>
-              <div class="space-y-3">
-                @for (work of profileData()?.producerProfile?.producerWorks;
-                track work) {
-                <div>
-                  <div class="text-sm text-neutral-300 font-medium">
-                    {{ work.projectName }}
-                  </div>
-                  <div class="text-xs text-neutral-500 mt-0.5">
-                    @if (work.role) {
-                    {{ work.role }}@if (work.genre) {<span>
-                      • {{ work.genre }}</span
-                    >} • {{ work.year }}
-                    } @else {
-                    {{ work.genre || 'Genre not specified' }} • {{ work.year }}
-                    }
-                  </div>
-                  @if (work.projectLink) {
-                  <a
-                    [href]="work.projectLink"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    view project
-                  </a>
-                  }
-                </div>
-                }
-              </div>
-            </div>
-            } }
+ }
           </section>
         </div>
       </div>
@@ -1193,10 +1138,32 @@ export class ProfileComponent implements OnInit {
 
   hasEducation = computed(() => {
     const profile = this.profileData();
-    return (
-      profile?.actorProfile?.listEducation &&
-      profile.actorProfile.listEducation.length > 0
-    );
+    if (this.isActor()) {
+      return (
+        profile?.actorProfile?.listEducation &&
+        profile.actorProfile.listEducation.length > 0
+      );
+    } else {
+      return (
+        profile?.producerProfile?.listEducation &&
+        profile.producerProfile.listEducation.length > 0
+      );
+    }
+  });
+
+  hasWorks = computed(() => {
+    const profile = this.profileData();
+    if (this.isActor()) {
+      return (
+        profile?.actorProfile?.actorWorks &&
+        profile.actorProfile.actorWorks.length > 0
+      );
+    } else {
+      return (
+        profile?.producerProfile?.producerWorks &&
+        profile.producerProfile.producerWorks.length > 0
+      );
+    }
   });
 
   hasActorWorks = computed(() => {
@@ -1825,6 +1792,25 @@ export class ProfileComponent implements OnInit {
 
   getSkillRating(skill: string | Skill): number {
     return typeof skill === 'object' ? skill.rating : 0;
+  }
+
+  // Helper methods to get education and works based on role
+  getEducationList() {
+    const profile = this.profileData();
+    if (this.isActor()) {
+      return profile?.actorProfile?.listEducation || [];
+    } else {
+      return profile?.producerProfile?.listEducation || [];
+    }
+  }
+
+  getWorksList() {
+    const profile = this.profileData();
+    if (this.isActor()) {
+      return profile?.actorProfile?.actorWorks || [];
+    } else {
+      return profile?.producerProfile?.producerWorks || [];
+    }
   }
 
   /**
