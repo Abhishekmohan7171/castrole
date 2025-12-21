@@ -777,8 +777,8 @@ import {
                 languages
               </div>
               <div class="space-y-2">
-                @for (language of profileData()?.actorProfile?.languages; track
-                language) {
+                @for (language of sortedLanguages(); track
+                getLanguageName(language)) {
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">{{
                     getLanguageName(language)
@@ -819,7 +819,7 @@ import {
                 extra curricular
               </div>
               <div class="space-y-2">
-                @for (skill of profileData()?.actorProfile?.skills; track skill)
+                @for (skill of sortedSkills(); track getSkillName(skill))
                 {
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">{{
@@ -1239,6 +1239,32 @@ export class ProfileComponent implements OnInit {
         profile.social.externalLinkUrl ||
         profile.social.addLinkUrl)
     );
+  });
+
+  // Sorted languages by rating (descending)
+  sortedLanguages = computed(() => {
+    const profile = this.profileData();
+    const languages = profile?.actorProfile?.languages || [];
+
+    // Convert strings to Language objects and sort by rating
+    return [...languages].sort((a, b) => {
+      const ratingA = typeof a === 'object' ? a.rating : 0;
+      const ratingB = typeof b === 'object' ? b.rating : 0;
+      return ratingB - ratingA; // Descending order
+    });
+  });
+
+  // Sorted skills by rating (descending)
+  sortedSkills = computed(() => {
+    const profile = this.profileData();
+    const skills = profile?.actorProfile?.skills || [];
+
+    // Convert strings to Skill objects and sort by rating
+    return [...skills].sort((a, b) => {
+      const ratingA = typeof a === 'object' ? a.rating : 0;
+      const ratingB = typeof b === 'object' ? b.rating : 0;
+      return ratingB - ratingA; // Descending order
+    });
   });
 
   async ngOnInit() {
