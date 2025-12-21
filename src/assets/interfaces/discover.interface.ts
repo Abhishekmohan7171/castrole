@@ -12,14 +12,16 @@ export enum PostType {
 export interface Discover {
   // --- Basic Post Details ---
   id: string;
-  authorId: string;
-  authorName: string;
+  authorId?: string;
+  authorName?: string;
   postDate: Date;
   content: string;
   title?: string;
   subtitle?: string;
+  description?: string; // Alternative to content
   imageUrl?: string;
   videoUrl?: string;
+  fileUrl?: string; // Generic file URL
   customUrl?: string;
   thumbnailUrl?: string;
   category?: string;
@@ -37,4 +39,5 @@ export interface Discover {
   // --- System Fields ---
   createdAt: Date;
   updatedAt: Date;
+  expiryDate?: Date;
 }
