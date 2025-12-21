@@ -13,7 +13,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
 import { FilterPersistenceService } from '../services/filter-persistence.service';
-import { CHARACTER_TYPES, GENDER_OPTIONS, AVAILABLE_SKILLS, AVAILABLE_LANGUAGES } from './search-constants';
+import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS, GENDER_OPTIONS, AVAILABLE_SKILLS, AVAILABLE_LANGUAGES, AVAILABLE_LOCATIONS_ALL } from './search-constants';
 
 interface ActorSearchResult {
   uid: string;
@@ -103,7 +103,7 @@ interface ParsedSearchQuery {
               @for (tag of searchTags(); track tag) {
                 <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-full text-sm text-neutral-300">
                   {{ tag }}
-                  <button (click)="removeTag(tag)" class="hover:text-fuchsia-400 transition-colors">
+                  <button (click)="removeTag(tag)" class="hover:text-[#90ACC8] transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -128,7 +128,7 @@ interface ParsedSearchQuery {
                 <label class="block text-sm font-medium text-neutral-300 mb-2">
                   Character Types
                   @if (filters().characterTypes.length > 0) {
-                    <span class="ml-2 text-xs text-fuchsia-400">({{ filters().characterTypes.length }} selected)</span>
+                    <span class="ml-2 text-xs text-[#90ACC8]">({{ filters().characterTypes.length }} selected)</span>
                   }
                 </label>
                 
@@ -141,7 +141,7 @@ interface ParsedSearchQuery {
                     (focus)="showCharacterTypeDropdown.set(true)"
                     (blur)="onCharacterTypeBlur()"
                     placeholder="Search character types..."
-                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-fuchsia-500 mb-2">
+                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#90ACC8] mb-2">
                   
                   <!-- Dropdown List -->
                   @if (showCharacterTypeDropdown() && filteredCharacterTypes().length > 0) {
@@ -154,7 +154,7 @@ interface ParsedSearchQuery {
                             type="checkbox"
                             [checked]="filters().characterTypes.includes(type)"
                             (change)="toggleCharacterType(type)"
-                            class="w-4 h-4 rounded border-neutral-600 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-0 bg-neutral-700 cursor-pointer">
+                            class="w-4 h-4 rounded border-neutral-600 text-[#90ACC8] focus:ring-[#90ACC8] focus:ring-offset-0 bg-neutral-700 cursor-pointer">
                           <span class="text-sm text-neutral-200 capitalize">{{ type }}</span>
                         </label>
                       }
@@ -166,9 +166,9 @@ interface ParsedSearchQuery {
                 @if (filters().characterTypes.length > 0) {
                   <div class="flex flex-wrap gap-1.5">
                     @for (type of filters().characterTypes; track type) {
-                      <span class="inline-flex items-center gap-1 bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded text-xs capitalize">
+                      <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-2 py-1 rounded text-xs capitalize">
                         {{ type }}
-                        <button (click)="toggleCharacterType(type)" class="hover:text-fuchsia-100">
+                        <button (click)="toggleCharacterType(type)" class="hover:text-[#455A64]">
                           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                           </svg>
@@ -189,7 +189,7 @@ interface ParsedSearchQuery {
                     (input)="updateFilter('minAge', +$any($event.target).value)"
                     min="0" 
                     max="100"
-                    class="w-20 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-fuchsia-500">
+                    class="w-20 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-center focus:outline-none focus:border-[#455A64]">
                   <div class="flex-1 relative">
                     <input 
                       type="range" 
@@ -197,7 +197,7 @@ interface ParsedSearchQuery {
                       (input)="updateFilter('maxAge', +$any($event.target).value)"
                       min="0" 
                       max="100"
-                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#455A64]">
                   </div>
                   <span class="w-12 text-center text-neutral-300">{{ filters().maxAge }}</span>
                 </div>
@@ -209,7 +209,7 @@ interface ParsedSearchQuery {
                 <select 
                   [value]="filters().gender"
                   (change)="updateFilter('gender', $any($event.target).value)"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-[#455A64]">
                   @for (option of genderOptions; track option.value) {
                     <option [value]="option.value">{{ option.label }}</option>
                   }
@@ -226,7 +226,7 @@ interface ParsedSearchQuery {
                     (input)="updateFilter('minHeight', +$any($event.target).value)"
                     min="100" 
                     max="250"
-                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-fuchsia-500">
+                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-[#455A64]">
                   <div class="flex-1 relative">
                     <input 
                       type="range" 
@@ -234,7 +234,7 @@ interface ParsedSearchQuery {
                       (input)="updateFilter('maxHeight', +$any($event.target).value)"
                       min="100" 
                       max="250"
-                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#455A64]">
                   </div>
                   <span class="w-12 text-center text-neutral-300 text-sm">{{ filters().maxHeight }}</span>
                 </div>
@@ -250,7 +250,7 @@ interface ParsedSearchQuery {
                     (input)="updateFilter('minWeight', +$any($event.target).value)"
                     min="30" 
                     max="150"
-                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-fuchsia-500">
+                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-[#455A64]">
                   <div class="flex-1 relative">
                     <input 
                       type="range" 
@@ -258,54 +258,195 @@ interface ParsedSearchQuery {
                       (input)="updateFilter('maxWeight', +$any($event.target).value)"
                       min="30" 
                       max="150"
-                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#90ACC8]">
+                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#455A64]">
                   </div>
                   <span class="w-12 text-center text-neutral-300 text-sm">{{ filters().maxWeight }}</span>
                 </div>
               </div>
 
-              <!-- Skills -->
+              <!-- Skills (Searchable Multi-select) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Skills</label>
-                <input
-                  type="text"
-                  [value]="skillsInput()"
-                  (input)="onSkillsInputChange($any($event.target).value)"
-                  (keyup.enter)="applyFilters()"
-                  placeholder="e.g., Acting, Dancing, Boxing"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
-                <p class="text-xs text-neutral-500 mt-1">Separate multiple skills with commas</p>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">
+                  Skills
+                  @if (filters().skills.length > 0) {
+                    <span class="ml-2 text-xs text-[#455A64]">({{ filters().skills.length }} selected)</span>
+                  }
+                </label>
+                
+                <!-- Search Input -->
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="skillSearch()"
+                    (input)="onSkillSearchChange($any($event.target).value)"
+                    (focus)="showSkillDropdown.set(true)"
+                    (blur)="onSkillBlur()"
+                    placeholder="Search skills..."
+                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#455A64] mb-2">
+                  
+                  <!-- Dropdown List -->
+                  @if (showSkillDropdown() && filteredSkills().length > 0) {
+                    <div 
+                      (mousedown)="$event.preventDefault()"
+                      class="absolute z-10 w-full max-h-48 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 space-y-1 shadow-xl">
+                      @for (skill of filteredSkills(); track skill) {
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 px-2 py-1.5 rounded transition-colors">
+                          <input 
+                            type="checkbox"
+                            [checked]="filters().skills.includes(skill)"
+                            (change)="toggleSkill(skill)"
+                            class="w-4 h-4 rounded border-neutral-600 text-[#455A64] focus:ring-[#455A64] focus:ring-offset-0 bg-neutral-700 cursor-pointer">
+                          <span class="text-sm text-neutral-200">{{ skill }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
+                </div>
+                
+                <!-- Selected Skills Tags -->
+                @if (filters().skills.length > 0) {
+                  <div class="flex flex-wrap gap-1.5">
+                    @for (skill of filters().skills; track skill) {
+                      <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-2 py-1 rounded text-xs">
+                        {{ skill }}
+                        <button (click)="toggleSkill(skill)" class="hover:text-[#455A64]">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
               </div>
 
-              <!-- Languages -->
+              <!-- Languages (Searchable Multi-select) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Languages</label>
-                <input
-                  type="text"
-                  [value]="languageInput()"
-                  (input)="onLanguageInputChange($any($event.target).value)"
-                  (keyup.enter)="applyFilters()"
-                  placeholder="e.g., English, Hindi, Tamil"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
-                <p class="text-xs text-neutral-500 mt-1">Separate multiple languages with commas</p>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">
+                  Languages
+                  @if (filters().languages.length > 0) {
+                    <span class="ml-2 text-xs text-[#455A64]">({{ filters().languages.length }} selected)</span>
+                  }
+                </label>
+                
+                <!-- Search Input -->
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="languageSearch()"
+                    (input)="onLanguageSearchChange($any($event.target).value)"
+                    (focus)="showLanguageDropdown.set(true)"
+                    (blur)="onLanguageBlur()"
+                    placeholder="Search languages..."
+                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#455A64] mb-2">
+                  
+                  <!-- Dropdown List -->
+                  @if (showLanguageDropdown() && filteredLanguages().length > 0) {
+                    <div 
+                      (mousedown)="$event.preventDefault()"
+                      class="absolute z-10 w-full max-h-48 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 space-y-1 shadow-xl">
+                      @for (language of filteredLanguages(); track language) {
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 px-2 py-1.5 rounded transition-colors">
+                          <input 
+                            type="checkbox"
+                            [checked]="filters().languages.includes(language)"
+                            (change)="toggleLanguage(language)"
+                            class="w-4 h-4 rounded border-neutral-600 text-[#455A64] focus:ring-[#455A64] focus:ring-offset-0 bg-neutral-700 cursor-pointer">
+                          <span class="text-sm text-neutral-200">{{ language }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
+                </div>
+                
+                <!-- Selected Languages Tags -->
+                @if (filters().languages.length > 0) {
+                  <div class="flex flex-wrap gap-1.5">
+                    @for (language of filters().languages; track language) {
+                      <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-2 py-1 rounded text-xs">
+                        {{ language }}
+                        <button (click)="toggleLanguage(language)" class="hover:text-[#455A64]">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
               </div>
 
-              <!-- Location -->
+              <!-- Location (Searchable Dropdown) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Location</label>
-                <input 
-                  type="text" 
-                  [value]="filters().location"
-                  (input)="updateFilter('location', $any($event.target).value)"
-                  placeholder="e.g., Mumbai, Chennai"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-fuchsia-500">
+                <label class="block text-sm font-medium text-neutral-300 mb-2">
+                  Location
+                  @if (filters().location) {
+                    <span class="ml-2 text-xs text-[#455A64]">(Selected)</span>
+                  }
+                </label>
+                
+                <!-- Search Input -->
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="locationSearch()"
+                    (input)="onLocationSearchChange($any($event.target).value)"
+                    (focus)="showLocationDropdown.set(true)"
+                    (blur)="onLocationBlur()"
+                    placeholder="Search location..."
+                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#455A64] mb-2">
+                  
+                  <!-- Dropdown List -->
+                  @if (showLocationDropdown()) {
+                    <div 
+                      (mousedown)="$event.preventDefault()"
+                      class="absolute z-10 w-full max-h-64 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 shadow-xl">
+                      @if (filteredLocations().length > 0) {
+                        <div class="space-y-1">
+                          @for (location of filteredLocations(); track location) {
+                            <button
+                              (click)="selectLocation(location)"
+                              class="w-full text-left px-3 py-2 hover:bg-neutral-700 rounded transition-colors">
+                              <span class="text-sm text-neutral-200">{{ location }}</span>
+                            </button>
+                          }
+                          @if (filteredLocations().length >= 50) {
+                            <div class="px-3 py-2 text-xs text-neutral-500 text-center border-t border-neutral-700 mt-1 pt-2">
+                              Showing first 50 results. Type more to refine search.
+                            </div>
+                          }
+                        </div>
+                      } @else if (locationSearch().trim().length > 0) {
+                        <div class="px-3 py-2 text-sm text-neutral-500 text-center">
+                          No locations found
+                        </div>
+                      } @else {
+                        <div class="px-3 py-2 text-sm text-neutral-500 text-center">
+                          Type to search 700+ locations
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+                
+                <!-- Selected Location Display -->
+                @if (filters().location) {
+                  <div class="flex items-center gap-2 bg-[#455A64]/20 text-[#455A64] px-3 py-2 rounded">
+                    <span class="text-sm flex-1">{{ filters().location }}</span>
+                    <button (click)="clearLocation()" class="hover:text-[#455A64] text-neutral-400">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                }
               </div>
 
               <!-- Filter Actions -->
               <div class="space-y-2">
                 <button 
                   (click)="applyFilters()"
-                  class="w-full bg-[#90ACC8] hover:bg-[#7A9AB8] text-white font-medium py-3 rounded-lg transition-colors">
+                  class="w-full bg-[#455A64] hover:bg-[#455A64]/90 text-white font-medium py-3 rounded-lg transition-colors">
                   Apply Filters
                   @if (hasActiveFilters()) {
                     <span class="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
@@ -333,9 +474,9 @@ interface ParsedSearchQuery {
                 <span class="text-sm text-neutral-400">Active:</span>
                 
                 @if (searchQuery()) {
-                  <span class="inline-flex items-center gap-1 bg-fuchsia-500/20 text-fuchsia-300 px-3 py-1 rounded-full text-sm">
+                  <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-3 py-1 rounded-full text-sm">
                     Search: "{{ searchQuery() }}"
-                    <button (click)="searchQuery.set('')" class="hover:text-fuchsia-100">
+                    <button (click)="searchQuery.set('')" class="hover:text-[#455A64]">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -438,7 +579,7 @@ interface ParsedSearchQuery {
             @if (loading()) {
               <!-- Loading State -->
               <div class="flex items-center justify-center py-20">
-                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-fuchsia-500 border-r-transparent"></div>
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#455A64] border-r-transparent"></div>
               </div>
             } @else if (error()) {
               <!-- Error State -->
@@ -449,7 +590,7 @@ interface ParsedSearchQuery {
                 <h3 class="text-xl font-semibold text-neutral-400 mb-2">{{ error() }}</h3>
                 <button 
                   (click)="loadActors()" 
-                  class="mt-4 px-6 py-2 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-lg transition-colors">
+                  class="mt-4 px-6 py-2 bg-[#455A64] hover:bg-[#455A64]/90 text-white rounded-lg transition-colors">
                   Retry
                 </button>
               </div>
@@ -457,16 +598,16 @@ interface ParsedSearchQuery {
               <!-- Results -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 @for (actor of filteredActors(); track actor.uid) {
-                  <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-fuchsia-500/50 transition-all duration-300 group">
+                  <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-[#455A64]/50 transition-all duration-300 group">
                     <!-- Circular Actor Photo -->
                     <div class="relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center py-6">
                       @if (actor.profileImageUrl) {
                         <img 
                           [src]="actor.profileImageUrl" 
                           [alt]="actor.stageName" 
-                          class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-fuchsia-500/50 transition-colors shadow-xl">
+                          class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-[#455A64]/50 transition-colors shadow-xl">
                       } @else {
-                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center text-3xl font-bold text-neutral-400 border-4 border-neutral-700 group-hover:border-fuchsia-500/50 transition-colors shadow-xl">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#515D69] to-[#455A64] flex items-center justify-center text-white font-semibold text-sm">
                           {{ actor.stageName.charAt(0).toUpperCase() }}
                         </div>
                       }
@@ -491,7 +632,7 @@ interface ParsedSearchQuery {
                         <!-- Wishlist Button -->
                         <button 
                           (click)="toggleWishlist(actor)"
-                          [class]="isInWishlist(actor) ? 'bg-fuchsia-500 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-fuchsia-400'"
+                          [class]="isInWishlist(actor) ? 'bg-[#455A64] text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-[#455A64]'"
                           class="p-2 rounded-lg transition-colors flex-shrink-0">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -508,7 +649,7 @@ interface ParsedSearchQuery {
                         <div class="mb-3 bg-neutral-800 rounded-lg p-2 flex items-center gap-2">
                           <button 
                             (click)="toggleVoicePlay(actor.uid)"
-                            class="p-1.5 rounded-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white transition-colors flex-shrink-0">
+                            class="p-1.5 rounded-full bg-[#455A64] hover:bg-[#455A64]/90 text-white transition-colors flex-shrink-0">
                             @if (playingVoiceId() === actor.uid) {
                               <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
@@ -547,7 +688,7 @@ interface ParsedSearchQuery {
                       <!-- Actions -->
                       <button 
                         (click)="viewProfile(actor)"
-                        class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                        class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -570,7 +711,7 @@ interface ParsedSearchQuery {
             } @else {
               <!-- Initial State -->
               <div class="flex flex-col items-center justify-center py-20 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-fuchsia-500/20 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-[#90ACC8]/20 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <h3 class="text-2xl font-semibold text-neutral-300 mb-3">Find Your Perfect Actor</h3>
@@ -592,7 +733,7 @@ interface ParsedSearchQuery {
               @if (wishlistLoading()) {
                 <!-- Loading State -->
                 <div class="flex flex-col items-center justify-center py-12">
-                  <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-fuchsia-500 border-r-transparent mb-3"></div>
+                  <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#90ACC8] border-r-transparent mb-3"></div>
                   <p class="text-sm text-neutral-400">Loading wishlist...</p>
                 </div>
               } @else if (wishlist().length > 0) {
@@ -600,7 +741,7 @@ interface ParsedSearchQuery {
                 <div class="space-y-3 mb-4">
                   @for (actor of wishlist(); track actor.uid) {
                     <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
-                      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold text-sm">
+                      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm">
                         {{ actor.stageName.charAt(0).toUpperCase() }}
                       </div>
                       <div class="flex-1 min-w-0">
@@ -619,7 +760,7 @@ interface ParsedSearchQuery {
 
                 <button 
                   (click)="viewAllWishlist()"
-                  class="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                  class="w-full bg-[#90ACC8] hover:bg-[#7A9AB8] text-white py-2 rounded-lg text-sm font-medium transition-colors">
                   View Profile
                 </button>
               } @else {
@@ -677,6 +818,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   readonly genderOptions = GENDER_OPTIONS;
   readonly availableSkills = AVAILABLE_SKILLS;
   readonly availableLanguages = AVAILABLE_LANGUAGES;
+  readonly availableLocations = AVAILABLE_LOCATIONS_ALL;
 
   // Search state
   searchQuery = signal('');
@@ -717,15 +859,100 @@ export class SearchComponent implements OnInit, OnDestroy {
   characterTypeSearch = signal('');
   showCharacterTypeDropdown = signal(false);
   
-  // Filtered character types based on search
+  // Filtered character types based on search with synonym mapping
   filteredCharacterTypes = computed(() => {
     const search = this.characterTypeSearch().toLowerCase().trim();
     if (!search) {
       return this.characterTypes;
     }
-    return this.characterTypes.filter(type => 
-      type.toLowerCase().includes(search)
+    
+    // Collect all possible mapped values for synonyms that match the search
+    const mappedValues = new Set<string>();
+    
+    // Check if search is an exact synonym match
+    if (CHARACTER_TYPE_SYNONYMS[search]) {
+      mappedValues.add(CHARACTER_TYPE_SYNONYMS[search].toLowerCase());
+    }
+    
+    // Also check if search is contained in any synonym key (partial match)
+    Object.keys(CHARACTER_TYPE_SYNONYMS).forEach(synonym => {
+      if (synonym.includes(search)) {
+        mappedValues.add(CHARACTER_TYPE_SYNONYMS[synonym].toLowerCase());
+      }
+    });
+    
+    // Filter character types by direct match OR synonym match
+    return this.characterTypes.filter(type => {
+      const lowerType = type.toLowerCase();
+      
+      // Direct match with search term
+      if (lowerType.includes(search)) {
+        return true;
+      }
+      
+      // Match with any mapped synonym value
+      for (const mappedValue of mappedValues) {
+        if (lowerType.includes(mappedValue) || mappedValue.includes(lowerType)) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+  });
+
+  // Skills search
+  skillSearch = signal('');
+  showSkillDropdown = signal(false);
+  
+  // Filtered skills based on search
+  filteredSkills = computed(() => {
+    const search = this.skillSearch().toLowerCase().trim();
+    if (!search) {
+      return this.availableSkills;
+    }
+    return this.availableSkills.filter(skill => 
+      skill.toLowerCase().includes(search)
     );
+  });
+
+  // Languages search
+  languageSearch = signal('');
+  showLanguageDropdown = signal(false);
+  
+  // Filtered languages based on search
+  filteredLanguages = computed(() => {
+    const search = this.languageSearch().toLowerCase().trim();
+    if (!search) {
+      return this.availableLanguages;
+    }
+    return this.availableLanguages.filter(language => 
+      language.toLowerCase().includes(search)
+    );
+  });
+
+  // Location search
+  locationSearch = signal('');
+  showLocationDropdown = signal(false);
+  
+  // Filtered locations based on search (optimized with limit)
+  filteredLocations = computed(() => {
+    const search = this.locationSearch().toLowerCase().trim();
+    
+    // Show nothing if no search (avoid rendering 700+ items)
+    if (!search) {
+      return [];
+    }
+    
+    // Limit results to 50 for performance
+    const results: string[] = [];
+    for (const location of this.availableLocations) {
+      if (location.toLowerCase().includes(search)) {
+        results.push(location);
+        if (results.length >= 50) break;
+      }
+    }
+    return results;
   });
 
   // Wishlist
@@ -1372,7 +1599,113 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle language input changes
+   * Toggle skill in multi-select
+   */
+  toggleSkill(skill: string): void {
+    const currentSkills = this.filters().skills;
+    const newSkills = currentSkills.includes(skill)
+      ? currentSkills.filter(s => s !== skill)
+      : [...currentSkills, skill];
+    this.updateFilter('skills', newSkills);
+    this.logger.log(`Skill toggled: ${skill}, now selected: ${newSkills.length}`);
+  }
+
+  /**
+   * Handle skill search input changes
+   */
+  onSkillSearchChange(value: string): void {
+    this.skillSearch.set(value);
+    // Show dropdown when user types
+    if (value.trim().length > 0) {
+      this.showSkillDropdown.set(true);
+    }
+  }
+
+  /**
+   * Handle skill input blur
+   * Delay closing to allow checkbox clicks
+   */
+  onSkillBlur(): void {
+    setTimeout(() => {
+      this.showSkillDropdown.set(false);
+    }, 200);
+  }
+
+  /**
+   * Toggle language in multi-select
+   */
+  toggleLanguage(language: string): void {
+    const currentLanguages = this.filters().languages;
+    const newLanguages = currentLanguages.includes(language)
+      ? currentLanguages.filter(l => l !== language)
+      : [...currentLanguages, language];
+    this.updateFilter('languages', newLanguages);
+    this.logger.log(`Language toggled: ${language}, now selected: ${newLanguages.length}`);
+  }
+
+  /**
+   * Handle language search input changes
+   */
+  onLanguageSearchChange(value: string): void {
+    this.languageSearch.set(value);
+    // Show dropdown when user types
+    if (value.trim().length > 0) {
+      this.showLanguageDropdown.set(true);
+    }
+  }
+
+  /**
+   * Handle language input blur
+   * Delay closing to allow checkbox clicks
+   */
+  onLanguageBlur(): void {
+    setTimeout(() => {
+      this.showLanguageDropdown.set(false);
+    }, 200);
+  }
+
+  /**
+   * Select a location from dropdown
+   */
+  selectLocation(location: string): void {
+    this.updateFilter('location', location);
+    this.locationSearch.set('');
+    this.showLocationDropdown.set(false);
+    this.logger.log(`Location selected: ${location}`);
+  }
+
+  /**
+   * Clear selected location
+   */
+  clearLocation(): void {
+    this.updateFilter('location', '');
+    this.locationSearch.set('');
+    this.logger.log('Location cleared');
+  }
+
+  /**
+   * Handle location search input changes
+   */
+  onLocationSearchChange(value: string): void {
+    this.locationSearch.set(value);
+    // Show dropdown when user types
+    if (value.trim().length > 0) {
+      this.showLocationDropdown.set(true);
+    }
+  }
+
+  /**
+   * Handle location input blur
+   * Delay closing to allow selection clicks
+   */
+  onLocationBlur(): void {
+    setTimeout(() => {
+      this.showLocationDropdown.set(false);
+    }, 200);
+  }
+
+  /**
+   * Handle language input changes (legacy - kept for compatibility)
    */
   onLanguageInputChange(value: string): void {
     this.languageInput.set(value);
@@ -1381,7 +1714,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle skills input changes
+   * Handle skills input changes (legacy - kept for compatibility)
    */
   onSkillsInputChange(value: string): void {
     this.skillsInput.set(value);
@@ -1449,6 +1782,9 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.languageInput.set('');
     this.skillsInput.set('');
     this.characterTypeSearch.set('');
+    this.skillSearch.set('');
+    this.languageSearch.set('');
+    this.locationSearch.set('');
     this.logger.log('All filters cleared');
   }
 
