@@ -197,14 +197,16 @@ export class DiscoverService {
     try {
       return {
         id: id,
-        authorId: data['authorId'] || '',
-        authorName: data['authorName'] || '',
+        authorId: data['authorId'] || undefined,
+        authorName: data['authorName'] || undefined,
         postDate: this.convertTimestamp(data['postDate']),
-        content: data['content'] || '',
+        content: data['content'] || data['description'] || '',
         title: data['title'] || undefined,
         subtitle: data['subtitle'] || undefined,
+        description: data['description'] || undefined,
         imageUrl: data['imageUrl'] || undefined,
         videoUrl: data['videoUrl'] || undefined,
+        fileUrl: data['fileUrl'] || undefined,
         customUrl: data['customUrl'] || undefined,
         thumbnailUrl: data['thumbnailUrl'] || undefined,
         category: data['category'] || undefined,
@@ -216,6 +218,7 @@ export class DiscoverService {
         isActive: data['isActive'] || false,
         createdAt: this.convertTimestamp(data['createdAt']),
         updatedAt: this.convertTimestamp(data['updatedAt']),
+        expiryDate: data['expiryDate'] ? this.convertTimestamp(data['expiryDate']) : undefined,
       };
     } catch (error) {
       this.logger.error('Error mapping Firestore data to Discover:', error);
