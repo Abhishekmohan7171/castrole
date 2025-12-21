@@ -60,19 +60,26 @@ import {
               autofocus
             />
 
-            <!-- Autocomplete Dropdown -->
-            @if (showLanguageDropdown() && filteredLanguages().length > 0) {
+            <!-- Autocomplete Dropdown with Categories -->
+            @if (showLanguageDropdown() && filteredLanguagesFlat().length > 0) {
             <div class="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl">
-              @for (lang of filteredLanguages(); track lang; let i = $index) {
-              <button
-                type="button"
-                (mousedown)="selectLanguageFromDropdown(lang)"
-                [class]="languageDropdownIndex() === i
-                  ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
-                  : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
-              >
-                {{ lang }}
-              </button>
+              @for (category of filteredLanguagesCategorized(); track category.category) {
+                <!-- Category Header -->
+                <div class="px-4 py-2 text-xs font-semibold text-neutral-400 bg-neutral-800/50 sticky top-0">
+                  {{ category.category }}
+                </div>
+                <!-- Languages in this category -->
+                @for (lang of category.languages; track lang) {
+                  <button
+                    type="button"
+                    (mousedown)="selectLanguageFromDropdown(lang)"
+                    [class]="languageDropdownIndex() === getLanguageGlobalIndex(lang)
+                      ? 'w-full px-4 py-2.5 text-left hover:bg-neutral-700 transition-colors text-white bg-neutral-800'
+                      : 'w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition-colors text-white'"
+                  >
+                    {{ lang }}
+                  </button>
+                }
               }
             </div>
             }
@@ -504,41 +511,68 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   languageDropdownIndex = signal(0);
   skillDropdownIndex = signal(0);
 
-  // Standardized list of common languages (Indian + global)
-  readonly availableLanguages: string[] = [
-    // Indian languages
-    'Hindi',
-    'English',
-    'Bengali',
-    'Telugu',
-    'Marathi',
-    'Tamil',
-    'Gujarati',
-    'Urdu',
-    'Kannada',
-    'Odia',
-    'Malayalam',
-    'Punjabi',
-    'Assamese',
-    'Maithili',
-    'Konkani',
-    'Manipuri',
-    'Sindhi',
-    'Kashmiri',
-    'Dogri',
-
-    // Other widely-used languages
-    'Spanish',
-    'French',
-    'German',
-    'Italian',
-    'Portuguese',
-    'Russian',
-    'Chinese (Mandarin)',
-    'Japanese',
-    'Korean',
-    'Arabic',
+  // Categorized languages with subtitles
+  readonly languageCategories: { category: string; languages: string[] }[] = [
+    {
+      category: 'Indian Languages',
+      languages: [
+        'English',
+        'Hindi',
+        'Malayalam',
+        'Tamil',
+        'Telugu',
+        'Kannada',
+        'Marathi',
+        'Gujarati',
+        'Bengali',
+        'Punjabi',
+        'Urdu',
+        'Odia',
+        'Assamese',
+        'Konkani',
+        'Sindhi',
+        'Kashmiri',
+        'Dogri',
+        'Maithili',
+        'Manipuri (Meitei)',
+        'Nepali',
+        'Bodo',
+        'Santhali',
+      ],
+    },
+    {
+      category: 'International Languages',
+      languages: [
+        'Spanish',
+        'French',
+        'German',
+        'Italian',
+        'Portuguese',
+        'Russian',
+        'Arabic',
+        'Chinese (Mandarin)',
+        'Chinese (Cantonese)',
+        'Japanese',
+        'Korean',
+        'Turkish',
+        'Persian (Farsi)',
+        'Hebrew',
+        'Thai',
+        'Vietnamese',
+        'Indonesian',
+        'Malay',
+      ],
+    },
+    {
+      category: 'Classical / Special Languages',
+      languages: ['Sanskrit', 'Latin'],
+    },
   ];
+
+  // Flattened list for autocomplete filtering
+  readonly availableLanguages: string[] = this.languageCategories.flatMap(
+    (cat) => cat.languages
+  );
 
   // Standardized list of common acting skills
   readonly availableSkills: string[] = [
@@ -587,8 +621,8 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     'Fight Choreography',
   ];
 
-  // Computed filtered lists
-  filteredLanguages = computed(() => {
+  // Computed filtered lists with categorization
+  filteredLanguagesFlat = computed(() => {
     const searchTerm = this.newLanguageName().toLowerCase().trim();
     const selected = this.languages().map((l) => l.language.toLowerCase());
 
@@ -603,6 +637,23 @@ export class LanguagesSkillsSectionComponent implements OnInit {
         !selected.includes(lang.toLowerCase()) &&
         lang.toLowerCase().includes(searchTerm)
     );
+  });
+
+  // Categorized filtered languages for dropdown display
+  filteredLanguagesCategorized = computed(() => {
+    const searchTerm = this.newLanguageName().toLowerCase().trim();
+    const selected = this.languages().map((l) => l.language.toLowerCase());
+
+    return this.languageCategories
+      .map((category) => ({
+        category: category.category,
+        languages: category.languages.filter(
+          (lang) =>
+            !selected.includes(lang.toLowerCase()) &&
+            (!searchTerm || lang.toLowerCase().includes(searchTerm))
+        ),
+      }))
+      .filter((cat) => cat.languages.length > 0);
   });
 
   filteredSkills = computed(() => {
@@ -662,13 +713,21 @@ export class LanguagesSkillsSectionComponent implements OnInit {
     }, 200);
   }
 
+  // Helper to get global index of a language in the flattened filtered list
+  getLanguageGlobalIndex(language: string): number {
+    return this.filteredLanguagesFlat().indexOf(language);
+  }
+
   onLanguageKeyDown(event: Event, action: 'up' | 'down' | 'enter') {
     const keyEvent = event as KeyboardEvent;
-    const filtered = this.filteredLanguages();
+    const filtered = this.filteredLanguagesFlat();
 
     if (action === 'down') {
       keyEvent.preventDefault();
-      const newIndex = Math.min(this.languageDropdownIndex() + 1, filtered.length - 1);
+      const newIndex = Math.min(
+        this.languageDropdownIndex() + 1,
+        filtered.length - 1
+      );
       this.languageDropdownIndex.set(newIndex);
     } else if (action === 'up') {
       keyEvent.preventDefault();
