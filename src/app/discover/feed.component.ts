@@ -67,24 +67,57 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
                 'bg-neutral-900/40 border border-white/5 hover:bg-neutral-900/60 hover:border-white/10 hover:shadow-xl hover:shadow-black/20': !isActor()
               }"
               (click)="openModal(i)">
-              <!-- Image -->
+              <!-- Media (Thumbnail for both Image and Video) -->
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+                <!-- Thumbnail for Video (use thumbnailUrl or imageUrl) -->
                 <img 
-                  *ngIf="item.imageUrl"
+                  *ngIf="item.type === 'video' && (item.thumbnailUrl || item.imageUrl)"
+                  [src]="item.thumbnailUrl || item.imageUrl" 
+                  [alt]="item.title || 'Video thumbnail'"
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  (error)="onImageError($event)"
+                />
+                
+                <!-- Image for Image posts -->
+                <img 
+                  *ngIf="item.type === 'image' && item.imageUrl"
                   [src]="item.imageUrl" 
                   [alt]="item.title || 'Post image'"
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                   (error)="onImageError($event)"
                 />
-                <!-- Fallback for missing image -->
-                <div *ngIf="!item.imageUrl" class="w-full h-full flex items-center justify-center">
+                
+                <!-- Fallback for Video without thumbnail -->
+                <div *ngIf="item.type === 'video' && !item.thumbnailUrl && !item.imageUrl && item.videoUrl" 
+                     class="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-purple-900/20 to-neutral-900">
+                  <svg class="h-20 w-20 text-purple-400/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M23 7l-7 5 7 5V7z"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
+                  <span class="text-sm text-neutral-400 font-medium">{{ item.title || 'Video' }}</span>
+                </div>
+                
+                <!-- Fallback for other missing media -->
+                <div *ngIf="item.type !== 'video' && !item.imageUrl && !item.videoUrl && !item.thumbnailUrl" 
+                     class="w-full h-full flex items-center justify-center">
                   <svg class="h-16 w-16 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
                 </div>
+                
+                <!-- Video Play Icon Overlay (only for video posts with videoUrl) -->
+                <div *ngIf="item.type === 'video' && item.videoUrl" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div class="w-20 h-20 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border-2 border-white/20">
+                    <svg class="w-10 h-10 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </div>
+                </div>
+                
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
               </div>
 
@@ -161,15 +194,29 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
 
           <!-- Modal Body -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 max-h-[90vh] overflow-y-auto">
-            <!-- Image Section -->
+            <!-- Media Section (Video or Image) -->
             <div class="relative aspect-video lg:aspect-auto lg:min-h-[500px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+              <!-- Video Player for Video Posts -->
+              <video 
+                *ngIf="currentCard.type === 'video' && currentCard.videoUrl"
+                [src]="currentCard.videoUrl"
+                [poster]="currentCard.thumbnailUrl || currentCard.imageUrl"
+                class="w-full h-full object-cover"
+                controls
+                playsinline>
+                Your browser does not support the video tag.
+              </video>
+              
+              <!-- Image for Image Posts -->
               <img 
+                *ngIf="currentCard.type === 'image' && currentCard.imageUrl"
                 [src]="currentCard.imageUrl" 
                 [alt]="currentCard.title"
                 class="w-full h-full object-cover"
                 loading="lazy"
               />
-              <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+              
+              <div *ngIf="currentCard.type === 'image'" class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
             </div>
 
             <!-- Content Section -->
@@ -177,18 +224,19 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
               <div class="space-y-6">
                 <!-- Author & Date -->
                 <div class="flex items-center gap-3 text-sm text-neutral-400">
-                  <span>{{ currentCard.authorName }}</span>
+                  <span *ngIf="currentCard.authorName">{{ currentCard.authorName }}</span>
+                  <span *ngIf="!currentCard.authorName">Anonymous</span>
                   <span class="h-1 w-1 rounded-full bg-neutral-600"></span>
                   <span>{{ currentCard.postDate | date:'MMM d, y' }}</span>
                 </div>
 
                 <!-- Title & Content -->
                 <div>
-                  <h2 class="text-2xl lg:text-3xl font-bold text-neutral-100 mb-4 leading-tight">
-                    {{ currentCard.subtitle }}
+                  <h2 *ngIf="currentCard.title || currentCard.subtitle" class="text-2xl lg:text-3xl font-bold text-neutral-100 mb-4 leading-tight">
+                    {{ currentCard.title || currentCard.subtitle }}
                   </h2>
                   <p class="text-base text-neutral-300 leading-relaxed">
-                    {{ currentCard.content }}
+                    {{ currentCard.content || currentCard.description }}
                   </p>
                 </div>
 
@@ -299,15 +347,42 @@ export class FeedComponent implements OnInit, OnDestroy {
 
   get filteredItems(): Discover[] {
     const q = this.search.trim().toLowerCase();
+    const now = new Date();
     let base = this.items;
+    
+    console.log('🔍 Filtering - Total posts:', base.length);
+    console.log('🔍 Current tab:', this.tab);
+    console.log('🔍 Current time:', now);
+    
+    // Filter out expired posts
+    base = base.filter(i => {
+      if (!i.expiryDate) {
+        console.log('✅ Post has no expiry:', i.title);
+        return true; // No expiry date means never expires
+      }
+      const expiryDate = i.expiryDate instanceof Date ? i.expiryDate : new Date(i.expiryDate);
+      const isValid = expiryDate > now;
+      console.log(isValid ? '✅' : '❌', 'Post:', i.title, '| Expiry:', expiryDate, '| Valid:', isValid);
+      return isValid; // Only show posts that haven't expired
+    });
+    
+    console.log('🔍 After expiry filter:', base.length, 'posts');
     
     // Filter by tab
     if (this.tab !== 'all') {
-      base = base.filter(i => i.category === this.tab);
+      console.log('🔍 Filtering by category:', this.tab);
+      base = base.filter(i => {
+        const matches = i.category === this.tab;
+        console.log(matches ? '✅' : '❌', 'Post:', i.title, '| Category:', i.category);
+        return matches;
+      });
     }
+    
+    console.log('🔍 After category filter:', base.length, 'posts');
     
     // Filter by search
     if (q) {
+      console.log('🔍 Filtering by search:', q);
       base = base.filter(i => [
         i.title,
         i.subtitle,
@@ -316,6 +391,9 @@ export class FeedComponent implements OnInit, OnDestroy {
         ...(i.tags || [])
       ].some(v => (v || '').toLowerCase().includes(q)));
     }
+    
+    console.log('🔍 Final filtered posts:', base.length);
+    console.log('🔍 Posts:', base.map(p => ({ title: p.title, category: p.category, type: p.type })));
     
     return base;
   }
@@ -412,19 +490,30 @@ export class FeedComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Extract unique categories from posts
+   * Extract unique categories from posts (only categories with non-expired posts)
    */
   private extractCategories(posts: Discover[]): void {
     const uniqueCategories = new Set<string>();
+    const now = new Date();
     
     posts.forEach(post => {
       if (post.category) {
-        uniqueCategories.add(post.category);
+        // Only add category if post is not expired
+        const isExpired = post.expiryDate && 
+                         (post.expiryDate instanceof Date ? post.expiryDate : new Date(post.expiryDate)) <= now;
+        
+        if (!isExpired) {
+          uniqueCategories.add(post.category);
+          console.log('✅ Category added:', post.category, '(from post:', post.title + ')');
+        } else {
+          console.log('❌ Category skipped:', post.category, '(expired post:', post.title + ')');
+        }
       }
     });
     
     // Always include 'all' as the first category
     const categoriesArray = ['all', ...Array.from(uniqueCategories).sort()];
+    console.log('📂 Final categories:', categoriesArray);
     this.categories.set(categoriesArray);
   }
 
