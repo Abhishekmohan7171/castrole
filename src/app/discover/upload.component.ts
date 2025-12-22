@@ -1,10 +1,13 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UploadService } from '../services/upload.service';
 import { VideoCompressionService } from '../services/video-compression.service';
 import { UploadProgress } from '../../assets/interfaces/interfaces';
+import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
+import { Firestore, doc, setDoc, serverTimestamp, onSnapshot } from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth';
 
 interface Tag {
   id: string;
@@ -20,13 +23,13 @@ interface Tag {
       <!-- Upload Type Toggle -->
       <div class="flex items-center gap-4 mb-8">
         <button 
-          (click)="uploadType.set('video')"
+          (click)="switchToVideo()"
           [class]="uploadType() === 'video' ? 'bg-purple-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'"
           class="px-6 py-2 rounded-lg font-medium transition-colors">
           Video
         </button>
         <button 
-          (click)="uploadType.set('image')"
+          (click)="switchToImage()"
           [class]="uploadType() === 'image' ? 'bg-purple-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'"
           class="px-6 py-2 rounded-lg font-medium transition-colors">
           Images
@@ -38,7 +41,7 @@ interface Tag {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <!-- Video Preview Area -->
           <div class="space-y-4">
-            <div class="relative bg-gradient-to-br from-green-600 to-green-800 rounded-xl aspect-video flex items-center justify-center">
+            <div class="relative rounded-xl aspect-video flex items-center justify-center" style="background-color: #201B24;">
               @if (selectedVideoFile()) {
                 <video 
                   [src]="videoPreviewUrl()" 
@@ -104,13 +107,17 @@ interface Tag {
                     </button>
                   </span>
                 }
-                <button 
-                  (click)="showTagInput.set(true)"
-                  class="w-8 h-8 bg-neutral-700 hover:bg-neutral-600 rounded-full flex items-center justify-center transition-colors">
-                  <svg class="w-4 h-4 text-neutral-300" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                  </svg>
-                </button>
+                @if (canAddMoreTags()) {
+                  <button 
+                    (click)="showTagInput.set(true)"
+                    class="w-8 h-8 bg-neutral-700 hover:bg-neutral-600 rounded-full flex items-center justify-center transition-colors">
+                    <svg class="w-4 h-4 text-neutral-300" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                  </button>
+                } @else {
+                  <span class="text-xs text-neutral-500">Max 3 tags</span>
+                }
               </div>
               
               @if (showTagInput()) {
@@ -134,20 +141,6 @@ interface Tag {
               }
             </div>
 
-            <!-- Media Type -->
-            <div>
-              <label class="block text-sm font-medium text-neutral-300 mb-3">Media Type</label>
-              <select 
-                [(ngModel)]="mediaType"
-                class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-purple-500">
-                <option value="reel">Reel</option>
-                <option value="short">Short Film</option>
-                <option value="scene">Scene</option>
-                <option value="audition">Audition Tape</option>
-                <option value="showreel">Showreel</option>
-              </select>
-            </div>
-
             <!-- Description -->
             <div>
               <label class="block text-sm font-medium text-neutral-300 mb-3">Description</label>
@@ -159,14 +152,14 @@ interface Tag {
               </textarea>
             </div>
 
-            <!-- Video Duration Display -->
+            <!-- Video Metadata Display -->
             @if (videoDuration() > 0) {
               <div class="text-sm text-neutral-400 space-y-1">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-1">
                   <span>Duration: {{ formatDuration(videoDuration()) }}</span>
-                  @if (compressedVideoSize() > 0) {
-                    <span class="text-green-400">Size reduction: {{ formatSizeReduction() }}</span>
-                  }
+                  <span>Resolution: {{ videoResolution() }}</span>
+                  <span>FPS: {{ videoFps() }}</span>
+                  <span>Size: {{ formatFileSize(selectedVideoFile()?.size || 0) }}</span>
                 </div>
               </div>
             }
@@ -174,36 +167,67 @@ interface Tag {
             <!-- Upload Progress -->
             @if (isUploading() && !uploadSuccess()) {
               <div class="space-y-3">
-                @if (isCompressing()) {
-                  <!-- Compression Progress -->
+                
+                <!-- Uploading State -->
+                @if (isUploading() && uploadProgress() < 100) {
                   <div class="space-y-2">
-                    <div class="flex justify-between text-sm text-neutral-300">
-                      <span>Compressing video...</span>
-                      <span>{{ compressionProgress().toFixed(0) }}%</span>
+                    <div class="flex items-center justify-between text-sm text-neutral-300">
+                      <span>Uploading... Please wait</span>
+                      <span>{{ uploadProgress().toFixed(0) }}%</span>
                     </div>
                     <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
-                      <div
-                        class="bg-blue-600 h-full transition-all duration-500"
-                        [style.width.%]="compressionProgress()">
+                      <div 
+                        class="bg-purple-600 h-full transition-all duration-300"
+                        [style.width.%]="uploadProgress()">
                       </div>
                     </div>
                   </div>
                 }
 
-                <!-- Overall Progress -->
-                <div class="space-y-2">
-                  <div class="flex justify-between text-sm text-neutral-300">
-                    <span>{{ uploadStatusText() }}</span>
-                    <span>{{ uploadProgress().toFixed(0) }}%</span>
-                  </div>
-                  <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
-                    <div
-                      [class]="uploadProgress() === 100 ? 'bg-green-500' : 'bg-purple-600'"
-                      class="h-full transition-all duration-500"
-                      [style.width.%]="uploadProgress()">
+                <!-- Upload Complete but Stuck (100% but still UPLOADING status) -->
+                @if (isUploading() && uploadProgress() === 100 && processingStatus() === 'UPLOADING') {
+                  <div class="space-y-3">
+                    <div class="bg-yellow-500/10 border border-yellow-500 rounded-lg p-3">
+                      <p class="text-yellow-400 text-sm mb-2">
+                        Upload complete! Please wait a moment...
+                      </p>
+                      <p class="text-xs text-neutral-400">
+                        Preparing your video for processing
+                      </p>
                     </div>
+                    <button 
+                      (click)="resetVideoForm()"
+                      class="w-full bg-neutral-600 hover:bg-neutral-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                      Cancel & Upload Another Video
+                    </button>
                   </div>
-                </div>
+                }
+
+                <!-- Processing States -->
+                @if (processingStatus() === 'QUEUED') {
+                  <div class="bg-blue-500/10 border border-blue-500 rounded-lg p-3">
+                    <p class="text-blue-400 text-sm flex items-center gap-2">
+                      <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Queued for processing... Please wait
+                    </p>
+                  </div>
+                }
+
+                @if (processingStatus() === 'PROCESSING') {
+                  <div class="bg-purple-500/10 border border-purple-500 rounded-lg p-3">
+                    <p class="text-purple-400 text-sm flex items-center gap-2">
+                      <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing your video... Please wait
+                    </p>
+                  </div>
+                }
+
               </div>
             }
 
@@ -215,9 +239,14 @@ interface Tag {
             }
 
             <!-- Success Message -->
-            @if (uploadSuccess()) {
+            @if (uploadSuccess() && processingStatus() === 'READY') {
               <div class="bg-green-500/10 border border-green-500 rounded-lg p-3 space-y-3">
-                <p class="text-green-400 text-sm">✓ Video uploaded successfully!</p>
+                <p class="text-green-400 text-sm flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  Upload complete! Your video is ready
+                </p>
                 <button 
                   (click)="resetVideoForm()"
                   class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
@@ -251,119 +280,85 @@ interface Tag {
 
       <!-- Image Upload Interface -->
       @if (uploadType() === 'image') {
-        <div class="max-w-2xl mx-auto">
-          <div 
-            class="relative border-2 border-dashed border-neutral-600 rounded-xl p-12 text-center hover:border-purple-500 transition-colors"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onImageDrop($event)"
-            [class.border-purple-500]="isDragOver()">
-            
-            @if (selectedImages().length > 0) {
-              <!-- Image Preview Grid with Descriptions -->
-              <div class="grid grid-cols-1 gap-6 mb-6">
-                @for (image of selectedImages(); track image.name) {
-                  <div class="space-y-3">
-                    <!-- Image Preview -->
-                    <div class="relative group">
-                      <img
-                        [src]="getImagePreview(image)"
-                        [alt]="image.name"
-                        class="w-full h-64 object-cover rounded-lg">
-                      <button
-                        (click)="removeImage(image)"
-                        class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                        </svg>
-                      </button>
-                      <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                        {{ formatFileSize(image.size) }}
-                      </div>
-                    </div>
-
-                    <!-- Image Description -->
-                    <div>
-                      <label class="block text-sm font-medium text-neutral-300 mb-2">
-                        Description (optional)
-                      </label>
-                      <textarea
-                        [value]="getImageDescription(image)"
-                        (input)="updateImageDescription(image, $event)"
-                        placeholder="Describe this image..."
-                        rows="3"
-                        class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500 resize-none">
-                      </textarea>
-                    </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Image Preview Area -->
+          <div class="space-y-4">
+            <div class="relative rounded-xl aspect-video flex items-center justify-center" style="background-color: #201B24;">
+              
+              @if (selectedImages().length > 0) {
+                <!-- Image Preview -->
+                <img
+                  [src]="getImagePreview(selectedImages()[0])"
+                  [alt]="selectedImages()[0].name"
+                  class="w-full h-full object-cover rounded-xl">
+              } @else {
+                <div class="text-center">
+                  <div class="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    </svg>
                   </div>
-                }
-              </div>
-
-              <p class="text-neutral-300 mb-2">{{ selectedImages().length }} image(s) selected</p>
-              <p class="text-sm text-neutral-500 mb-6">Click to add more images or drag and drop</p>
-            } @else {
-              <!-- Empty State -->
-              <div class="mb-6">
-                <div class="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg class="w-8 h-8 text-neutral-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                  </svg>
+                  <p class="text-white/80">Upload an image to preview</p>
                 </div>
-                <h3 class="text-xl text-neutral-200 mb-2">Click or drag files to upload</h3>
-                <p class="text-neutral-500">PNG, JPG, JPEG up to 10MB each</p>
+              }
+            </div>
+
+            <!-- Image File Input -->
+            <div class="relative">
+              <input 
+                type="file" 
+                accept="image/*"
+                (change)="onImageFileSelected($event)"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                id="image-upload">
+              <label 
+                for="image-upload"
+                class="block w-full p-4 border-2 border-dashed border-neutral-600 rounded-lg text-center cursor-pointer hover:border-purple-500 transition-colors">
+                @if (selectedImages().length > 0) {
+                  <p class="text-neutral-300">{{ selectedImages()[0].name }}</p>
+                  <p class="text-sm text-neutral-500 mt-1">Click to change image</p>
+                } @else {
+                  <p class="text-neutral-300">Click to select image</p>
+                  <p class="text-sm text-neutral-500 mt-1">PNG, JPG, JPEG up to 1GB</p>
+                }
+              </label>
+            </div>
+          </div>
+
+          <!-- Image Metadata Form -->
+          <div class="space-y-6">
+            <!-- Description -->
+            <div>
+              <label class="block text-sm font-medium text-neutral-300 mb-3">Description</label>
+              <textarea
+                [(ngModel)]="description"
+                placeholder="Describe your image..."
+                rows="4"
+                class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500 resize-none">
+              </textarea>
+            </div>
+
+            <!-- Image Info Display -->
+            @if (selectedImages().length > 0) {
+              <div class="text-sm text-neutral-400">
+                <p>Size: {{ formatFileSize(selectedImages()[0].size) }}</p>
               </div>
             }
 
-            <!-- File Input -->
-            <input 
-              type="file" 
-              accept="image/*" 
-              multiple
-              (change)="onImageFileSelected($event)"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              id="image-upload">
-          </div>
-
-          @if (selectedImages().length > 0) {
             <!-- Image Upload Progress -->
             @if (isUploading() && imageUploadProgress().length > 0 && !uploadSuccess()) {
-              <div class="mt-6 space-y-4">
-                <!-- Overall Progress -->
-                <div class="space-y-2">
-                  <div class="flex justify-between text-sm text-neutral-300">
-                    <span>{{ uploadStatusText() }}</span>
-                    <span>{{ overallImageProgress().toFixed(0) }}%</span>
-                  </div>
-                  <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
-                    <div 
-                      [class]="allImagesCompleted() && !hasImageErrors() ? 'bg-green-500' : hasImageErrors() ? 'bg-red-500' : 'bg-purple-600'"
-                      class="h-full transition-all duration-500"
-                      [style.width.%]="overallImageProgress()">
-                    </div>
+              <div class="mt-6 space-y-2">
+                <div class="flex justify-between text-sm text-neutral-300">
+                  <span>Uploading... Please wait</span>
+                  <span>{{ overallImageProgress().toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-2 overflow-hidden">
+                  <div 
+                    [class]="allImagesCompleted() && !hasImageErrors() ? 'bg-green-500' : hasImageErrors() ? 'bg-red-500' : 'bg-purple-600'"
+                    class="h-full transition-all duration-500"
+                    [style.width.%]="overallImageProgress()">
                   </div>
                 </div>
-                
-                <!-- Individual Progress -->
-                <p class="text-xs font-medium text-neutral-400">Individual Progress</p>
-                @for (progress of imageUploadProgress(); track $index) {
-                  <div class="space-y-1">
-                    <div class="flex justify-between text-xs text-neutral-400">
-                      <span>Image {{ $index + 1 }}</span>
-                      @if (progress.error) {
-                        <span class="text-red-400">Failed</span>
-                      } @else {
-                        <span>{{ progress.progress.toFixed(0) }}%</span>
-                      }
-                    </div>
-                    <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        [class]="progress.error ? 'bg-red-500' : 'bg-purple-600'"
-                        class="h-full transition-all duration-300"
-                        [style.width.%]="progress.progress">
-                      </div>
-                    </div>
-                  </div>
-                }
               </div>
             }
 
@@ -377,11 +372,16 @@ interface Tag {
             <!-- Success Message -->
             @if (uploadSuccess()) {
               <div class="mt-4 bg-green-500/10 border border-green-500 rounded-lg p-3 space-y-3">
-                <p class="text-green-400 text-sm">✓ All images uploaded successfully!</p>
+                <p class="text-green-400 text-sm flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  Upload complete! Your image is ready
+                </p>
                 <button 
                   (click)="resetImageForm()"
                   class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
-                  Upload More Images
+                  Upload Another Image
                 </button>
               </div>
             }
@@ -394,23 +394,24 @@ interface Tag {
                 [class]="canUploadImages() && !isUploading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-neutral-700 cursor-not-allowed'"
                 class="w-full text-white py-3 rounded-lg font-medium mt-6 transition-colors">
                 @if (isUploading()) {
-                  <span>{{ uploadStatusText() }}</span>
+                  <span>Uploading... Please wait</span>
                 } @else {
-                  <span>Upload {{ selectedImages().length }} Image(s)</span>
+                  <span>Upload Image</span>
                 }
               </button>
             }
-          }
+          </div>
         </div>
       }
     </section>
   `,
   styles: []
 })
-export class UploadComponent implements OnInit {
+export class UploadComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private returnUrl = signal<string | null>(null);
+  private activeIntervals: number[] = [];
   
   uploadType = signal<'video' | 'image'>('video');
   
@@ -420,7 +421,6 @@ export class UploadComponent implements OnInit {
   tags = signal<Tag[]>([]);
   showTagInput = signal(false);
   newTagName = signal('');
-  mediaType = signal('reel');
   description = signal('');
   
   // Image upload state
@@ -438,20 +438,38 @@ export class UploadComponent implements OnInit {
   uploadSuccess = signal(false);
   imageUploadProgress = signal<UploadProgress[]>([]);
 
-  // Video compression state
-  compressionProgress = signal<number>(0);
-  isCompressing = signal<boolean>(false);
-  compressionError = signal<string>('');
+  // Video metadata state
   videoDuration = signal<number>(0);
-  originalVideoSize = signal<number>(0);
-  compressedVideoSize = signal<number>(0);
+  videoResolution = signal<string>('');
+  videoFps = signal<number>(0);
+  videoBitrate = signal<number>(0);
+  
+  // Compression state (deprecated - now server-side)
+  isCompressing = signal<boolean>(false);
+  compressionProgress = signal<number>(0);
+  
+  // GCP Processing state
+  processingStatus = signal<'UPLOADING' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED'>('UPLOADING');
+  currentVideoId = signal<string>('');
+  processingError = signal<string>('');
+  private statusUnsubscribe?: () => void;
+  
+  // Firebase services
+  private storage = inject(Storage);
+  private firestore = inject(Firestore);
+  private auth = inject(Auth);
 
   canUploadVideo = computed(() => {
     return this.selectedVideoFile() !== null &&
            this.description().trim().length > 0 &&
+           this.tags().length > 0 &&
+           this.tags().length <= 3 &&
            this.videoDuration() > 0 &&
-           this.videoDuration() <= 120; // 2 minutes in seconds
+           this.videoDuration() <= 120 && // 2 minutes in seconds
+           this.videoResolution() !== ''; // Metadata loaded
   });
+
+  canAddMoreTags = computed(() => this.tags().length < 3);
 
   canUploadImages = computed(() => {
     return this.selectedImages().length > 0;
@@ -476,20 +494,18 @@ export class UploadComponent implements OnInit {
     return this.imageUploadProgress().some(p => p.error);
   });
 
+  totalImageSize = computed(() => {
+    return this.selectedImages().reduce((sum, file) => sum + file.size, 0);
+  });
+
   uploadStatusText = computed(() => {
     if (!this.isUploading()) return '';
 
     if (this.uploadType() === 'video') {
-      if (this.isCompressing()) {
-        const compressionProg = this.compressionProgress();
-        return `Compressing video... ${compressionProg.toFixed(0)}%`;
-      }
-
       const progress = this.uploadProgress();
       if (progress >= 99.5) return 'Upload complete!';
       if (progress > 90) return 'Finalizing upload...';
-      if (progress >= 50) return `Uploading video... ${((progress - 50) * 2).toFixed(0)}%`;
-      return `Preparing upload... ${progress.toFixed(0)}%`;
+      return `Uploading video... ${progress.toFixed(0)}%`;
     } else {
       const progress = this.overallImageProgress();
       if (this.allImagesCompleted()) {
@@ -501,13 +517,33 @@ export class UploadComponent implements OnInit {
   });
 
   ngOnInit() {
-    // Check for returnUrl query param
-    this.route.queryParams.subscribe(params => {
-      if (params['returnUrl']) {
-        this.returnUrl.set(params['returnUrl']);
-        // Set upload type to image if coming from profile
-        this.uploadType.set('image');
-      }
+    // Check for returnUrl query param (read once, no subscription leak)
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+    if (returnUrl) {
+      this.returnUrl.set(returnUrl);
+      // Set upload type to image if coming from profile
+      this.uploadType.set('image');
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up Firestore listener
+    if (this.statusUnsubscribe) {
+      this.statusUnsubscribe();
+    }
+    
+    // Clean up any active intervals
+    this.activeIntervals.forEach(id => clearInterval(id));
+    this.activeIntervals = [];
+    
+    // Revoke all object URLs
+    const videoUrl = this.videoPreviewUrl();
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    this.selectedImages().forEach(file => {
+      const url = this.imagePreviewUrls.get(file.name);
+      if (url) URL.revokeObjectURL(url);
     });
   }
 
@@ -519,6 +555,9 @@ export class UploadComponent implements OnInit {
       // Reset previous state
       this.uploadError.set('');
       this.videoDuration.set(0);
+      this.videoResolution.set('');
+      this.videoFps.set(0);
+      this.videoBitrate.set(0);
 
       // Validate file type first
       if (!this.uploadService.validateFileType(file, ['video/'])) {
@@ -526,33 +565,106 @@ export class UploadComponent implements OnInit {
         return;
       }
 
-      // Validate video duration (2 minutes max)
+      // Extract and validate video metadata
       try {
-        const validation = await this.uploadService.validateVideoDuration(file, 2);
+        const metadata = await this.extractVideoMetadata(file);
 
-        if (!validation.valid) {
-          this.uploadError.set(validation.error || 'Video validation failed');
+        // Validate duration (2 minutes max)
+        if (metadata.duration > 120) {
+          const minutes = Math.floor(metadata.duration / 60);
+          const seconds = Math.floor(metadata.duration % 60);
+          this.uploadError.set(`Video must be 2 minutes or less. Current: ${minutes}:${seconds.toString().padStart(2, '0')}`);
           return;
         }
 
-        this.videoDuration.set(validation.duration || 0);
-        this.originalVideoSize.set(file.size);
+        // Set metadata
+        this.videoDuration.set(metadata.duration);
+        this.videoResolution.set(`${metadata.width}x${metadata.height}`);
+        this.videoFps.set(metadata.fps);
+        this.videoBitrate.set(metadata.bitrate);
         this.selectedVideoFile.set(file);
 
         // Create preview URL
         const url = URL.createObjectURL(file);
         this.videoPreviewUrl.set(url);
       } catch (error: any) {
-        this.uploadError.set(`Failed to validate video: ${error.message}`);
+        this.uploadError.set(`Failed to read video metadata: ${error.message}`);
       }
     }
   }
 
+  /**
+   * Extract video metadata (resolution, fps, bitrate, duration)
+   */
+  private async extractVideoMetadata(file: File): Promise<{
+    duration: number;
+    width: number;
+    height: number;
+    fps: number;
+    bitrate: number;
+  }> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+
+      video.onloadedmetadata = () => {
+        // Get basic metadata
+        const duration = video.duration;
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+
+        // Estimate FPS (not directly available, use heuristic)
+        // Most videos are 24, 30, or 60 fps
+        let fps = 30; // Default assumption
+        
+        // Estimate bitrate from file size and duration
+        const bitrate = Math.floor((file.size * 8) / duration / 1000); // kbps
+
+        // Clean up
+        URL.revokeObjectURL(video.src);
+
+        // Validate
+        if (isNaN(duration) || !isFinite(duration)) {
+          reject(new Error('Unable to read video duration'));
+          return;
+        }
+
+        if (width === 0 || height === 0) {
+          reject(new Error('Unable to read video resolution'));
+          return;
+        }
+
+        resolve({ duration, width, height, fps, bitrate });
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error('Failed to load video metadata'));
+      };
+
+      video.src = URL.createObjectURL(file);
+    });
+  }
+
   onImageFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
-      const newFiles = Array.from(input.files);
-      this.addImages(newFiles);
+    if (input.files && input.files[0]) {
+      // Only take the first file (single image upload)
+      const file = input.files[0];
+      
+      // Clear previous image if any
+      const currentImages = this.selectedImages();
+      if (currentImages.length > 0) {
+        const oldUrl = this.imagePreviewUrls.get(currentImages[0].name);
+        if (oldUrl) URL.revokeObjectURL(oldUrl);
+      }
+      
+      // Set new image
+      this.selectedImages.set([file]);
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      this.imagePreviewUrls.set(file.name, url);
     }
   }
 
@@ -570,24 +682,24 @@ export class UploadComponent implements OnInit {
     event.preventDefault();
     this.isDragOver.set(false);
     
-    if (event.dataTransfer?.files) {
-      const files = Array.from(event.dataTransfer.files).filter(file => 
-        file.type.startsWith('image/')
-      );
-      this.addImages(files);
+    if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        // Clear previous image if any
+        const currentImages = this.selectedImages();
+        if (currentImages.length > 0) {
+          const oldUrl = this.imagePreviewUrls.get(currentImages[0].name);
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+        }
+        
+        // Set new image
+        this.selectedImages.set([file]);
+        
+        // Create preview URL
+        const url = URL.createObjectURL(file);
+        this.imagePreviewUrls.set(file.name, url);
+      }
     }
-  }
-
-  addImages(files: File[]): void {
-    const currentImages = this.selectedImages();
-    const newImages = [...currentImages, ...files];
-    this.selectedImages.set(newImages);
-
-    // Create preview URLs
-    files.forEach(file => {
-      const url = URL.createObjectURL(file);
-      this.imagePreviewUrls.set(file.name, url);
-    });
   }
 
   removeImage(fileToRemove: File): void {
@@ -626,7 +738,7 @@ export class UploadComponent implements OnInit {
   }
 
   addTag(): void {
-    if (this.newTagName().trim()) {
+    if (this.newTagName().trim() && this.tags().length < 3) {
       const newTag: Tag = {
         id: Date.now().toString(),
         name: this.newTagName().trim()
@@ -664,91 +776,279 @@ export class UploadComponent implements OnInit {
     // Reset state
     this.uploadError.set('');
     this.uploadSuccess.set(false);
-    this.compressionError.set('');
-
-    // Check browser compatibility
-    if (!this.videoCompressionService.isBrowserSupported()) {
-      this.uploadError.set('Your browser does not support video compression. Please use the latest version of Chrome, Firefox, Safari, or Edge with secure context (HTTPS).');
-      return;
-    }
+    this.isUploading.set(true);
+    this.uploadProgress.set(0);
+    this.processingStatus.set('UPLOADING');
 
     try {
-      // Phase 1: Compression (0-50% of overall progress)
-      this.isCompressing.set(true);
-      this.isUploading.set(true);
-      this.uploadProgress.set(0);
+      const userId = this.auth.currentUser?.uid;
+      if (!userId) {
+        this.uploadError.set('Please sign in to upload videos');
+        this.isUploading.set(false);
+        return;
+      }
 
-      console.log('[UploadComponent] Starting video compression...');
+      // Check file size limit (1000MB / 1GB)
+      const fileSizeMB = file.size / (1024 * 1024);
+      if (fileSizeMB > 1000) {
+        this.uploadError.set(`Video is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is 1GB (1000MB).`);
+        this.isUploading.set(false);
+        return;
+      }
 
-      const compressedBlob = await this.videoCompressionService.compressVideo(
-        file,
-        (compressionProgress) => {
-          console.log('[UploadComponent] Compression progress callback:', compressionProgress);
-          this.compressionProgress.set(compressionProgress);
-          // Map compression to first 50% of overall progress
-          const overallProgress = (compressionProgress / 2);
-          this.animateProgress(this.uploadProgress(), overallProgress);
+      // Generate unique video ID
+      const videoId = `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      this.currentVideoId.set(videoId);
+
+      // Get file extension
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      
+      // Storage path: raw/{userId}/{videoId}/original.{ext}
+      const storagePath = `raw/${userId}/${videoId}/original.${fileExt}`;
+      const storageRef = ref(this.storage, storagePath);
+
+      // Create Firestore document
+      const firestoreDocRef = doc(
+        this.firestore,
+        `uploads/${userId}/userUploads/${videoId}`
+      );
+
+      const firestoreData = {
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedAt: serverTimestamp(),
+        userId: userId,
+        videoId: videoId,
+        rawPath: storagePath,
+        processingStatus: 'UPLOADING',
+        metadata: {
+          tags: this.tags().map(tag => tag.name),
+          description: this.description(),
+          duration: this.videoDuration(),
+          resolution: this.videoResolution(),
+          fps: this.videoFps(),
+          bitrate: this.videoBitrate(),
+          originalSize: file.size
         }
-      );
-
-      console.log('[UploadComponent] Compression complete! Compressed size:', compressedBlob.size);
-
-      this.isCompressing.set(false);
-      this.compressedVideoSize.set(compressedBlob.size);
-
-      // Convert Blob to File for upload
-      const compressedFile = new File(
-        [compressedBlob],
-        file.name,
-        { type: 'video/mp4' }
-      );
-
-      // Phase 2: Upload (50-100% of overall progress)
-      const metadata = {
-        tags: this.tags().map(tag => tag.name),
-        mediaType: this.mediaType(),
-        description: this.description(),
-        duration: this.videoDuration(),
-        compressed: true,
-        originalSize: this.originalVideoSize(),
-        compressedSize: compressedBlob.size
       };
 
-      this.uploadService.uploadVideo(compressedFile, metadata).subscribe({
-        next: (progress: UploadProgress) => {
-          // Map upload progress to second 50% of overall progress
-          const overallProgress = 50 + (progress.progress / 2);
+      await setDoc(firestoreDocRef, firestoreData);
 
-          const currentProgress = this.uploadProgress();
-          if (overallProgress > currentProgress) {
-            this.animateProgress(currentProgress, overallProgress);
-          }
-
-          if (progress.url) {
-            this.uploadProgress.set(100);
-
-            setTimeout(() => {
-              this.isUploading.set(false);
-              this.uploadSuccess.set(true);
-            }, 500);
-          }
-        },
-        error: (error: any) => {
-          this.uploadError.set(error.error || 'Upload failed. Please try again.');
-          this.isUploading.set(false);
-          this.isCompressing.set(false);
-        },
-        complete: () => {
-          // Observable completed
-        }
+      // Start upload
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType: file.type
       });
 
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          // Upload progress
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          this.uploadProgress.set(progress);
+        },
+        (error) => {
+          // Upload error
+          this.uploadError.set(`Upload failed: ${error.message}`);
+          this.isUploading.set(false);
+          this.processingStatus.set('FAILED');
+          
+          // Update Firestore
+          setDoc(firestoreDocRef, {
+            processingStatus: 'FAILED',
+            processingError: error.message
+          }, { merge: true });
+        },
+        async () => {
+          // Upload complete
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            
+            // Update Firestore - upload complete
+            await setDoc(firestoreDocRef, {
+              rawUrl: downloadURL,
+              uploadCompletedAt: serverTimestamp()
+            }, { merge: true });
+
+            // Upload done, now processing on server
+            this.uploadProgress.set(100);
+            this.processingStatus.set('QUEUED');
+
+            // Start watching processing status
+            this.watchProcessingStatus(userId, videoId);
+
+          } catch (error: any) {
+            this.uploadError.set(`Upload failed: ${error.message}`);
+            this.isUploading.set(false);
+            this.processingStatus.set('FAILED');
+          }
+        }
+      );
+
     } catch (error: any) {
-      this.compressionError.set(error.message || 'Compression failed. Please try again.');
-      this.uploadError.set('Video compression failed. Please try a different video or try again.');
+      this.uploadError.set(`Upload failed: ${error.message}`);
       this.isUploading.set(false);
-      this.isCompressing.set(false);
+      this.processingStatus.set('FAILED');
     }
+  }
+
+  /**
+   * Watch processing status in real-time
+   */
+  private watchProcessingStatus(userId: string, videoId: string): void {
+    const docRef = doc(this.firestore, `uploads/${userId}/userUploads/${videoId}`);
+
+    this.statusUnsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const status = data['processingStatus'];
+          
+          this.processingStatus.set(status);
+
+          if (status === 'READY') {
+            // Processing complete!
+            this.isUploading.set(false);
+            this.uploadSuccess.set(true);
+            
+            // Stop watching
+            if (this.statusUnsubscribe) {
+              this.statusUnsubscribe();
+            }
+          } else if (status === 'FAILED') {
+            this.uploadError.set(data['processingError'] || 'Processing failed');
+            this.isUploading.set(false);
+            this.processingStatus.set('FAILED');
+            
+            // Stop watching
+            if (this.statusUnsubscribe) {
+              this.statusUnsubscribe();
+            }
+          }
+        }
+      },
+      (error) => {
+        this.uploadError.set(`Error watching status: ${error.message}`);
+      }
+    );
+  }
+
+  /**
+   * Compress video using browser's MediaRecorder API
+   * Target: ~6 Mbps bitrate for good quality under 100MB
+   */
+  private async compressVideo(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = async () => {
+        try {
+          const duration = video.duration;
+          const width = video.videoWidth;
+          const height = video.videoHeight;
+
+          // Calculate target bitrate to stay under 100MB
+          // Formula: (95MB * 8 * 1024) / duration_seconds = total_bitrate_kbps
+          const targetSizeMB = 95;
+          const totalBitrateKbps = Math.floor((targetSizeMB * 8 * 1024) / duration);
+          const videoBitrateKbps = Math.max(totalBitrateKbps - 128, 3000); // Min 3Mbps
+          const videoBitrateBps = videoBitrateKbps * 1000;
+
+          // Create canvas for video processing
+          const canvas = document.createElement('canvas');
+          
+          // Scale down to 1080p if needed
+          const scale = Math.min(1, 1920 / width, 1080 / height);
+          canvas.width = Math.floor(width * scale);
+          canvas.height = Math.floor(height * scale);
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+
+          // Capture canvas stream
+          const stream = canvas.captureStream(30); // 30 fps
+
+          // Set up MediaRecorder with optimal settings
+          const options: MediaRecorderOptions = {
+            mimeType: 'video/webm;codecs=vp9',
+            videoBitsPerSecond: videoBitrateBps
+          };
+
+          // Fallback to vp8 if vp9 not supported
+          if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
+            options.mimeType = 'video/webm;codecs=vp8';
+          }
+
+          const mediaRecorder = new MediaRecorder(stream, options);
+          const chunks: Blob[] = [];
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              chunks.push(e.data);
+            }
+          };
+
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            URL.revokeObjectURL(video.src);
+            resolve(blob);
+          };
+
+          mediaRecorder.onerror = (e) => {
+            URL.revokeObjectURL(video.src);
+            reject(new Error('MediaRecorder error'));
+          };
+
+          // Start recording
+          mediaRecorder.start(100); // Collect data every 100ms
+
+          // Play video and draw frames to canvas
+          video.currentTime = 0;
+          video.play();
+
+          const drawFrame = () => {
+            if (video.paused || video.ended) {
+              mediaRecorder.stop();
+              return;
+            }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Update progress
+            const progress = (video.currentTime / duration) * 100;
+            this.compressionProgress.set(Math.min(progress, 99));
+
+            requestAnimationFrame(drawFrame);
+          };
+
+          video.onplay = () => {
+            drawFrame();
+          };
+
+          video.onended = () => {
+            setTimeout(() => {
+              mediaRecorder.stop();
+              this.compressionProgress.set(100);
+            }, 500);
+          };
+
+        } catch (error) {
+          URL.revokeObjectURL(video.src);
+          reject(error);
+        }
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error('Failed to load video'));
+      };
+
+      video.src = URL.createObjectURL(file);
+    });
   }
 
   uploadImages(): void {
@@ -858,10 +1158,16 @@ export class UploadComponent implements OnInit {
       if (currentStep >= steps || newProgress >= end) {
         this.uploadProgress.set(end);
         clearInterval(interval);
+        // Remove from active intervals
+        const idx = this.activeIntervals.indexOf(interval as any);
+        if (idx > -1) this.activeIntervals.splice(idx, 1);
       } else {
         this.uploadProgress.set(newProgress);
       }
-    }, stepDuration);
+    }, stepDuration) as any;
+    
+    // Track interval for cleanup
+    this.activeIntervals.push(interval);
   }
 
   /**
@@ -873,20 +1179,6 @@ export class UploadComponent implements OnInit {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  /**
-   * Format size reduction percentage
-   */
-  formatSizeReduction(): string {
-    const original = this.originalVideoSize();
-    const compressed = this.compressedVideoSize();
-
-    if (original === 0 || compressed === 0) return '';
-
-    const reduction = ((original - compressed) / original) * 100;
-    const savedMB = (original - compressed) / (1024 * 1024);
-
-    return `${reduction.toFixed(0)}% (saved ${savedMB.toFixed(1)}MB)`;
-  }
 
   /**
    * Format file size in human readable format
@@ -910,24 +1202,28 @@ export class UploadComponent implements OnInit {
     this.selectedVideoFile.set(null);
     this.videoPreviewUrl.set('');
     this.tags.set([]);
-    this.mediaType.set('reel');
     this.description.set('');
     this.newTagName.set('');
     this.showTagInput.set(false);
 
-    // Reset compression states
-    this.compressionProgress.set(0);
-    this.isCompressing.set(false);
-    this.compressionError.set('');
+    // Reset video metadata
     this.videoDuration.set(0);
-    this.originalVideoSize.set(0);
-    this.compressedVideoSize.set(0);
+    this.videoResolution.set('');
+    this.videoFps.set(0);
+    this.videoBitrate.set(0);
 
     // Reset upload states
     this.uploadProgress.set(0);
     this.uploadSuccess.set(false);
     this.uploadError.set('');
     this.isUploading.set(false);
+    
+    // Reset processing states
+    this.processingStatus.set('UPLOADING');
+    this.currentVideoId.set('');
+    this.processingError.set('');
+    this.isCompressing.set(false);
+    this.compressionProgress.set(0);
 
     // Reset file input
     const videoInput = document.getElementById('video-upload') as HTMLInputElement;
@@ -954,11 +1250,36 @@ export class UploadComponent implements OnInit {
     this.uploadError.set('');
     this.isUploading.set(false);
     this.isDragOver.set(false);
+    
+    // Clear description field
+    this.description.set('');
 
     // Reset file input
     const imageInput = document.getElementById('image-upload') as HTMLInputElement;
     if (imageInput) {
       imageInput.value = '';
+    }
+  }
+
+  /**
+   * Switch to video upload mode and reset image-specific errors
+   */
+  switchToVideo(): void {
+    this.uploadType.set('video');
+    // Clear any image-specific errors when switching to video
+    if (this.uploadType() === 'video' && this.selectedImages().length > 0) {
+      this.uploadError.set('');
+    }
+  }
+
+  /**
+   * Switch to image upload mode and reset video-specific errors
+   */
+  switchToImage(): void {
+    this.uploadType.set('image');
+    // Clear any video-specific errors when switching to images
+    if (this.uploadType() === 'image' && this.selectedVideoFile()) {
+      this.uploadError.set('');
     }
   }
 }
