@@ -8,6 +8,7 @@ import { UploadProgress } from '../../assets/interfaces/interfaces';
 import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
 import { Firestore, doc, setDoc, serverTimestamp, onSnapshot } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
+import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS } from './search-constants';
 
 interface Tag {
   id: string;
@@ -91,9 +92,11 @@ interface Tag {
 
           <!-- Video Metadata Form -->
           <div class="space-y-6">
-            <!-- Tags Section -->
+            <!-- Character Types Section -->
             <div>
-              <label class="block text-sm font-medium text-neutral-300 mb-3">Tags</label>
+              <label class="block text-sm font-medium text-neutral-300 mb-3">Character Types (Max 3)</label>
+              
+              <!-- Selected Tags -->
               <div class="flex flex-wrap gap-2 mb-3">
                 @for (tag of tags(); track tag.id) {
                   <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
@@ -107,37 +110,38 @@ interface Tag {
                     </button>
                   </span>
                 }
-                @if (canAddMoreTags()) {
-                  <button 
-                    (click)="showTagInput.set(true)"
-                    class="w-8 h-8 bg-neutral-700 hover:bg-neutral-600 rounded-full flex items-center justify-center transition-colors">
-                    <svg class="w-4 h-4 text-neutral-300" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                    </svg>
-                  </button>
-                } @else {
-                  <span class="text-xs text-neutral-500">Max 3 tags</span>
-                }
               </div>
               
-              @if (showTagInput()) {
-                <div class="flex gap-2">
+              <!-- Searchable Dropdown -->
+              @if (canAddMoreTags()) {
+                <div class="relative">
                   <input 
-                    [(ngModel)]="newTagName"
-                    (keyup.enter)="addTag()"
-                    placeholder="Enter tag name"
-                    class="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500">
-                  <button 
-                    (click)="addTag()"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Add
-                  </button>
-                  <button 
-                    (click)="cancelTagInput()"
-                    class="bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-4 py-2 rounded-lg transition-colors">
-                    Cancel
-                  </button>
+                    [(ngModel)]="tagSearchQuery"
+                    (focus)="showTagDropdown.set(true)"
+                    (input)="onTagSearchInput()"
+                    placeholder="Search character types (e.g., mad, hero, teacher)..."
+                    class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500">
+                  
+                  @if (showTagDropdown() && filteredCharacterTypes().length > 0) {
+                    <div class="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      @for (type of filteredCharacterTypes(); track type) {
+                        <button
+                          (click)="selectCharacterType(type)"
+                          class="w-full text-left px-3 py-2 text-neutral-200 hover:bg-neutral-700 transition-colors">
+                          {{ type }}
+                        </button>
+                      }
+                    </div>
+                  }
+                  
+                  @if (showTagDropdown() && filteredCharacterTypes().length === 0 && tagSearchQuery().trim()) {
+                    <div class="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-lg p-3">
+                      <p class="text-neutral-500 text-sm">No matching character types found</p>
+                    </div>
+                  }
                 </div>
+              } @else {
+                <p class="text-xs text-neutral-500">Maximum 3 character types selected</p>
               }
             </div>
 
@@ -423,6 +427,12 @@ export class UploadComponent implements OnInit, OnDestroy {
   newTagName = signal('');
   description = signal('');
   
+  // Character type dropdown state
+  tagSearchQuery = signal('');
+  showTagDropdown = signal(false);
+  characterTypes = CHARACTER_TYPES;
+  characterTypeSynonyms = CHARACTER_TYPE_SYNONYMS;
+  
   // Image upload state
   selectedImages = signal<File[]>([]);
   isDragOver = signal(false);
@@ -470,6 +480,41 @@ export class UploadComponent implements OnInit, OnDestroy {
   });
 
   canAddMoreTags = computed(() => this.tags().length < 3);
+  
+  // Filtered character types based on search query with synonym mapping
+  filteredCharacterTypes = computed(() => {
+    const query = this.tagSearchQuery().toLowerCase().trim();
+    
+    if (!query) {
+      return this.characterTypes;
+    }
+    
+    // Check if query is a synonym
+    const mappedType = this.characterTypeSynonyms[query];
+    
+    // Filter character types
+    return this.characterTypes.filter(type => {
+      // Direct match
+      if (type.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Synonym match - if user types a synonym, show the mapped type
+      if (mappedType && type.toLowerCase() === mappedType.toLowerCase()) {
+        return true;
+      }
+      
+      // Check if any synonym maps to this type
+      const synonyms = Object.entries(this.characterTypeSynonyms)
+        .filter(([_, value]) => value.toLowerCase() === type.toLowerCase())
+        .map(([key, _]) => key);
+      
+      return synonyms.some(syn => syn.includes(query));
+    }).filter(type => {
+      // Exclude already selected tags
+      return !this.tags().some(tag => tag.name.toLowerCase() === type.toLowerCase());
+    });
+  });
 
   canUploadImages = computed(() => {
     return this.selectedImages().length > 0;
@@ -516,13 +561,17 @@ export class UploadComponent implements OnInit, OnDestroy {
     }
   });
 
-  ngOnInit() {
-    // Check for returnUrl query param (read once, no subscription leak)
-    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-    if (returnUrl) {
-      this.returnUrl.set(returnUrl);
-      // Set upload type to image if coming from profile
-      this.uploadType.set('image');
+  ngOnInit(): void {
+    this.returnUrl.set(this.route.snapshot.queryParamMap.get('returnUrl'));
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', this.handleClickOutside.bind(this));
+  }
+  
+  private handleClickOutside(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.relative')) {
+      this.showTagDropdown.set(false);
     }
   }
 
@@ -535,6 +584,9 @@ export class UploadComponent implements OnInit, OnDestroy {
     // Clean up any active intervals
     this.activeIntervals.forEach(id => clearInterval(id));
     this.activeIntervals = [];
+    
+    // Remove click outside listener
+    document.removeEventListener('click', this.handleClickOutside.bind(this));
     
     // Revoke all object URLs
     const videoUrl = this.videoPreviewUrl();
@@ -737,17 +789,24 @@ export class UploadComponent implements OnInit, OnDestroy {
     this.imageDescriptions.set(file.name, textarea.value);
   }
 
-  addTag(): void {
-    if (this.newTagName().trim() && this.tags().length < 3) {
+  onTagSearchInput(): void {
+    // Show dropdown when user types
+    this.showTagDropdown.set(true);
+  }
+  
+  selectCharacterType(type: string): void {
+    if (this.tags().length < 3) {
       const newTag: Tag = {
         id: Date.now().toString(),
-        name: this.newTagName().trim()
+        name: type
       };
       
       const currentTags = this.tags();
       this.tags.set([...currentTags, newTag]);
-      this.newTagName.set('');
-      this.showTagInput.set(false);
+      
+      // Clear search and close dropdown
+      this.tagSearchQuery.set('');
+      this.showTagDropdown.set(false);
     }
   }
 
@@ -755,11 +814,6 @@ export class UploadComponent implements OnInit, OnDestroy {
     const currentTags = this.tags();
     const updatedTags = currentTags.filter(tag => tag.id !== tagId);
     this.tags.set(updatedTags);
-  }
-
-  cancelTagInput(): void {
-    this.newTagName.set('');
-    this.showTagInput.set(false);
   }
 
   editCover(): void {
