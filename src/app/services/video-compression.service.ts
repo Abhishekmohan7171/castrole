@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { toBlobURL } from '@ffmpeg/util';
 
 @Injectable({
   providedIn: 'root'
@@ -19,13 +19,11 @@ export class VideoCompressionService {
   async loadFFmpeg(): Promise<void> {
     // If already loaded, return immediately
     if (this.isLoaded && this.ffmpeg) {
-      console.log('[VideoCompressionService] FFmpeg already loaded');
       return;
     }
 
     // If currently loading, return existing promise
     if (this.loadingPromise) {
-      console.log('[VideoCompressionService] FFmpeg loading in progress...');
       return this.loadingPromise;
     }
 
@@ -37,23 +35,13 @@ export class VideoCompressionService {
     // Start loading
     this.loadingPromise = (async () => {
       try {
-        console.log('[VideoCompressionService] Starting FFmpeg initialization...');
         this.ffmpeg = new FFmpeg();
 
-        // Set up logging for debugging
-        this.ffmpeg.on('log', ({ message }) => {
-          console.log('[FFmpeg]', message);
-        });
-
         // Load FFmpeg core from CDN
-        console.log('[VideoCompressionService] Loading FFmpeg core from CDN...');
         const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
 
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-        console.log('[VideoCompressionService] Core JS loaded');
-
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-        console.log('[VideoCompressionService] WASM loaded');
 
         await this.ffmpeg.load({
           coreURL,
@@ -61,9 +49,7 @@ export class VideoCompressionService {
         });
 
         this.isLoaded = true;
-        console.log('[VideoCompressionService] FFmpeg loaded successfully!');
       } catch (error: any) {
-        console.error('[VideoCompressionService] Failed to load FFmpeg:', error);
         this.ffmpeg = null;
         this.isLoaded = false;
         this.loadingPromise = null;
@@ -109,7 +95,8 @@ export class VideoCompressionService {
 
   /**
    * Compress video using FFmpeg.wasm
-   * Settings: 720p max, H.264 codec, CRF 23, AAC audio 128kbps
+   * Settings: 1080p max, H.264 codec, adaptive bitrate targeting <100MB for 2min videos
+   * Target: ~6.5 Mbps video bitrate for 2-minute videos to stay under 100MB
    * @param file Video file to compress
    * @param onProgress Progress callback (0-100)
    * @returns Promise<Blob> Compressed video as Blob
@@ -119,23 +106,27 @@ export class VideoCompressionService {
     onProgress: (progress: number) => void
   ): Promise<Blob> {
     try {
-      console.log('[VideoCompressionService] Starting compression for:', file.name, 'Size:', file.size);
-
       // Load FFmpeg if not already loaded
-      console.log('[VideoCompressionService] Loading FFmpeg...');
       await this.loadFFmpeg();
 
       if (!this.ffmpeg) {
         throw new Error('FFmpeg not initialized');
       }
 
-      console.log('[VideoCompressionService] FFmpeg ready, setting up progress tracking...');
+      // Get video duration to calculate optimal bitrate
+      const duration = await this.getVideoDuration(file);
+      
+      // Calculate target bitrate to stay under 100MB
+      // Formula: (target_size_MB * 8 * 1024) / duration_seconds = total_bitrate_kbps
+      // Reserve 128kbps for audio, rest for video
+      const targetSizeMB = 95; // Target 95MB to leave safety margin
+      const totalBitrateKbps = Math.floor((targetSizeMB * 8 * 1024) / duration);
+      const audioBitrateKbps = 128;
+      const videoBitrateKbps = Math.max(totalBitrateKbps - audioBitrateKbps, 3000); // Min 3Mbps for quality
 
       // Set up progress tracking
       this.ffmpeg.on('progress', ({ progress }) => {
-        // FFmpeg progress is 0-1, convert to 0-100
         const percentage = Math.min(Math.max(progress * 100, 0), 100);
-        console.log('[VideoCompressionService] Compression progress:', percentage.toFixed(1) + '%');
         onProgress(percentage);
       });
 
@@ -143,33 +134,39 @@ export class VideoCompressionService {
       const inputFileName = 'input.mp4';
       const outputFileName = 'output.mp4';
 
-      console.log('[VideoCompressionService] Writing file to virtual filesystem...');
-      await this.ffmpeg.writeFile(inputFileName, await fetchFile(file));
-      console.log('[VideoCompressionService] File written, starting compression...');
+      // Read file as ArrayBuffer to avoid CORS issues
+      const fileData = await file.arrayBuffer();
+      await this.ffmpeg.writeFile(inputFileName, new Uint8Array(fileData));
 
       // Execute FFmpeg compression command
       // -i input: Input file
-      // -vf scale: Scale video to max 720p while maintaining aspect ratio
+      // -vf scale: Scale video to max 1080p while maintaining aspect ratio
       // -c:v libx264: Use H.264 video codec
-      // -crf 23: Constant Rate Factor (quality, lower = better, 23 is good balance)
-      // -preset medium: Encoding speed/compression ratio (medium is balanced)
+      // -b:v: Target video bitrate (calculated to stay under 100MB)
+      // -maxrate: Maximum bitrate (1.5x target for quality peaks)
+      // -bufsize: Buffer size for rate control
+      // -preset medium: Encoding speed/compression ratio
+      // -profile:v high: H.264 high profile for better compression
+      // -level 4.1: H.264 level for 1080p compatibility
       // -c:a aac: Use AAC audio codec
       // -b:a 128k: Audio bitrate 128kbps
       // -movflags +faststart: Optimize for web streaming
-      console.log('[VideoCompressionService] Executing FFmpeg command...');
       await this.ffmpeg.exec([
         '-i', inputFileName,
-        '-vf', "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease",
+        '-vf', "scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease",
         '-c:v', 'libx264',
-        '-crf', '23',
+        '-b:v', `${videoBitrateKbps}k`,
+        '-maxrate', `${Math.floor(videoBitrateKbps * 1.5)}k`,
+        '-bufsize', `${videoBitrateKbps * 2}k`,
         '-preset', 'medium',
+        '-profile:v', 'high',
+        '-level', '4.1',
         '-c:a', 'aac',
         '-b:a', '128k',
         '-movflags', '+faststart',
         outputFileName
       ]);
 
-      console.log('[VideoCompressionService] Compression complete, reading output file...');
       // Read output file from virtual filesystem
       const data = await this.ffmpeg.readFile(outputFileName);
 
@@ -178,26 +175,31 @@ export class VideoCompressionService {
         await this.ffmpeg.deleteFile(inputFileName);
         await this.ffmpeg.deleteFile(outputFileName);
       } catch (error) {
-        console.warn('[VideoCompressionService] Failed to clean up files:', error);
+        // Cleanup errors are non-critical
       }
 
-      // Convert FileData (Uint8Array) to standard Uint8Array, then to Blob
-      // This ensures compatibility with Blob constructor which expects ArrayBuffer
+      // Convert to Blob
       const uint8Array = new Uint8Array(data as Uint8Array);
       const blob = new Blob([uint8Array], { type: 'video/mp4' });
+
+      // Verify output size is under 100MB
+      const outputSizeMB = blob.size / (1024 * 1024);
+      if (outputSizeMB > 100) {
+        throw new Error(`Compressed video (${outputSizeMB.toFixed(1)}MB) exceeds 100MB limit. Please try a shorter video.`);
+      }
 
       // Final progress update
       onProgress(100);
 
       return blob;
     } catch (error: any) {
-      console.error('[VideoCompressionService] Compression failed:', error);
-
       // Provide user-friendly error messages
       if (error.message?.includes('out of memory')) {
         throw new Error('Video file is too large to compress in browser. Please try a shorter video.');
       } else if (error.message?.includes('Invalid data')) {
         throw new Error('Video file appears to be corrupt or in an unsupported format.');
+      } else if (error.message?.includes('exceeds 100MB')) {
+        throw error; // Pass through size limit errors
       } else {
         throw new Error(`Video compression failed: ${error.message || 'Unknown error'}`);
       }
@@ -215,9 +217,8 @@ export class VideoCompressionService {
         this.ffmpeg = null;
         this.isLoaded = false;
         this.loadingPromise = null;
-        console.log('[VideoCompressionService] FFmpeg cleaned up');
       } catch (error) {
-        console.warn('[VideoCompressionService] Cleanup error:', error);
+        // Cleanup errors are non-critical
       }
     }
   }

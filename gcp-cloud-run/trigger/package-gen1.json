@@ -1,0 +1,13 @@
+{
+  "name": "video-encode-trigger",
+  "version": "1.0.0",
+  "description": "Cloud Function to trigger video encoding jobs",
+  "main": "index.js",
+  "dependencies": {
+    "googleapis": "^128.0.0",
+    "@google-cloud/firestore": "^7.1.0"
+  },
+  "engines": {
+    "node": "20"
+  }
+}

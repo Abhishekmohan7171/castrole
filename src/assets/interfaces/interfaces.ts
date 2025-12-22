@@ -122,13 +122,20 @@ export interface MediaUpload {
 
 export interface VideoMetadata {
   tags: string[];
-  mediaType: string;
+  mediaType?: string; // Optional - removed from upload UI
   description: string;
   thumbnailUrl?: string;
   duration?: number; // Video duration in seconds
-  compressed?: boolean; // Track if video was compressed
+  resolution?: string; // Video resolution (e.g., "1920x1080")
+  fps?: number; // Frames per second
+  bitrate?: number; // Bitrate in kbps
+  needsProcessing?: boolean; // Flag for server-side compression
+  processed?: boolean; // Track if video was processed on server
+  processedUrl?: string; // URL of processed video (1080p standardized)
   originalSize?: number; // Original file size for analytics
-  compressedSize?: number; // Compressed file size
+  compressedSize?: number; // Client-compressed file size
+  compressed?: boolean; // Track if video was compressed client-side
+  processedSize?: number; // Server-processed file size
 }
 
 export interface ImageMetadata {
