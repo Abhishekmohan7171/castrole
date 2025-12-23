@@ -1,16 +1,8 @@
-import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-export interface Notification {
-  id: string;
-  type: 'message' | 'request' | 'system';
-  title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-  avatarUrl?: string;
-  actionUrl?: string;
-}
+import { Router } from '@angular/router';
+import { NotificationService, AppNotification, NotificationType } from '../../services/notification.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-notification-drawer',
@@ -77,8 +69,8 @@ export interface Notification {
                          'bg-purple-800/50': isActor,
                          'bg-neutral-700/50': !isActor
                        }">
-                    <img *ngIf="notification.avatarUrl; else defaultIcon"
-                         [src]="notification.avatarUrl"
+                    <img *ngIf="notification.metadata?.actorPhotoUrl || notification.metadata?.producerPhotoUrl; else defaultIcon"
+                         [src]="notification.metadata?.actorPhotoUrl || notification.metadata?.producerPhotoUrl"
                          [alt]="notification.title"
                          class="w-full h-full object-cover">
                     <ng-template #defaultIcon>
@@ -88,9 +80,7 @@ export interface Notification {
                              'text-neutral-400': !isActor
                            }"
                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path *ngIf="notification.type === 'message'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        <path *ngIf="notification.type === 'request'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        <path *ngIf="notification.type === 'system'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getNotificationIcon(notification.type)" />
                       </svg>
                     </ng-template>
                   </div>
@@ -99,15 +89,27 @@ export interface Notification {
                 <!-- Content -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="text-sm font-medium truncate"
-                        [ngClass]="{
-                          'text-purple-100': isActor && !notification.read,
-                          'text-purple-200/70': isActor && notification.read,
-                          'text-neutral-100': !isActor && !notification.read,
-                          'text-neutral-300/70': !isActor && notification.read
-                        }">
-                      {{ notification.title }}
-                    </h3>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-medium truncate"
+                            [ngClass]="{
+                              'text-purple-100': isActor && !notification.read,
+                              'text-purple-200/70': isActor && notification.read,
+                              'text-neutral-100': !isActor && !notification.read,
+                              'text-neutral-300/70': !isActor && notification.read
+                            }">
+                          {{ notification.title }}
+                        </h3>
+                        <span *ngIf="isPremiumNotification(notification)"
+                              class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/20 text-amber-300 uppercase">
+                          Premium
+                        </span>
+                      </div>
+                      <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-medium rounded-full"
+                            [ngClass]="getCategoryBadgeColor(notification.category)">
+                        {{ notification.category }}
+                      </span>
+                    </div>
                     <span *ngIf="!notification.read"
                           class="flex-shrink-0 w-2 h-2 rounded-full"
                           [ngClass]="{
@@ -196,16 +198,33 @@ export interface Notification {
     }
   `]
 })
-export class NotificationDrawerComponent {
+export class NotificationDrawerComponent implements OnInit, OnDestroy {
   @Input() isOpen: boolean = false;
   @Input() isActor: boolean = true;
-  @Input() notifications: Notification[] = [];
+  @Input() userId: string = '';
   @Output() closeDrawer = new EventEmitter<void>();
-  @Output() notificationClick = new EventEmitter<Notification>();
-  @Output() markAsReadEvent = new EventEmitter<Notification>();
-  @Output() markAllAsReadEvent = new EventEmitter<void>();
 
-  get filteredNotifications(): Notification[] {
+  notifications: AppNotification[] = [];
+  private subscriptions = new Subscription();
+
+  constructor(
+    private notificationService: NotificationService,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.subscriptions.add(
+      this.notificationService.notifications$.subscribe(notifications => {
+        this.notifications = notifications;
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  get filteredNotifications(): AppNotification[] {
     return this.notifications;
   }
 
@@ -217,21 +236,54 @@ export class NotificationDrawerComponent {
     this.closeDrawer.emit();
   }
 
-  markAsRead(notification: Notification): void {
-    if (!notification.read) {
-      this.markAsReadEvent.emit(notification);
+  async markAsRead(notification: AppNotification): Promise<void> {
+    if (!notification.read && this.userId) {
+      await this.notificationService.markAsRead(this.userId, notification.id);
     }
     if (notification.actionUrl) {
-      this.notificationClick.emit(notification);
+      this.router.navigate([notification.actionUrl]);
+      this.close();
     }
   }
 
-  markAllAsRead(): void {
-    this.markAllAsReadEvent.emit();
+  async markAllAsRead(): Promise<void> {
+    if (this.userId) {
+      await this.notificationService.markAllAsRead(this.userId);
+    }
   }
 
-  trackByNotificationId(index: number, notification: Notification): string {
+  trackByNotificationId(index: number, notification: AppNotification): string {
     return notification.id;
+  }
+
+  getNotificationIcon(type: NotificationType): string {
+    const iconMap: Record<NotificationType, string> = {
+      'profile_view': 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
+      'wishlist': 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+      'shortlist': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      'chat_request': 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+      'chat_accepted': 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      'message': 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+      'analytics_view': 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+      'analytics_wishlist': 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+      'analytics_shortlist': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      'system': 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    };
+    return iconMap[type] || iconMap['system'];
+  }
+
+  getCategoryBadgeColor(category: string): string {
+    const colorMap: Record<string, string> = {
+      'discover': this.isActor ? 'bg-purple-500/20 text-purple-300' : 'bg-fuchsia-500/20 text-fuchsia-300',
+      'chat': this.isActor ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-500/20 text-blue-300',
+      'analytics': 'bg-amber-500/20 text-amber-300',
+      'system': 'bg-neutral-500/20 text-neutral-300'
+    };
+    return colorMap[category] || colorMap['system'];
+  }
+
+  isPremiumNotification(notification: AppNotification): boolean {
+    return notification.metadata?.isPremium === true;
   }
 
   getRelativeTime(date: Date): string {
