@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UploadService } from '../services/upload.service';
 import { VideoCompressionService } from '../services/video-compression.service';
+import { ProfileService } from '../services/profile.service';
 import { UploadProgress } from '../../assets/interfaces/interfaces';
 import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
-import { Firestore, doc, setDoc, serverTimestamp, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, serverTimestamp, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS } from './search-constants';
 
@@ -165,6 +166,28 @@ interface Tag {
                   <span>FPS: {{ videoFps() }}</span>
                   <span>Size: {{ formatFileSize(selectedVideoFile()?.size || 0) }}</span>
                 </div>
+              </div>
+            }
+            
+            <!-- Upload Limit Indicator -->
+            @if (!isSubscribed()) {
+              <div class="bg-neutral-800 border border-neutral-600 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-neutral-300">Video Uploads</span>
+                  <span class="text-sm font-medium" [class]="canUploadMoreVideos() ? 'text-green-400' : 'text-red-400'">
+                    {{ uploadedVideoCount() }} / {{ videoUploadLimit() }}
+                  </span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    class="h-full transition-all duration-300"
+                    [class]="canUploadMoreVideos() ? 'bg-green-500' : 'bg-red-500'"
+                    [style.width.%]="(uploadedVideoCount() / videoUploadLimit()) * 100">
+                  </div>
+                </div>
+                @if (!canUploadMoreVideos()) {
+                  <p class="text-xs text-red-400 mt-2">Upgrade to premium for unlimited video uploads</p>
+                }
               </div>
             }
 
@@ -348,6 +371,28 @@ interface Tag {
                 <p>Size: {{ formatFileSize(selectedImages()[0].size) }}</p>
               </div>
             }
+            
+            <!-- Upload Limit Indicator -->
+            @if (!isSubscribed()) {
+              <div class="bg-neutral-800 border border-neutral-600 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-neutral-300">Image Uploads</span>
+                  <span class="text-sm font-medium" [class]="canUploadMoreImages() ? 'text-green-400' : 'text-red-400'">
+                    {{ uploadedImageCount() }} / {{ imageUploadLimit() }}
+                  </span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    class="h-full transition-all duration-300"
+                    [class]="canUploadMoreImages() ? 'bg-green-500' : 'bg-red-500'"
+                    [style.width.%]="(uploadedImageCount() / imageUploadLimit()) * 100">
+                  </div>
+                </div>
+                @if (!canUploadMoreImages()) {
+                  <p class="text-xs text-red-400 mt-2">Upgrade to premium for unlimited image uploads</p>
+                }
+              </div>
+            }
 
             <!-- Image Upload Progress -->
             @if (isUploading() && imageUploadProgress().length > 0 && !uploadSuccess()) {
@@ -468,6 +513,32 @@ export class UploadComponent implements OnInit, OnDestroy {
   private storage = inject(Storage);
   private firestore = inject(Firestore);
   private auth = inject(Auth);
+  private profileService = inject(ProfileService);
+  
+  // Upload limits tracking
+  uploadedVideoCount = signal<number>(0);
+  uploadedImageCount = signal<number>(0);
+  isLoadingCounts = signal<boolean>(false);
+  
+  // Subscription status
+  isSubscribed = computed(() => {
+    const profileData = this.profileService.profileData();
+    
+    // Check if user is a producer (has producerProfile)
+    if (profileData?.producerProfile) {
+      return true; // Producers have no limits
+    }
+    
+    // For actors, check subscription status
+    return profileData?.actorProfile?.isSubscribed ?? false;
+  });
+  
+  // Upload limits
+  videoUploadLimit = computed(() => this.isSubscribed() ? Infinity : 4);
+  imageUploadLimit = computed(() => this.isSubscribed() ? Infinity : 10);
+  
+  canUploadMoreVideos = computed(() => this.uploadedVideoCount() < this.videoUploadLimit());
+  canUploadMoreImages = computed(() => this.uploadedImageCount() < this.imageUploadLimit());
 
   canUploadVideo = computed(() => {
     return this.selectedVideoFile() !== null &&
@@ -566,6 +637,32 @@ export class UploadComponent implements OnInit, OnDestroy {
     
     // Close dropdown when clicking outside
     document.addEventListener('click', this.handleClickOutside.bind(this));
+    
+    // Load upload counts
+    this.loadUploadCounts();
+  }
+  
+  async loadUploadCounts(): Promise<void> {
+    const userId = this.auth.currentUser?.uid;
+    if (!userId) return;
+    
+    this.isLoadingCounts.set(true);
+    
+    try {
+      // Count videos
+      const videosRef = collection(this.firestore, `uploads/${userId}/userUploads`);
+      const videosSnapshot = await getDocs(videosRef);
+      this.uploadedVideoCount.set(videosSnapshot.size);
+      
+      // Count images
+      const imagesRef = collection(this.firestore, `users/${userId}/images`);
+      const imagesSnapshot = await getDocs(imagesRef);
+      this.uploadedImageCount.set(imagesSnapshot.size);
+    } catch (error) {
+      console.error('Error loading upload counts:', error);
+    } finally {
+      this.isLoadingCounts.set(false);
+    }
   }
   
   private handleClickOutside(event: MouseEvent): void {
@@ -841,6 +938,13 @@ export class UploadComponent implements OnInit, OnDestroy {
         this.isUploading.set(false);
         return;
       }
+      
+      // Check upload limit
+      if (!this.canUploadMoreVideos()) {
+        const limit = this.videoUploadLimit();
+        this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' videos. Upgrade to premium for unlimited uploads.'}`);        this.isUploading.set(false);
+        return;
+      }
 
       // Check file size limit (1000MB / 1GB)
       const fileSizeMB = file.size / (1024 * 1024);
@@ -904,6 +1008,9 @@ export class UploadComponent implements OnInit, OnDestroy {
           // Upload error
           this.uploadError.set(`Upload failed: ${error.message}`);
           this.isUploading.set(false);
+          
+          // Reload counts in case of error
+          this.loadUploadCounts();
           this.processingStatus.set('FAILED');
           
           // Update Firestore
@@ -964,6 +1071,9 @@ export class UploadComponent implements OnInit, OnDestroy {
             // Processing complete!
             this.isUploading.set(false);
             this.uploadSuccess.set(true);
+            
+            // Increment video count
+            this.uploadedVideoCount.set(this.uploadedVideoCount() + 1);
             
             // Stop watching
             if (this.statusUnsubscribe) {
@@ -1108,12 +1218,19 @@ export class UploadComponent implements OnInit, OnDestroy {
   uploadImages(): void {
     const images = this.selectedImages();
     if (images.length === 0) return;
+    
+    // Check upload limit
+    if (!this.canUploadMoreImages()) {
+      const limit = this.imageUploadLimit();
+      this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' images. Upgrade to premium for unlimited uploads.'}`);
+      return;
+    }
 
     // Validate all images
     for (const file of images) {
-      // Validate file size (10MB max per image)
-      if (!this.uploadService.validateFileSize(file, 10)) {
-        this.uploadError.set(`Image ${file.name} exceeds 10MB limit`);
+      // Validate file size (1GB max per image)
+      if (file.size > 1024 * 1024 * 1024) {
+        this.uploadError.set(`Image ${file.name} exceeds 1GB limit`);
         return;
       }
 
@@ -1162,6 +1279,9 @@ export class UploadComponent implements OnInit, OnDestroy {
             if (!hasErrors) {
               this.uploadSuccess.set(true);
               this.isUploading.set(false);
+              
+              // Increment image count
+              this.uploadedImageCount.set(this.uploadedImageCount() + 1);
 
               // Redirect if returnUrl is set
               const returnUrl = this.returnUrl();
