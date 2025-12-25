@@ -365,6 +365,7 @@ import { NotificationDrawerComponent } from './notification-drawer/notification-
         [isOpen]="showNotificationDrawer()"
         [isActor]="isActor()"
         [userId]="uid || ''"
+        [isSubscribed]="isSubscribed()"
         (closeDrawer)="closeNotificationDrawer()"
       >
       </app-notification-drawer>
@@ -441,6 +442,7 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   // Notification drawer
   showNotificationDrawer = signal<boolean>(false);
   unreadNotificationCount = signal<number>(0);
+  isSubscribed = signal<boolean>(false);
 
   // Chat notification count for the header
   chatNotificationCount$: Observable<number>;
@@ -494,8 +496,9 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                   // Set user role for theming
                   this.userRole.set(userData['currentRole'] || 'actor');
 
-                  // Fetch profile photo
+                  // Fetch profile photo and subscription status
                   this.fetchProfilePhoto(user.uid);
+                  this.fetchSubscriptionStatus(user.uid, userData['currentRole'] || 'actor');
 
                   // Initialize notifications
                   this.notificationService.initializeNotifications(user.uid);
@@ -661,6 +664,23 @@ export class DiscoverComponent implements OnInit, OnDestroy {
   // Handle image loading errors
   onImageError(): void {
     this.profilePhotoUrl.set(undefined);
+  }
+
+  // Fetch user subscription status from Firestore
+  private async fetchSubscriptionStatus(uid: string, role: 'actor' | 'producer'): Promise<void> {
+    try {
+      const profileDocRef = doc(this.firestore, 'profiles', uid);
+      const profileDocSnap = await getDoc(profileDocRef);
+      if (profileDocSnap.exists()) {
+        const profileData = profileDocSnap.data();
+        const isSubscribed = role === 'actor' 
+          ? profileData?.['actorProfile']?.['isSubscribed'] === true
+          : profileData?.['producerProfile']?.['isSubscribed'] === true;
+        this.isSubscribed.set(isSubscribed);
+      }
+    } catch (error) {
+      this.logger.error('Error fetching subscription status:', error);
+    }
   }
 
   // Notification drawer methods

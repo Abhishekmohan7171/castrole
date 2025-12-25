@@ -202,6 +202,7 @@ export class NotificationDrawerComponent implements OnInit, OnDestroy {
   @Input() isOpen: boolean = false;
   @Input() isActor: boolean = true;
   @Input() userId: string = '';
+  @Input() isSubscribed: boolean = false;
   @Output() closeDrawer = new EventEmitter<void>();
 
   notifications: AppNotification[] = [];
@@ -225,7 +226,13 @@ export class NotificationDrawerComponent implements OnInit, OnDestroy {
   }
 
   get filteredNotifications(): AppNotification[] {
-    return this.notifications;
+    // Filter out analytics notifications if user is not subscribed
+    return this.notifications.filter(notification => {
+      if (notification.category === 'analytics' && !this.isSubscribed) {
+        return false;
+      }
+      return true;
+    });
   }
 
   get hasUnreadNotifications(): boolean {

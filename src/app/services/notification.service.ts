@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, doc, writeBatch, Timestamp, getDocs, serverTimestamp } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, doc, writeBatch, Timestamp, getDocs, serverTimestamp, getDoc } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { LoggerService } from './logger.service';
 
@@ -243,15 +243,42 @@ export class NotificationService {
   }
 
   /**
+   * Check if user has premium subscription
+   */
+  private async checkUserSubscription(userId: string, userRole: 'actor' | 'producer'): Promise<boolean> {
+    try {
+      const profileDocRef = doc(this.firestore, 'profiles', userId);
+      const profileDoc = await getDoc(profileDocRef);
+      
+      if (!profileDoc.exists()) {
+        return false;
+      }
+      
+      const profileData = profileDoc.data();
+      
+      if (userRole === 'actor') {
+        return profileData?.['actorProfile']?.['isSubscribed'] === true;
+      } else {
+        return profileData?.['producerProfile']?.['isSubscribed'] === true;
+      }
+    } catch (error) {
+      this.logger.error('Error checking user subscription:', error);
+      return false;
+    }
+  }
+
+  /**
    * Create analytics notification (Premium feature)
    */
   async createAnalyticsNotification(
     userId: string,
     userRole: 'actor' | 'producer',
     analyticsType: 'view' | 'wishlist' | 'shortlist',
-    count: number,
-    isPremium: boolean = true
+    count: number
   ): Promise<void> {
+    // Check if user has premium subscription
+    const isPremium = await this.checkUserSubscription(userId, userRole);
+    
     if (!isPremium) {
       return;
     }
@@ -388,7 +415,7 @@ export class NotificationService {
    */
   async createAnalyticsSummaryNotification(
     userId: string,
-    isPremium: boolean,
+    userRole: 'actor' | 'producer',
     summaryData: {
       views: number;
       wishlists: number;
@@ -396,6 +423,9 @@ export class NotificationService {
       period: 'daily' | 'weekly';
     }
   ): Promise<void> {
+    // Check if user has premium subscription
+    const isPremium = await this.checkUserSubscription(userId, userRole);
+    
     if (!isPremium) {
       return;
     }
