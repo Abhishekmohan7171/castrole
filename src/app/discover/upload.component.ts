@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UploadService } from '../services/upload.service';
 import { VideoCompressionService } from '../services/video-compression.service';
+import { ProfileService } from '../services/profile.service';
 import { UploadProgress } from '../../assets/interfaces/interfaces';
 import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
-import { Firestore, doc, setDoc, serverTimestamp, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, serverTimestamp, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
+import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS } from './search-constants';
 
 interface Tag {
   id: string;
@@ -91,9 +93,11 @@ interface Tag {
 
           <!-- Video Metadata Form -->
           <div class="space-y-6">
-            <!-- Tags Section -->
+            <!-- Character Types Section -->
             <div>
-              <label class="block text-sm font-medium text-neutral-300 mb-3">Tags</label>
+              <label class="block text-sm font-medium text-neutral-300 mb-3">Character Types (Max 3)</label>
+              
+              <!-- Selected Tags -->
               <div class="flex flex-wrap gap-2 mb-3">
                 @for (tag of tags(); track tag.id) {
                   <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
@@ -107,37 +111,38 @@ interface Tag {
                     </button>
                   </span>
                 }
-                @if (canAddMoreTags()) {
-                  <button 
-                    (click)="showTagInput.set(true)"
-                    class="w-8 h-8 bg-neutral-700 hover:bg-neutral-600 rounded-full flex items-center justify-center transition-colors">
-                    <svg class="w-4 h-4 text-neutral-300" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                    </svg>
-                  </button>
-                } @else {
-                  <span class="text-xs text-neutral-500">Max 3 tags</span>
-                }
               </div>
               
-              @if (showTagInput()) {
-                <div class="flex gap-2">
+              <!-- Searchable Dropdown -->
+              @if (canAddMoreTags()) {
+                <div class="relative">
                   <input 
-                    [(ngModel)]="newTagName"
-                    (keyup.enter)="addTag()"
-                    placeholder="Enter tag name"
-                    class="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500">
-                  <button 
-                    (click)="addTag()"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Add
-                  </button>
-                  <button 
-                    (click)="cancelTagInput()"
-                    class="bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-4 py-2 rounded-lg transition-colors">
-                    Cancel
-                  </button>
+                    [(ngModel)]="tagSearchQuery"
+                    (focus)="showTagDropdown.set(true)"
+                    (input)="onTagSearchInput()"
+                    placeholder="Search character types (e.g., mad, hero, teacher)..."
+                    class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500">
+                  
+                  @if (showTagDropdown() && filteredCharacterTypes().length > 0) {
+                    <div class="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      @for (type of filteredCharacterTypes(); track type) {
+                        <button
+                          (click)="selectCharacterType(type)"
+                          class="w-full text-left px-3 py-2 text-neutral-200 hover:bg-neutral-700 transition-colors">
+                          {{ type }}
+                        </button>
+                      }
+                    </div>
+                  }
+                  
+                  @if (showTagDropdown() && filteredCharacterTypes().length === 0 && tagSearchQuery().trim()) {
+                    <div class="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-lg p-3">
+                      <p class="text-neutral-500 text-sm">No matching character types found</p>
+                    </div>
+                  }
                 </div>
+              } @else {
+                <p class="text-xs text-neutral-500">Maximum 3 character types selected</p>
               }
             </div>
 
@@ -161,6 +166,28 @@ interface Tag {
                   <span>FPS: {{ videoFps() }}</span>
                   <span>Size: {{ formatFileSize(selectedVideoFile()?.size || 0) }}</span>
                 </div>
+              </div>
+            }
+            
+            <!-- Upload Limit Indicator -->
+            @if (!isSubscribed()) {
+              <div class="bg-neutral-800 border border-neutral-600 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-neutral-300">Video Uploads</span>
+                  <span class="text-sm font-medium" [class]="canUploadMoreVideos() ? 'text-green-400' : 'text-red-400'">
+                    {{ uploadedVideoCount() }} / {{ videoUploadLimit() }}
+                  </span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    class="h-full transition-all duration-300"
+                    [class]="canUploadMoreVideos() ? 'bg-green-500' : 'bg-red-500'"
+                    [style.width.%]="(uploadedVideoCount() / videoUploadLimit()) * 100">
+                  </div>
+                </div>
+                @if (!canUploadMoreVideos()) {
+                  <p class="text-xs text-red-400 mt-2">Upgrade to premium for unlimited video uploads</p>
+                }
               </div>
             }
 
@@ -344,6 +371,28 @@ interface Tag {
                 <p>Size: {{ formatFileSize(selectedImages()[0].size) }}</p>
               </div>
             }
+            
+            <!-- Upload Limit Indicator -->
+            @if (!isSubscribed()) {
+              <div class="bg-neutral-800 border border-neutral-600 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-neutral-300">Image Uploads</span>
+                  <span class="text-sm font-medium" [class]="canUploadMoreImages() ? 'text-green-400' : 'text-red-400'">
+                    {{ uploadedImageCount() }} / {{ imageUploadLimit() }}
+                  </span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    class="h-full transition-all duration-300"
+                    [class]="canUploadMoreImages() ? 'bg-green-500' : 'bg-red-500'"
+                    [style.width.%]="(uploadedImageCount() / imageUploadLimit()) * 100">
+                  </div>
+                </div>
+                @if (!canUploadMoreImages()) {
+                  <p class="text-xs text-red-400 mt-2">Upgrade to premium for unlimited image uploads</p>
+                }
+              </div>
+            }
 
             <!-- Image Upload Progress -->
             @if (isUploading() && imageUploadProgress().length > 0 && !uploadSuccess()) {
@@ -423,6 +472,12 @@ export class UploadComponent implements OnInit, OnDestroy {
   newTagName = signal('');
   description = signal('');
   
+  // Character type dropdown state
+  tagSearchQuery = signal('');
+  showTagDropdown = signal(false);
+  characterTypes = CHARACTER_TYPES;
+  characterTypeSynonyms = CHARACTER_TYPE_SYNONYMS;
+  
   // Image upload state
   selectedImages = signal<File[]>([]);
   isDragOver = signal(false);
@@ -458,6 +513,32 @@ export class UploadComponent implements OnInit, OnDestroy {
   private storage = inject(Storage);
   private firestore = inject(Firestore);
   private auth = inject(Auth);
+  private profileService = inject(ProfileService);
+  
+  // Upload limits tracking
+  uploadedVideoCount = signal<number>(0);
+  uploadedImageCount = signal<number>(0);
+  isLoadingCounts = signal<boolean>(false);
+  
+  // Subscription status
+  isSubscribed = computed(() => {
+    const profileData = this.profileService.profileData();
+    
+    // Check if user is a producer (has producerProfile)
+    if (profileData?.producerProfile) {
+      return true; // Producers have no limits
+    }
+    
+    // For actors, check subscription status
+    return profileData?.actorProfile?.isSubscribed ?? false;
+  });
+  
+  // Upload limits
+  videoUploadLimit = computed(() => this.isSubscribed() ? Infinity : 4);
+  imageUploadLimit = computed(() => this.isSubscribed() ? Infinity : 10);
+  
+  canUploadMoreVideos = computed(() => this.uploadedVideoCount() < this.videoUploadLimit());
+  canUploadMoreImages = computed(() => this.uploadedImageCount() < this.imageUploadLimit());
 
   canUploadVideo = computed(() => {
     return this.selectedVideoFile() !== null &&
@@ -470,6 +551,41 @@ export class UploadComponent implements OnInit, OnDestroy {
   });
 
   canAddMoreTags = computed(() => this.tags().length < 3);
+  
+  // Filtered character types based on search query with synonym mapping
+  filteredCharacterTypes = computed(() => {
+    const query = this.tagSearchQuery().toLowerCase().trim();
+    
+    if (!query) {
+      return this.characterTypes;
+    }
+    
+    // Check if query is a synonym
+    const mappedType = this.characterTypeSynonyms[query];
+    
+    // Filter character types
+    return this.characterTypes.filter(type => {
+      // Direct match
+      if (type.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Synonym match - if user types a synonym, show the mapped type
+      if (mappedType && type.toLowerCase() === mappedType.toLowerCase()) {
+        return true;
+      }
+      
+      // Check if any synonym maps to this type
+      const synonyms = Object.entries(this.characterTypeSynonyms)
+        .filter(([_, value]) => value.toLowerCase() === type.toLowerCase())
+        .map(([key, _]) => key);
+      
+      return synonyms.some(syn => syn.includes(query));
+    }).filter(type => {
+      // Exclude already selected tags
+      return !this.tags().some(tag => tag.name.toLowerCase() === type.toLowerCase());
+    });
+  });
 
   canUploadImages = computed(() => {
     return this.selectedImages().length > 0;
@@ -516,13 +632,43 @@ export class UploadComponent implements OnInit, OnDestroy {
     }
   });
 
-  ngOnInit() {
-    // Check for returnUrl query param (read once, no subscription leak)
-    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-    if (returnUrl) {
-      this.returnUrl.set(returnUrl);
-      // Set upload type to image if coming from profile
-      this.uploadType.set('image');
+  ngOnInit(): void {
+    this.returnUrl.set(this.route.snapshot.queryParamMap.get('returnUrl'));
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', this.handleClickOutside.bind(this));
+    
+    // Load upload counts
+    this.loadUploadCounts();
+  }
+  
+  async loadUploadCounts(): Promise<void> {
+    const userId = this.auth.currentUser?.uid;
+    if (!userId) return;
+    
+    this.isLoadingCounts.set(true);
+    
+    try {
+      // Count videos
+      const videosRef = collection(this.firestore, `uploads/${userId}/userUploads`);
+      const videosSnapshot = await getDocs(videosRef);
+      this.uploadedVideoCount.set(videosSnapshot.size);
+      
+      // Count images
+      const imagesRef = collection(this.firestore, `users/${userId}/images`);
+      const imagesSnapshot = await getDocs(imagesRef);
+      this.uploadedImageCount.set(imagesSnapshot.size);
+    } catch (error) {
+      console.error('Error loading upload counts:', error);
+    } finally {
+      this.isLoadingCounts.set(false);
+    }
+  }
+  
+  private handleClickOutside(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.relative')) {
+      this.showTagDropdown.set(false);
     }
   }
 
@@ -535,6 +681,9 @@ export class UploadComponent implements OnInit, OnDestroy {
     // Clean up any active intervals
     this.activeIntervals.forEach(id => clearInterval(id));
     this.activeIntervals = [];
+    
+    // Remove click outside listener
+    document.removeEventListener('click', this.handleClickOutside.bind(this));
     
     // Revoke all object URLs
     const videoUrl = this.videoPreviewUrl();
@@ -737,17 +886,24 @@ export class UploadComponent implements OnInit, OnDestroy {
     this.imageDescriptions.set(file.name, textarea.value);
   }
 
-  addTag(): void {
-    if (this.newTagName().trim() && this.tags().length < 3) {
+  onTagSearchInput(): void {
+    // Show dropdown when user types
+    this.showTagDropdown.set(true);
+  }
+  
+  selectCharacterType(type: string): void {
+    if (this.tags().length < 3) {
       const newTag: Tag = {
         id: Date.now().toString(),
-        name: this.newTagName().trim()
+        name: type
       };
       
       const currentTags = this.tags();
       this.tags.set([...currentTags, newTag]);
-      this.newTagName.set('');
-      this.showTagInput.set(false);
+      
+      // Clear search and close dropdown
+      this.tagSearchQuery.set('');
+      this.showTagDropdown.set(false);
     }
   }
 
@@ -755,11 +911,6 @@ export class UploadComponent implements OnInit, OnDestroy {
     const currentTags = this.tags();
     const updatedTags = currentTags.filter(tag => tag.id !== tagId);
     this.tags.set(updatedTags);
-  }
-
-  cancelTagInput(): void {
-    this.newTagName.set('');
-    this.showTagInput.set(false);
   }
 
   editCover(): void {
@@ -785,6 +936,13 @@ export class UploadComponent implements OnInit, OnDestroy {
       if (!userId) {
         this.uploadError.set('Please sign in to upload videos');
         this.isUploading.set(false);
+        return;
+      }
+      
+      // Check upload limit
+      if (!this.canUploadMoreVideos()) {
+        const limit = this.videoUploadLimit();
+        this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' videos. Upgrade to premium for unlimited uploads.'}`);        this.isUploading.set(false);
         return;
       }
 
@@ -850,6 +1008,9 @@ export class UploadComponent implements OnInit, OnDestroy {
           // Upload error
           this.uploadError.set(`Upload failed: ${error.message}`);
           this.isUploading.set(false);
+          
+          // Reload counts in case of error
+          this.loadUploadCounts();
           this.processingStatus.set('FAILED');
           
           // Update Firestore
@@ -910,6 +1071,9 @@ export class UploadComponent implements OnInit, OnDestroy {
             // Processing complete!
             this.isUploading.set(false);
             this.uploadSuccess.set(true);
+            
+            // Increment video count
+            this.uploadedVideoCount.set(this.uploadedVideoCount() + 1);
             
             // Stop watching
             if (this.statusUnsubscribe) {
@@ -1054,12 +1218,19 @@ export class UploadComponent implements OnInit, OnDestroy {
   uploadImages(): void {
     const images = this.selectedImages();
     if (images.length === 0) return;
+    
+    // Check upload limit
+    if (!this.canUploadMoreImages()) {
+      const limit = this.imageUploadLimit();
+      this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' images. Upgrade to premium for unlimited uploads.'}`);
+      return;
+    }
 
     // Validate all images
     for (const file of images) {
-      // Validate file size (10MB max per image)
-      if (!this.uploadService.validateFileSize(file, 10)) {
-        this.uploadError.set(`Image ${file.name} exceeds 10MB limit`);
+      // Validate file size (1GB max per image)
+      if (file.size > 1024 * 1024 * 1024) {
+        this.uploadError.set(`Image ${file.name} exceeds 1GB limit`);
         return;
       }
 
@@ -1108,6 +1279,9 @@ export class UploadComponent implements OnInit, OnDestroy {
             if (!hasErrors) {
               this.uploadSuccess.set(true);
               this.isUploading.set(false);
+              
+              // Increment image count
+              this.uploadedImageCount.set(this.uploadedImageCount() + 1);
 
               // Redirect if returnUrl is set
               const returnUrl = this.returnUrl();
