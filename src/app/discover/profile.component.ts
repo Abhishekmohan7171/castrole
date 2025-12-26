@@ -1253,16 +1253,16 @@ export class ProfileComponent implements OnInit {
 
     // Check if we have a slugUid parameter (viewing someone else's profile)
     const slugUid = this.route.snapshot.paramMap.get('slugUid');
-    console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
+    // console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
 
     if (slugUid) {
       // Viewing someone else's profile via stored slug-uid URL
-      console.log('Loading profile for slugUid:', slugUid);
+      // console.log('Loading profile for slugUid:', slugUid);
       this.isViewingOwnProfile.set(false);
       this.loadUserProfileBySlugUid(slugUid);
     } else {
       // Viewing own profile
-      console.log('Loading own profile');
+      // console.log('Loading own profile');
       this.isViewingOwnProfile.set(true);
       this.loadUserProfile();
     }
@@ -1274,7 +1274,7 @@ export class ProfileComponent implements OnInit {
    */
   private async loadUserProfileBySlugUid(slugUid: string) {
     try {
-      console.log('Loading profile by slugUid:', slugUid);
+      // console.log('Loading profile by slugUid:', slugUid);
 
       // Query profiles collection by slug field (which contains slug-uid)
       const profilesRef = collection(this.firestore, 'profiles');
@@ -1297,11 +1297,11 @@ export class ProfileComponent implements OnInit {
           return;
         }
 
-        console.log(
-          'Extracted short UID:',
-          shortUid,
-          'searching for matching profile...'
-        );
+        // console.log(
+        //   'Extracted short UID:',
+        //   shortUid,
+        //   'searching for matching profile...'
+        // );
 
         // Query all profiles and find one where UID ends with shortUid
         const allProfilesQuery = query(collection(this.firestore, 'profiles'));
@@ -1319,7 +1319,7 @@ export class ProfileComponent implements OnInit {
         }
 
         const profileData = matchingProfile.data() as Profile;
-        console.log('Profile found via UID suffix match:', profileData);
+        // console.log('Profile found via UID suffix match:', profileData);
 
         // Set profile data
         this.profileData.set(profileData);
@@ -1349,7 +1349,7 @@ export class ProfileComponent implements OnInit {
 
       const profileDoc = profileDocs.docs[0];
       const profileData = profileDoc.data() as Profile;
-      console.log('Profile found by slug:', profileData);
+      // console.log('Profile found by slug:', profileData);
 
       // Set profile data
       this.profileData.set(profileData);
@@ -1366,7 +1366,7 @@ export class ProfileComponent implements OnInit {
       }
 
       const userData = userDoc.data() as UserDoc;
-      console.log('User found:', userData);
+      // console.log('User found:', userData);
 
       // Set user data
       this.userData.set(userData);
