@@ -6,6 +6,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
+import { NotificationService } from '../services/notification.service';
 import {
   Firestore,
   doc,
@@ -1050,14 +1051,15 @@ import {
 })
 export class ProfileComponent implements OnInit {
   private auth = inject(AuthService);
-  private firestore = inject(Firestore);
-  private storage = inject(Storage);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private firestore = inject(Firestore);
+  private storage = inject(Storage);
   private profileUrlService = inject(ProfileUrlService);
   private chatService = inject(ChatService);
   private analyticsService = inject(AnalyticsService);
   private blockService = inject(BlockService);
+  private notificationService = inject(NotificationService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -1419,7 +1421,7 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Track profile view analytics
+   * Track profile view analytics and send notification
    * Only tracks if current user is a producer viewing an actor's profile
    */
   private async trackProfileView(actorId: string) {
@@ -1434,7 +1436,25 @@ export class ProfileComponent implements OnInit {
     const viewedUserRole = this.userRole();
 
     if (currentUserRole === 'producer' && viewedUserRole === 'actor') {
+      // Track analytics
       await this.analyticsService.trackProfileView(actorId, currentUser.uid);
+      
+      // Send notification to actor
+      try {
+        const producerDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+        const producerData = producerDoc.data() as UserDoc;
+        const producerProfile = await getDoc(doc(this.firestore, 'profiles', currentUser.uid));
+        const producerProfileData = producerProfile.data() as Profile;
+        
+        await this.notificationService.createProfileViewNotification(
+          actorId,
+          currentUser.uid,
+          producerData.name,
+          producerProfileData.producerProfile?.producerProfileImageUrl
+        );
+      } catch (error) {
+        console.error('Error creating profile view notification:', error);
+      }
     }
   }
 

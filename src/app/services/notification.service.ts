@@ -4,12 +4,38 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { LoggerService } from './logger.service';
 
 export type NotificationType = 
+  // Actor notifications
+  | 'connection_request'
+  | 'connection_accepted'
+  | 'connection_declined'
   | 'profile_view' 
   | 'wishlist' 
-  | 'shortlist' 
+  | 'message'
+  | 'media_request'
+  | 'analytics_views_monthly'
+  | 'analytics_searches_monthly'
+  | 'profile_completeness_reminder'
+  | 'visibility_suggestion'
+  | 'subscription_expiry'
+  | 'subscription_renewal'
+  | 'security_alert'
+  | 'platform_update'
+  // Producer notifications
   | 'chat_request' 
-  | 'chat_accepted' 
-  | 'message' 
+  | 'chat_accepted'
+  | 'chat_declined'
+  | 'actor_message'
+  | 'media_uploaded'
+  | 'shortlist_activity'
+  | 'new_actor_matches'
+  | 'actor_suggestions'
+  | 'database_growth'
+  | 'shortlist_engagement'
+  | 'subscription_billing'
+  | 'producer_security_alert'
+  | 'producer_platform_update'
+  // Legacy/shared
+  | 'shortlist'
   | 'analytics_view'
   | 'analytics_wishlist'
   | 'analytics_shortlist'
@@ -28,7 +54,18 @@ export interface NotificationMetadata {
   isPremium?: boolean;
   analyticsType?: string;
   viewCount?: number;
+  searchCount?: number;
   profileId?: string;
+  connectionId?: string;
+  mediaType?: 'photo' | 'video' | 'voice';
+  mediaUrl?: string;
+  completenessPercentage?: number;
+  daysUntilExpiry?: number;
+  deviceInfo?: string;
+  ipAddress?: string;
+  newActorCount?: number;
+  matchCount?: number;
+  engagementScore?: number;
 }
 
 export interface AppNotification {

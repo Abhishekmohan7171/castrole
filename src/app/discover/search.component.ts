@@ -13,6 +13,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
 import { FilterPersistenceService } from '../services/filter-persistence.service';
+import { NotificationService } from '../services/notification.service';
 import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS, GENDER_OPTIONS, AVAILABLE_SKILLS, AVAILABLE_LANGUAGES, AVAILABLE_LOCATIONS_ALL } from './search-constants';
 
 interface ActorSearchResult {
@@ -808,6 +809,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private blockService = inject(BlockService);
   private platformId = inject(PLATFORM_ID);
   private filterPersistence = inject(FilterPersistenceService);
+  private notificationService = inject(NotificationService);
   private destroy$ = new Subject<void>();
   private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
@@ -1431,97 +1433,6 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.searchTags.set(tags.slice(0, 5)); // Limit to 5 tags
   }
 
-  /**
-   * Calculate relevance score for search ranking
-   */
-  private calculateRelevance(
-    actor: ActorSearchResult, 
-    searchText: string, 
-    parsed: ParsedSearchQuery
-  ): number {
-    let score = 0;
-
-    // Exact name match is highest priority
-    if (actor.stageName?.toLowerCase() === searchText) {
-      score += 100;
-    } else if (actor.stageName?.toLowerCase().includes(searchText)) {
-      score += 50;
-    }
-
-    // Skills match
-    if (parsed.skills && parsed.skills.length > 0) {
-      const matchingSkills = actor.skills?.filter(skill =>
-        typeof skill === 'string' && 
-        parsed.skills!.some(s => skill.toLowerCase().includes(s))
-      ).length || 0;
-      score += matchingSkills * 20;
-    }
-
-    // Age match
-    if (parsed.ageRange) {
-      const actorAge = parseInt(actor.age || '0');
-      if (actorAge >= parsed.ageRange.min && actorAge <= parsed.ageRange.max) {
-        score += 30;
-      }
-    }
-
-    // Gender match
-    if (parsed.gender && actor.gender?.toLowerCase() === parsed.gender) {
-      score += 25;
-    }
-
-    // Popular actors boost (based on view count)
-    score += Math.min((actor.profileViewCount || 0) / 10, 10);
-
-    // Wishlist count boost
-    score += Math.min((actor.wishlistCount || 0) / 5, 5);
-
-    return score;
-  }
-
-  /**
-   * Parse height string to cm (e.g., "5'8\"", "5 feet 8 inches", "173cm", "173")
-   */
-  private parseHeightToCm(height: string): number {
-    if (!height) return 0;
-
-    // Try cm format first (e.g., "173cm" or "173")
-    const cmMatch = height.match(/(\d+)\s*cm/i);
-    if (cmMatch) {
-      return parseInt(cmMatch[1]);
-    }
-
-    // Try pure number (assume cm)
-    const numberMatch = height.match(/^(\d+)$/);
-    if (numberMatch) {
-      const value = parseInt(numberMatch[1]);
-      // If value is reasonable for cm (100-250), use it
-      if (value >= 100 && value <= 250) {
-        return value;
-      }
-    }
-
-    // Try feet'inches" format (e.g., "5'8\"" or "5'8")
-    const feetInchesMatch = height.match(/(\d+)'\s*(\d+)/);
-    if (feetInchesMatch) {
-      const feet = parseInt(feetInchesMatch[1]);
-      const inches = parseInt(feetInchesMatch[2]);
-      const totalInches = feet * 12 + inches;
-      return Math.round(totalInches * 2.54); // Convert inches to cm
-    }
-
-    // Try "X feet Y inches" format
-    const feetWordsMatch = height.match(/(\d+)\s*(?:feet|ft)\s*(\d+)\s*(?:inches|in)/i);
-    if (feetWordsMatch) {
-      const feet = parseInt(feetWordsMatch[1]);
-      const inches = parseInt(feetWordsMatch[2]);
-      const totalInches = feet * 12 + inches;
-      return Math.round(totalInches * 2.54); // Convert inches to cm
-    }
-
-    return 0;
-  }
-
   removeTag(tag: string): void {
     const currentTags = this.searchTags();
     this.searchTags.set(currentTags.filter(t => t !== tag));
@@ -1938,6 +1849,23 @@ export class SearchComponent implements OnInit, OnDestroy {
       // Track analytics for wishlist addition
       if (this.currentUserId) {
         await this.analyticsService.trackWishlistAdd(actor.uid, this.currentUserId);
+        
+        // Send notification to actor
+        try {
+          const producerDoc = await getDoc(doc(this.firestore, 'users', this.currentUserId));
+          const producerData = producerDoc.data() as UserDoc;
+          const producerProfile = await getDoc(doc(this.firestore, 'profiles', this.currentUserId));
+          const producerProfileData = producerProfile.data() as Profile;
+          
+          await this.notificationService.createWishlistNotification(
+            actor.uid,
+            this.currentUserId,
+            producerData.name,
+            producerProfileData.producerProfile?.producerProfileImageUrl
+          );
+        } catch (error) {
+          this.logger.error('Error creating wishlist notification:', error);
+        }
       }
     }
 
@@ -1977,5 +1905,91 @@ export class SearchComponent implements OnInit, OnDestroy {
   viewAllWishlist(): void {
     // Could navigate to a dedicated wishlist page or export
     this.logger.log('View all wishlist:', this.wishlist());
+  }
+
+  /**
+   * Calculate relevance score for search results
+   */
+  private calculateRelevance(actor: ActorSearchResult, searchText: string, parsed: ParsedSearchQuery): number {
+    let score = 0;
+
+    // Name match (highest priority)
+    if (actor.stageName?.toLowerCase().includes(searchText)) {
+      score += 10;
+    }
+
+    // Exact skill match
+    if (parsed.skills && parsed.skills.length > 0) {
+      parsed.skills.forEach(skill => {
+        if (actor.skills?.some(s => typeof s === 'string' && s.toLowerCase().includes(skill.toLowerCase()))) {
+          score += 5;
+        }
+      });
+    }
+
+    // Gender match
+    if (parsed.gender && actor.gender?.toLowerCase() === parsed.gender.toLowerCase()) {
+      score += 3;
+    }
+
+    // Age range match
+    if (parsed.ageRange) {
+      const age = parseInt(actor.age || '0');
+      if (age >= parsed.ageRange.min && age <= parsed.ageRange.max) {
+        score += 3;
+      }
+    }
+
+    // Language match
+    if (actor.languages?.some(lang => typeof lang === 'string' && lang.toLowerCase().includes(searchText))) {
+      score += 2;
+    }
+
+    // Location match
+    if (actor.location?.toLowerCase().includes(searchText)) {
+      score += 2;
+    }
+
+    // Physical traits match
+    if (parsed.physicalTraits && parsed.physicalTraits.length > 0) {
+      score += 1;
+    }
+
+    return score;
+  }
+
+  /**
+   * Parse height string to centimeters
+   * Supports formats: "170cm", "5'10", "170", etc.
+   */
+  private parseHeightToCm(height: string): number {
+    if (!height) return 0;
+
+    const heightStr = height.toLowerCase().trim();
+
+    // Already in cm (e.g., "170cm" or "170")
+    if (heightStr.includes('cm')) {
+      return parseInt(heightStr.replace('cm', '')) || 0;
+    }
+
+    // Just a number, assume cm
+    const numOnly = parseInt(heightStr);
+    if (!isNaN(numOnly) && numOnly > 0) {
+      // If number is less than 10, likely feet, otherwise cm
+      if (numOnly < 10) {
+        return numOnly * 30.48; // feet to cm
+      }
+      return numOnly;
+    }
+
+    // Feet and inches format (e.g., "5'10" or "5ft 10in")
+    const feetInchesMatch = heightStr.match(/(\d+)['"]?\s*[ft]*\s*(\d*)/);
+    if (feetInchesMatch) {
+      const feet = parseInt(feetInchesMatch[1]) || 0;
+      const inches = parseInt(feetInchesMatch[2]) || 0;
+      return (feet * 30.48) + (inches * 2.54);
+    }
+
+    return 0;
   }
 }
