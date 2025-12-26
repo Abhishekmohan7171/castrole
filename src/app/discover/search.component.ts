@@ -71,8 +71,8 @@ interface ParsedSearchQuery {
               type="text"
               [(ngModel)]="searchQuery"
               (input)="onSearchChange()"
-              placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills"
-              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors">
+              placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills (Smart search coming soon)"
+              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors cursor-not-allowed">
             
             <!-- Voice and AI icons -->
             <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
@@ -738,18 +738,39 @@ interface ParsedSearchQuery {
                 </div>
               } @else if (wishlist().length > 0) {
                 <!-- Wishlist Items -->
-                <div class="space-y-3 mb-4">
+                <div class="space-y-3">
                   @for (actor of wishlist(); track actor.uid) {
-                    <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
-                      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm">
-                        {{ actor.stageName.charAt(0).toUpperCase() }}
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-neutral-200 truncate">{{ actor.stageName }}</p>
-                      </div>
+                    <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors group">
+                      <!-- Profile Photo - Clickable -->
+                      <button 
+                        (click)="viewProfile(actor)"
+                        class="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-[#90ACC8] rounded-full">
+                        @if (actor.profileImageUrl) {
+                          <img 
+                            [src]="actor.profileImageUrl" 
+                            [alt]="actor.stageName"
+                            class="w-10 h-10 rounded-full object-cover border-2 border-transparent group-hover:border-[#90ACC8] transition-colors">
+                        } @else {
+                          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm border-2 border-transparent group-hover:border-[#90ACC8] transition-colors">
+                            {{ actor.stageName.charAt(0).toUpperCase() }}
+                          </div>
+                        }
+                      </button>
+                      
+                      <!-- Name - Clickable -->
+                      <button 
+                        (click)="viewProfile(actor)"
+                        class="flex-1 min-w-0 text-left focus:outline-none">
+                        <p class="text-sm font-medium text-neutral-200 truncate group-hover:text-[#90ACC8] transition-colors">
+                          {{ actor.stageName }}
+                        </p>
+                      </button>
+                      
+                      <!-- Remove from Wishlist Button -->
                       <button 
                         (click)="toggleWishlist(actor)"
-                        class="text-neutral-400 hover:text-red-400 transition-colors">
+                        class="text-neutral-400 hover:text-red-400 transition-colors flex-shrink-0"
+                        title="Remove from wishlist">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -757,12 +778,6 @@ interface ParsedSearchQuery {
                     </div>
                   }
                 </div>
-
-                <button 
-                  (click)="viewAllWishlist()"
-                  class="w-full bg-[#90ACC8] hover:bg-[#7A9AB8] text-white py-2 rounded-lg text-sm font-medium transition-colors">
-                  View Profile
-                </button>
               } @else {
                 <!-- Empty State -->
                 <div class="text-center py-8">
