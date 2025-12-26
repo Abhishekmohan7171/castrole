@@ -64,6 +64,8 @@ export type Conversation = {
   unreadCount?: Record<string, number>;
   actorAccepted?: boolean;
   actorRejected?: boolean;
+  profilePhotoUrl?: string;
+  slugUid?: string;
 };
 
 export type UserRole = 'actor' | 'producer' | 'user';
