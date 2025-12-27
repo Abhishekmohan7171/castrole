@@ -69,10 +69,11 @@ interface ParsedSearchQuery {
           <div class="relative">
             <input
               type="text"
+              disabled
               [(ngModel)]="searchQuery"
               (input)="onSearchChange()"
               placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills (Smart search coming soon)"
-              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors cursor-not-allowed">
+              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors cursor-not-allowed ">
             
             <!-- Voice and AI icons -->
             <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
