@@ -225,33 +225,53 @@ def main():
                 output_object = RAW_OBJECT.replace('raw/', 'processed/', 1)
                 output_object = output_object.rsplit('.', 1)[0] + '.mp4'
             
-            # Upload processed video
+            # Upload processed video to Firebase Storage bucket (same as raw)
             log(f"Uploading gs://{PROC_BUCKET}/{output_object}")
             output_blob = proc_bucket.blob(output_object)
-            output_blob.upload_from_filename(
-                str(output_file),
-                content_type='video/mp4'
-            )
+            
+            # Set metadata before upload
+            output_blob.metadata = {
+                'processed': 'true',
+                'quality': '1080p'
+            }
+            output_blob.cache_control = 'public, max-age=31536000'  # 1 year cache
+            output_blob.content_type = 'video/mp4'
+            
+            # Upload the file
+            output_blob.upload_from_filename(str(output_file))
             log("Upload completed")
             
             # Update Firestore with processed URL
             if user_id and video_id:
-                # Get public URL (or signed URL)
+                # Store gs:// URL for Firebase Storage
                 processed_url = f"gs://{PROC_BUCKET}/{output_object}"
                 
                 try:
                     db = firestore.Client(project=PROJECT_ID)
                     doc_ref = db.collection('uploads').document(user_id).collection('userUploads').document(video_id)
+                    
+                    # Get video metadata for Firestore
+                    metadata = get_video_metadata(str(output_file))
+                    
+                    # Update with processed video info
                     doc_ref.update({
-                        'metadata.processedUrl': processed_url,
-                        'metadata.processedSize': int(output_file.stat().st_size),
-                        'metadata.processed': True
+                        'processedUrl': processed_url,
+                        'processedSize': int(output_file.stat().st_size),
+                        'duration': metadata.get('duration', 0),
+                        'resolution': f"{metadata.get('width', 1920)}x{metadata.get('height', 1080)}",
+                        'processingStatus': 'READY',
+                        'processingCompletedAt': firestore.SERVER_TIMESTAMP
                     })
-                    log("Updated Firestore with processed URL")
+                    log(f"Updated Firestore with processed URL: {processed_url}")
+                    log(f"Video duration: {metadata.get('duration', 0)}s, resolution: {metadata.get('width')}x{metadata.get('height')}")
                 except Exception as e:
-                    log(f"Warning: Failed to update processed URL: {e}")
-                
-                update_firestore_status(user_id, video_id, 'READY')
+                    log(f"Warning: Failed to update Firestore: {e}")
+                    # Still mark as READY even if metadata update fails
+                    update_firestore_status(user_id, video_id, 'READY')
+            else:
+                # No user_id/video_id parsed, just update status
+                if user_id and video_id:
+                    update_firestore_status(user_id, video_id, 'READY')
             
             # Delete raw video (optional - uncomment to enable)
             # log(f"Deleting raw video gs://{RAW_BUCKET}/{RAW_OBJECT}")

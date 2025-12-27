@@ -10,8 +10,9 @@ export REGION="asia-south1"          # Mumbai, India
 export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 
 # Cloud Storage Buckets
-export RAW_BUCKET="castrole-raw-videos"
-export PROC_BUCKET="castrole-processed-videos"
+# Use Firebase Storage bucket for both raw and processed videos
+export RAW_BUCKET="yberhood-castrole.firebasestorage.app"
+export PROC_BUCKET="yberhood-castrole.firebasestorage.app"
 
 # Service Accounts
 export JOB_SA_EMAIL="sa-video-encoder-job@$PROJECT_ID.iam.gserviceaccount.com"
