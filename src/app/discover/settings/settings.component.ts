@@ -92,8 +92,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   // User data signals
   userData = signal<(UserDoc & Profile) | null>(null);
-  editableUserData = signal<{ name: string; email: string; phone: string }>({
-    name: '',
+  editableUserData = signal<{ email: string; phone: string }>({
     email: '',
     phone: '',
   });
@@ -348,7 +347,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   // Handle data changes from account section
-  onEditableDataChange(data: { name: string; email: string; phone: string }) {
+  onEditableDataChange(data: { email: string; phone: string }) {
     this.editableUserData.set(data);
   }
 
@@ -363,7 +362,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
           this.userData.set(userData);
           this.userRole.set(userData.currentRole || 'actor');
           this.editableUserData.set({
-            name: userData.name || '',
             email: userData.email || '',
             phone: userData.phone || '',
           });
@@ -414,7 +412,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return this.editingFields().has(field);
   }
 
-  async toggleEditField(field: 'name' | 'email' | 'phone') {
+  async toggleEditField(field: 'email' | 'phone') {
     const currentlyEditing = this.isEditingField(field);
 
     if (currentlyEditing) {
@@ -428,7 +426,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async saveField(field: 'name' | 'email' | 'phone') {
+  private async saveField(field: 'email' | 'phone') {
     const user = this.auth.getCurrentUser();
     if (!user) return;
 
@@ -470,7 +468,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const currentUserData = this.userData();
       if (currentUserData) {
         this.editableUserData.set({
-          name: currentUserData.name || '',
           email: currentUserData.email || '',
           phone: currentUserData.phone || '',
         });
