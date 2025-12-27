@@ -18,12 +18,26 @@ import {
   limit,
 } from '@angular/fire/firestore';
 import { Storage, ref, listAll, getDownloadURL } from '@angular/fire/storage';
-import { UserDoc } from '../../assets/interfaces/interfaces';
+import { UserDoc, MediaUpload, VideoMetadata } from '../../assets/interfaces/interfaces';
 import {
   Profile,
   Language,
   Skill,
 } from '../../assets/interfaces/profile.interfaces';
+import { UploadService } from '../services/upload.service';
+
+interface MediaUploadDisplay {
+  id: string;
+  videoId?: string;
+  url: string;
+  thumbnailUrl?: string;
+  tags: string[];
+  description: string;
+  duration?: number;
+  processingStatus?: 'UPLOADING' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED';
+  processingError?: string;
+  isLegacy: boolean;
+}
 
 @Component({
   selector: 'app-discover-profile',
@@ -435,22 +449,82 @@ import {
               <!-- Videos Tab Content -->
               @if (mediaTab === 'videos') { @if (hasVideos()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
-                @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
-                { @if (idx < 4) {
-                <div
-                  class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
-                  [ngClass]="{
-                    'hover:ring-purple-500/50': isActor(),
-                    'hover:ring-neutral-600': !isActor()
-                  }"
-                  (click)="openPreviewModal(videoUrl, 'video')"
-                >
-                  <video
-                    [src]="videoUrl"
-                    class="w-full h-full object-cover pointer-events-none"
-                  ></video>
-                </div>
-                } }
+                @for (video of getDisplayVideos(); track video.id; let idx = $index)
+                {
+                  @if (idx < 4) {
+                    @if (video.processingStatus === 'QUEUED' || video.processingStatus === 'PROCESSING') {
+                    <!-- Processing placeholder -->
+                    <div class="aspect-video rounded-lg bg-neutral-800/50 border-2 border-dashed border-neutral-700">
+                      <div class="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
+                        <svg class="w-8 h-8 text-purple-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-xs text-neutral-400">
+                          @if (video.processingStatus === 'QUEUED') { Queued for processing... }
+                          @if (video.processingStatus === 'PROCESSING') { Processing video... }
+                        </span>
+                        @if (video.tags && video.tags.length > 0) {
+                        <div class="flex flex-wrap gap-1 justify-center">
+                          @for (tag of video.tags.slice(0, 2); track tag) {
+                          <span class="px-2 py-0.5 text-xs rounded-full bg-neutral-700/50 text-neutral-400">
+                            {{ tag }}
+                          </span>
+                          }
+                        </div>
+                        }
+                      </div>
+                    </div>
+                    } @else if (video.processingStatus === 'FAILED' && isViewingOwnProfile()) {
+                    <!-- Failed video (only shown on own profile) -->
+                    <div class="aspect-video rounded-lg bg-neutral-800/50 border-2 border-red-900/30">
+                      <div class="w-full h-full flex flex-col items-center justify-center gap-2 p-4">
+                        <svg class="w-8 h-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span class="text-xs text-red-400">Processing failed</span>
+                        <button class="text-xs text-neutral-400 hover:text-neutral-200 underline"
+                                (click)="navigateToUpload()">
+                          Upload again
+                        </button>
+                      </div>
+                    </div>
+                    } @else {
+                    <!-- Ready video (normal display) -->
+                    <div class="relative aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all group"
+                         [ngClass]="{
+                           'hover:ring-purple-500/50': isActor(),
+                           'hover:ring-neutral-600': !isActor()
+                         }"
+                         (click)="openPreviewModal(video.url, 'video', idx)">
+                      <video [src]="video.url"
+                             [poster]="video.thumbnailUrl"
+                             class="w-full h-full object-cover pointer-events-none">
+                      </video>
+                      <!-- Tags overlay (bottom-left) -->
+                      @if (video.tags && video.tags.length > 0) {
+                      <div class="absolute bottom-2 left-2 flex flex-wrap gap-1 z-10">
+                        @for (tag of video.tags.slice(0, 3); track tag) {
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-black/70 backdrop-blur-sm text-white border border-white/20">
+                          {{ tag }}
+                        </span>
+                        }
+                      </div>
+                      }
+                      <!-- Play icon on hover -->
+                      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                          <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    }
+                  }
+                }
               </div>
               } @else if (isViewingOwnProfile()) {
               <button
@@ -1013,7 +1087,7 @@ import {
         }
 
         <!-- Media content -->
-        <div class="w-full h-full flex items-center justify-center px-20">
+        <div class="w-full h-full flex items-center justify-center px-20 relative">
           @if (previewMediaType() === 'image') {
           <img
             [src]="previewMediaUrl()"
@@ -1027,6 +1101,27 @@ import {
             controls
             autoplay
           ></video>
+          <!-- Video metadata overlay -->
+          @if (currentVideoMetadata()) {
+          <div class="absolute bottom-20 left-20 right-20 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 rounded-b-lg pointer-events-none">
+            <!-- Tags -->
+            @if (currentVideoMetadata()?.tags && currentVideoMetadata()!.tags.length > 0) {
+            <div class="flex flex-wrap gap-2 mb-3">
+              @for (tag of currentVideoMetadata()!.tags; track tag) {
+              <span class="px-3 py-1 text-sm rounded-full bg-purple-600/80 text-white backdrop-blur-sm">
+                {{ tag }}
+              </span>
+              }
+            </div>
+            }
+            <!-- Description -->
+            @if (currentVideoMetadata()?.description) {
+            <p class="text-white text-sm line-clamp-2">
+              {{ currentVideoMetadata()!.description }}
+            </p>
+            }
+          </div>
+          }
           }
         </div>
 
@@ -1058,6 +1153,7 @@ export class ProfileComponent implements OnInit {
   private chatService = inject(ChatService);
   private analyticsService = inject(AnalyticsService);
   private blockService = inject(BlockService);
+  private uploadService = inject(UploadService);
 
   mediaTab: 'videos' | 'photos' = 'videos';
 
@@ -1098,9 +1194,29 @@ export class ProfileComponent implements OnInit {
   showBlockMenu = signal<boolean>(false);
 
   // Media signals
-  videoUrls = signal<string[]>([]);
+  videoData = signal<MediaUploadDisplay[]>([]);
+  videoLoadingError = signal<string>('');
   imageUrls = signal<string[]>([]);
   isLoadingMedia = signal(false);
+  currentVideoMetadata = signal<{
+    tags: string[];
+    description: string;
+    duration?: number;
+  } | null>(null);
+
+  // Computed signals for videos
+  readyVideos = computed(() =>
+    this.videoData().filter(v => !v.processingStatus || v.processingStatus === 'READY')
+  );
+
+  processingVideos = computed(() =>
+    this.videoData().filter(v =>
+      v.processingStatus === 'QUEUED' || v.processingStatus === 'PROCESSING'
+    )
+  );
+
+  // For backwards compatibility in template
+  videoUrls = computed(() => this.videoData().map(v => v.url));
 
   // Modal state
   isPreviewModalOpen = signal(false);
@@ -1133,7 +1249,7 @@ export class ProfileComponent implements OnInit {
     );
   });
 
-  hasVideos = computed(() => this.videoUrls().length > 0);
+  hasVideos = computed(() => this.videoData().length > 0);
   hasImages = computed(() => this.imageUrls().length > 0);
 
   hasEducation = computed(() => {
@@ -1391,31 +1507,78 @@ export class ProfileComponent implements OnInit {
 
   private async loadMediaFromStorage(userId: string) {
     this.isLoadingMedia.set(true);
-    try {
-      // Fetch videos
-      const videosRef = ref(this.storage, `users/${userId}/videos`);
-      const videosList = await listAll(videosRef);
-      const videoUrlPromises = videosList.items.map((item) =>
-        getDownloadURL(item)
-      );
-      const videos = await Promise.all(videoUrlPromises);
-      this.videoUrls.set(videos);
+    this.videoLoadingError.set('');
 
-      // Fetch images
-      const imagesRef = ref(this.storage, `users/${userId}/images`);
-      const imagesList = await listAll(imagesRef);
-      const imageUrlPromises = imagesList.items.map((item) =>
-        getDownloadURL(item)
-      );
-      const images = await Promise.all(imageUrlPromises);
-      this.imageUrls.set(images);
+    try {
+      const [videos, images] = await Promise.allSettled([
+        this.loadVideosFromNewPipeline(userId),
+        this.loadImagesFromStorage(userId)
+      ]);
+
+      if (videos.status === 'fulfilled') {
+        this.videoData.set(videos.value);
+      }
+
+      if (images.status === 'fulfilled') {
+        this.imageUrls.set(images.value);
+      }
     } catch (error) {
-      // Set empty arrays if folders don't exist
-      this.videoUrls.set([]);
-      this.imageUrls.set([]);
+      console.error('Error loading media:', error);
+      this.videoLoadingError.set('Failed to load videos');
     } finally {
       this.isLoadingMedia.set(false);
     }
+  }
+
+  private async loadVideosFromNewPipeline(userId: string): Promise<MediaUploadDisplay[]> {
+    try {
+      const uploads = await this.uploadService.getUserUploads(userId, 'video', 50);
+
+      return uploads.map(upload => {
+        const uploadData = upload as any;
+        const videoMetadata = upload.metadata as VideoMetadata | undefined;
+
+        return {
+          id: uploadData.id || Date.now().toString(),
+          videoId: uploadData.videoId,
+          url: uploadData.processedUrl || uploadData.rawUrl || upload.fileUrl,
+          thumbnailUrl: videoMetadata?.thumbnailUrl,
+          tags: videoMetadata?.tags || [],
+          description: videoMetadata?.description || '',
+          duration: videoMetadata?.duration,
+          processingStatus: uploadData.processingStatus,
+          processingError: uploadData.processingError,
+          isLegacy: false
+        };
+      });
+    } catch (error) {
+      console.error('Error loading new pipeline videos:', error);
+      return [];
+    }
+  }
+
+  private async loadImagesFromStorage(userId: string): Promise<string[]> {
+    try {
+      const imagesRef = ref(this.storage, `users/${userId}/images`);
+      const imagesList = await listAll(imagesRef);
+      const urls = await Promise.all(
+        imagesList.items.map(item => getDownloadURL(item))
+      );
+      return urls;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  getDisplayVideos(): MediaUploadDisplay[] {
+    const videos = this.videoData();
+
+    // Hide failed videos when viewing others' profiles
+    if (!this.isViewingOwnProfile()) {
+      return videos.filter(v => v.processingStatus !== 'FAILED');
+    }
+
+    return videos;
   }
 
   /**
@@ -1637,14 +1800,27 @@ export class ProfileComponent implements OnInit {
     this.router.navigate(['/discover/upload']);
   }
 
-  openPreviewModal(url: string, type: 'image' | 'video') {
+  openPreviewModal(url: string, type: 'image' | 'video', videoIndex?: number) {
     this.previewMediaUrl.set(url);
     this.previewMediaType.set(type);
 
     // Find the index of the current media in the appropriate list
     const mediaList = type === 'video' ? this.videoUrls() : this.imageUrls();
-    const index = mediaList.indexOf(url);
+    const index = videoIndex !== undefined ? videoIndex : mediaList.indexOf(url);
     this.currentMediaIndex.set(index >= 0 ? index : 0);
+
+    if (type === 'video' && videoIndex !== undefined) {
+      const video = this.getDisplayVideos()[videoIndex];
+      if (video) {
+        this.currentVideoMetadata.set({
+          tags: video.tags,
+          description: video.description,
+          duration: video.duration
+        });
+      }
+    } else {
+      this.currentVideoMetadata.set(null);
+    }
 
     this.isPreviewModalOpen.set(true);
   }
