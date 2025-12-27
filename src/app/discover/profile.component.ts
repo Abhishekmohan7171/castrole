@@ -86,11 +86,17 @@ import {
                     class="h-32 w-32 rounded-full overflow-hidden ring-2 ring-neutral-700/50"
                   >
                     @if (getProfileImageUrl()) {
-                    <img
-                      [src]="getProfileImageUrl()"
-                      [alt]="getDisplayName()"
-                      class="w-full h-full object-cover"
-                    />
+                    <button
+                      (click)="viewProfilePicture()"
+                      class="w-full h-full cursor-pointer"
+                      aria-label="View profile picture"
+                    >
+                      <img
+                        [src]="getProfileImageUrl()"
+                        [alt]="getDisplayName()"
+                        class="w-full h-full object-cover"
+                      />
+                    </button>
                     } @else if (isViewingOwnProfile()) {
                     <button
                       (click)="onDummyProfileClick()"
@@ -131,34 +137,12 @@ import {
                     </div>
                     }
                   </div>
-
-                  @if (isViewingOwnProfile() && getProfileImageUrl()) {
-                  <button
-                    (click)="removeProfilePicture()"
-                    class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-full"
-                    aria-label="Remove profile picture"
-                  >
-                    <svg
-                      class="w-8 h-8 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                  }
                 </div>
 
                 <!-- Right Column: Info -->
                 <div class="space-y-3">
                   <!-- Name -->
-                  <h1 class="text-2xl font-medium text-neutral-200">
+                  <h1 class="pl-4 text-2xl font-medium text-neutral-200">
                     {{ getDisplayName() }}
                   </h1>
 
@@ -732,7 +716,8 @@ import {
                       {{ isActor() ? '|' : '•' }} {{ work.genre }}</span
                     >} {{ isActor() ? '|' : '•' }} {{ work.year }}
                     } @else {
-                    {{ work.genre || 'supporting role' }} {{ isActor() ? '|' : '•' }} {{ work.year }}
+                    {{ work.genre || 'supporting role' }}
+                    {{ isActor() ? '|' : '•' }} {{ work.year }}
                     }
                   </div>
                   @if (work.projectLink) {
@@ -817,8 +802,7 @@ import {
                 extra curricular
               </div>
               <div class="space-y-2">
-                @for (skill of sortedSkills(); track getSkillName(skill))
-                {
+                @for (skill of sortedSkills(); track getSkillName(skill)) {
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">{{
                     getSkillName(skill)
@@ -905,7 +889,7 @@ import {
               </div>
             </div>
 
- }
+            }
           </section>
         </div>
       </div>
@@ -942,28 +926,53 @@ import {
           </svg>
         </button>
 
-        <!-- Set as Profile Picture button (only for images and own profile) -->
+        <!-- Profile Picture Actions (only for images and own profile) -->
         @if (previewMediaType() === 'image' && isViewingOwnProfile()) {
-        <button
-          (click)="setAsProfilePicture(); $event.stopPropagation()"
-          class="absolute top-4 left-4 z-10 px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
-          aria-label="Set as profile picture"
-        >
-          <svg
-            class="w-5 h-5 text-white"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+        <div class="absolute top-4 left-4 z-10 flex gap-2">
+          @if (!isPreviewImageProfilePicture()) {
+          <button
+            (click)="setAsProfilePicture(); $event.stopPropagation()"
+            class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Set as profile picture"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          <span class="text-white text-sm">Set as Profile Picture</span>
-        </button>
+            <svg
+              class="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span class="text-white text-sm">Set as Profile Picture</span>
+          </button>
+          } @if (isPreviewImageProfilePicture()) {
+          <button
+            (click)="removeProfilePicture(); $event.stopPropagation()"
+            class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Remove profile picture"
+          >
+            <svg
+              class="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span class="text-white text-sm">Remove Profile Picture</span>
+          </button>
+          }
+        </div>
         }
 
         <!-- Previous button -->
@@ -1561,7 +1570,7 @@ export class ProfileComponent implements OnInit {
   }
 
   // Helper method to get platform-specific icon
-  getSocialIcon(url: string, platform: string): string {
+  getSocialIcon(url: string): string {
     if (!url) return this.getDefaultLinkIcon();
 
     const lowerUrl = url.toLowerCase();
@@ -1732,6 +1741,19 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  viewProfilePicture() {
+    const profileImageUrl = this.getProfileImageUrl();
+    if (profileImageUrl) {
+      this.openPreviewModal(profileImageUrl, 'image');
+    }
+  }
+
+  isPreviewImageProfilePicture(): boolean {
+    const profileImageUrl = this.getProfileImageUrl();
+    const previewUrl = this.previewMediaUrl();
+    return !!profileImageUrl && !!previewUrl && profileImageUrl === previewUrl;
+  }
+
   async removeProfilePicture() {
     const user = this.auth.getCurrentUser();
     if (!user) return;
@@ -1764,6 +1786,9 @@ export class ProfileComponent implements OnInit {
           this.profileData.set({ ...currentProfile });
         }
       }
+
+      // Close the preview modal after removing
+      this.closePreviewModal();
     } catch (error) {
       // Handle error silently
     }

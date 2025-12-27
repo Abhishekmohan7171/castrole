@@ -4,9 +4,13 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnDestroy,
   signal,
   inject,
 } from '@angular/core';
+import { Subject, Observable, from, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -142,7 +146,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 form.get(isActor ? 'stageName' : 'name')?.touched
               "
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-              (blur)="onFieldBlur()"
               [placeholder]="isActor ? 'lil rahul nair' : 'enter name'"
             />
           </div>
@@ -198,7 +201,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('height')?.invalid && form.get('height')?.touched
                 "
                 class="w-full pl-12 pr-16 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                (blur)="onFieldBlur()"
                 placeholder="180"
               />
               <span
@@ -246,7 +248,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('weight')?.invalid && form.get('weight')?.touched
                 "
                 class="w-full pl-12 pr-16 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                (blur)="onFieldBlur()"
                 placeholder="75"
               />
               <span
@@ -297,7 +298,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('age')?.invalid && form.get('age')?.touched
                 "
                 class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                (blur)="onFieldBlur()"
                 placeholder="25"
               />
             </div>
@@ -341,7 +341,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                   form.get('gender')?.invalid && form.get('gender')?.touched
                 "
                 class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
-                (blur)="onFieldBlur()"
               >
                 <option
                   value=""
@@ -447,7 +446,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
                 form.get('location')?.invalid && form.get('location')?.touched
               "
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-              (blur)="onFieldBlur()"
               placeholder="ernakulam"
             />
           </div>
@@ -464,23 +462,43 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
   `,
   styles: ``,
 })
-export class BasicInfoSectionComponent implements OnInit {
+export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   @Input() profile: Profile | null = null;
   @Input() isActor: boolean = false;
   @Output() save = new EventEmitter<any>();
 
   private fb = inject(FormBuilder);
   private storage = inject(Storage);
+  private destroy$ = new Subject<void>();
 
   form!: FormGroup;
   profileImageUrl = signal<string | null>(null);
   isUploading = signal(false);
   isSaving = signal(false);
-  private autosaveTimeout: any;
 
   ngOnInit() {
     this.initializeForm();
     this.populateForm();
+    this.setupAutosave();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAutosave() {
+    this.form.valueChanges
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (this.form.valid && this.form.dirty && !this.isSaving()) {
+          this.onSave();
+        }
+      });
   }
 
   initializeForm() {
@@ -684,21 +702,13 @@ export class BasicInfoSectionComponent implements OnInit {
     }, 800);
   }
 
-  onFieldBlur() {
-    if (this.form.invalid || this.isSaving()) {
-      return;
-    }
-
-    if (!this.form.dirty) {
-      return;
-    }
-
-    if (this.autosaveTimeout) {
-      clearTimeout(this.autosaveTimeout);
-    }
-
-    this.autosaveTimeout = setTimeout(() => {
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.form.dirty && !this.isSaving()) {
+      // Force immediate save before navigation
       this.onSave();
-    }, 400);
+      return of(true);
+    }
+    return true;
   }
+
 }

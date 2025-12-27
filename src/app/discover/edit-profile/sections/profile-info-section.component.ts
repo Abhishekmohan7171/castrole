@@ -4,9 +4,13 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnDestroy,
   signal,
   inject,
 } from '@angular/core';
+import { Subject, Observable, from, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -51,7 +55,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               type="text"
               formControlName="designation"
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-              (blur)="onFieldBlur()"
               placeholder="director"
             />
           </div>
@@ -85,7 +88,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               type="text"
               formControlName="productionHouse"
               class="w-full pl-12 pr-4 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-              (blur)="onFieldBlur()"
               placeholder="dharma productions"
             />
           </div>
@@ -118,7 +120,6 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
             <select
               formControlName="industryType"
               class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
-              (blur)="onFieldBlur()"
             >
               <option value="" disabled class="bg-neutral-900 text-neutral-500">
                 Select industry type
@@ -175,19 +176,39 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
   `,
   styles: ``,
 })
-export class ProfileInfoSectionComponent implements OnInit {
+export class ProfileInfoSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
 
   private fb = inject(FormBuilder);
+  private destroy$ = new Subject<void>();
 
   form!: FormGroup;
   isSaving = signal(false);
-  private autosaveTimeout: any;
 
   ngOnInit() {
     this.initializeForm();
     this.populateForm();
+    this.setupAutosave();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAutosave() {
+    this.form.valueChanges
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (this.form.valid && this.form.dirty && !this.isSaving()) {
+          this.onSave();
+        }
+      });
   }
 
   initializeForm() {
@@ -234,21 +255,13 @@ export class ProfileInfoSectionComponent implements OnInit {
     }, 800);
   }
 
-  onFieldBlur() {
-    if (this.form.invalid || this.isSaving()) {
-      return;
-    }
-
-    if (!this.form.dirty) {
-      return;
-    }
-
-    if (this.autosaveTimeout) {
-      clearTimeout(this.autosaveTimeout);
-    }
-
-    this.autosaveTimeout = setTimeout(() => {
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.form.dirty && !this.isSaving()) {
+      // Force immediate save before navigation
       this.onSave();
-    }, 400);
+      return of(true);
+    }
+    return true;
   }
+
 }
