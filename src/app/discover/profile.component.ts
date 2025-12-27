@@ -25,6 +25,7 @@ import {
   Skill,
 } from '../../assets/interfaces/profile.interfaces';
 import { UploadService } from '../services/upload.service';
+import { VideoPlayerComponent } from '../common-components/video-player/video-player.component';
 
 interface MediaUploadDisplay {
   id: string;
@@ -42,7 +43,7 @@ interface MediaUploadDisplay {
 @Component({
   selector: 'app-discover-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, VideoPlayerComponent],
   template: `
     <div class="min-h-screen bg-transparent text-white">
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
@@ -1094,6 +1095,14 @@ interface MediaUploadDisplay {
             alt="Preview"
             class="max-w-full max-h-full object-contain rounded-lg"
           />
+          } @else if (previewMediaType() === 'video' && currentVideoId() && currentVideoUserId()) {
+          <div class="max-w-full max-h-full flex items-center justify-center">
+            <app-video-player
+              [userId]="currentVideoUserId()!"
+              [videoId]="currentVideoId()!"
+              [autoplay]="true"
+            ></app-video-player>
+          </div>
           } @else if (previewMediaType() === 'video') {
           <video
             [src]="previewMediaUrl()"
@@ -1223,6 +1232,8 @@ export class ProfileComponent implements OnInit {
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
+  currentVideoId = signal<string | null>(null);
+  currentVideoUserId = signal<string | null>(null);
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1817,9 +1828,14 @@ export class ProfileComponent implements OnInit {
           description: video.description,
           duration: video.duration
         });
+        // Store video ID and user ID for the video player component
+        this.currentVideoId.set(video.videoId || video.id);
+        this.currentVideoUserId.set(this.targetUserId() || '');
       }
     } else {
       this.currentVideoMetadata.set(null);
+      this.currentVideoId.set(null);
+      this.currentVideoUserId.set(null);
     }
 
     this.isPreviewModalOpen.set(true);
@@ -1829,6 +1845,8 @@ export class ProfileComponent implements OnInit {
     this.isPreviewModalOpen.set(false);
     this.previewMediaUrl.set(null);
     this.currentMediaIndex.set(0);
+    this.currentVideoId.set(null);
+    this.currentVideoUserId.set(null);
   }
 
   goToPreviousMedia() {
@@ -1837,6 +1855,20 @@ export class ProfileComponent implements OnInit {
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
       this.previewMediaUrl.set(mediaList[newIndex]);
+
+      // Update video metadata if viewing videos
+      if (this.previewMediaType() === 'video') {
+        const video = this.getDisplayVideos()[newIndex];
+        if (video) {
+          this.currentVideoMetadata.set({
+            tags: video.tags,
+            description: video.description,
+            duration: video.duration
+          });
+          this.currentVideoId.set(video.videoId || video.id);
+          this.currentVideoUserId.set(this.targetUserId() || '');
+        }
+      }
     }
   }
 
@@ -1846,6 +1878,20 @@ export class ProfileComponent implements OnInit {
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
       this.previewMediaUrl.set(mediaList[newIndex]);
+
+      // Update video metadata if viewing videos
+      if (this.previewMediaType() === 'video') {
+        const video = this.getDisplayVideos()[newIndex];
+        if (video) {
+          this.currentVideoMetadata.set({
+            tags: video.tags,
+            description: video.description,
+            duration: video.duration
+          });
+          this.currentVideoId.set(video.videoId || video.id);
+          this.currentVideoUserId.set(this.targetUserId() || '');
+        }
+      }
     }
   }
 
