@@ -7,6 +7,19 @@ import * as fs from 'fs';
 
 admin.initializeApp();
 
+// ==================== ACCOUNT DELETION FUNCTIONS ====================
+
+// Firestore trigger - sends confirmation email when deletion is requested
+export { onAccountDeletionRequested } from './accountDeletionTrigger';
+
+// Scheduled functions for deletion reminders and permanent deletion
+export {
+  processScheduledDeletions,
+  sendDeletionReminders,
+} from './scheduledDeletion';
+
+// ==================== VIDEO PROCESSING FUNCTIONS ====================
+
 /**
  * Cloud Function to process uploaded videos
  * Triggers on new video upload to Storage
