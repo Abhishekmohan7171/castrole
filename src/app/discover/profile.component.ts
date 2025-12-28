@@ -1872,6 +1872,71 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  /**
+   * Track video view event when a producer watches a video
+   */
+  private async trackVideoView(videoUrl: string, videoFileName: string): Promise<void> {
+    const targetId = this.targetUserId();
+    const currentUser = this.auth.getCurrentUser();
+
+    // Only track if viewing another user's profile and current user is a producer
+    if (!targetId || !currentUser || this.isViewingOwnProfile()) {
+      return;
+    }
+
+    // Get current user's role - only track for producers
+    try {
+      const userDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+      if (!userDoc.exists() || userDoc.data()['currentRole'] !== 'producer') {
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      return;
+    }
+
+    // Fetch video metadata to get title and tags
+    try {
+      const uploadsRef = collection(this.firestore, 'uploads', targetId, 'userUploads');
+      const q = query(uploadsRef, where('fileName', '==', videoFileName), limit(1));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const videoData = snapshot.docs[0].data();
+        const metadata = videoData['metadata'] || {};
+
+        await this.analyticsService.trackVideoView(
+          targetId,
+          currentUser.uid,
+          videoFileName,
+          metadata['description'] || 'Untitled Video',
+          metadata['tags'] || []
+        );
+      }
+    } catch (error) {
+      console.error('Error tracking video view:', error);
+    }
+  }
+
+  /**
+   * Extract fileName from Firebase Storage URL
+   */
+  private extractFileNameFromUrl(url: string): string | null {
+    try {
+      const urlObj = new URL(url);
+      // Firebase Storage URLs contain the file path encoded
+      // Example: .../videos%2F{fileName}?...
+      const pathMatch = urlObj.pathname.match(/videos%2F([^?]+)/);
+      if (pathMatch && pathMatch[1]) {
+        return decodeURIComponent(pathMatch[1]);
+      }
+      return null;
+    } catch (error) {
+      console.error('Error extracting fileName from URL:', error);
+      return null;
+    }
+  }
+
   openPreviewModal(
     url: string,
     type: 'image' | 'video',
@@ -1887,6 +1952,14 @@ export class ProfileComponent implements OnInit {
     this.currentMediaIndex.set(index >= 0 ? index : 0);
 
     this.isPreviewModalOpen.set(true);
+
+    // Track video view if it's a video
+    if (type === 'video') {
+      const fileName = this.extractFileNameFromUrl(url);
+      if (fileName) {
+        this.trackVideoView(url, fileName);
+      }
+    }
   }
 
   closePreviewModal() {
