@@ -15,6 +15,7 @@ import { LoadingService } from '../../services/loading.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { UserService } from '../../services/user.service';
 import { ToastService } from '../../services/toast.service';
+import { DataExportService } from '../../services/data-export.service';
 import {
   Firestore,
   doc,
@@ -66,6 +67,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private userService = inject(UserService);
   private toastService = inject(ToastService);
+  private dataExportService = inject(DataExportService);
   private analyticsSubscription: Subscription | null = null;
 
   // User role signals
@@ -81,6 +83,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     const profileData = this.profileService.profileData();
+    console.log(profileData,profileData?.actorProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
     return profileData?.actorProfile?.isSubscribed ?? false;
   });
 
@@ -91,8 +94,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   // User data signals
   userData = signal<(UserDoc & Profile) | null>(null);
-  editableUserData = signal<{ name: string; email: string; phone: string }>({
-    name: '',
+  editableUserData = signal<{ email: string; phone: string }>({
     email: '',
     phone: '',
   });
@@ -155,11 +157,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // Delete account modal signals
   showDeleteAccountModal = signal<boolean>(false);
   deleteConfirmationText = signal<string>('');
+  isDeleting = signal<boolean>(false);
+  isExporting = signal<boolean>(false);
 
   // Add account modal signals
   showAddAccountModal = signal<boolean>(false);
   addAccountType = signal<'actor' | 'producer'>('actor');
-  isDeleting = signal<boolean>(false);
 
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
@@ -347,7 +350,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   // Handle data changes from account section
-  onEditableDataChange(data: { name: string; email: string; phone: string }) {
+  onEditableDataChange(data: { email: string; phone: string }) {
     this.editableUserData.set(data);
   }
 
@@ -362,7 +365,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
           this.userData.set(userData);
           this.userRole.set(userData.currentRole || 'actor');
           this.editableUserData.set({
-            name: userData.name || '',
             email: userData.email || '',
             phone: userData.phone || '',
           });
@@ -413,7 +415,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return this.editingFields().has(field);
   }
 
-  async toggleEditField(field: 'name' | 'email' | 'phone') {
+  async toggleEditField(field: 'email' | 'phone') {
     const currentlyEditing = this.isEditingField(field);
 
     if (currentlyEditing) {
@@ -427,7 +429,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async saveField(field: 'name' | 'email' | 'phone') {
+  private async saveField(field: 'email' | 'phone') {
     const user = this.auth.getCurrentUser();
     if (!user) return;
 
@@ -469,7 +471,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const currentUserData = this.userData();
       if (currentUserData) {
         this.editableUserData.set({
-          name: currentUserData.name || '',
           email: currentUserData.email || '',
           phone: currentUserData.phone || '',
         });
@@ -837,6 +838,27 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.isDeleting.set(false);
   }
 
+  async exportMyData() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    this.isExporting.set(true);
+
+    try {
+      const exportBlob = await this.dataExportService.exportUserData(user.uid);
+      const filename = `castrole-data-export-${user.uid}-${Date.now()}.json`;
+
+      this.dataExportService.downloadExport(exportBlob, filename);
+
+      this.toastService.success('Data export downloaded successfully');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      this.toastService.error('Failed to export data. Please try again.');
+    } finally {
+      this.isExporting.set(false);
+    }
+  }
+
   getRequiredDeleteText(): string {
     const userData = this.userData();
     return userData?.name ? `delete ${userData.name}` : 'delete account';
@@ -855,32 +877,33 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     this.isDeleting.set(true);
+    const user = this.auth.getCurrentUser();
+
+    if (!user) {
+      this.isDeleting.set(false);
+      return;
+    }
 
     try {
-      // TODO: Replace with actual Firebase deletion logic
-      console.log(
-        '🗑️ Account deletion confirmed for user:',
-        this.userData()?.name
+      // Request account deletion (sets 30-day grace period)
+      await this.auth.requestAccountDeletion(user.uid);
+
+      // Show success message
+      this.toastService.success(
+        'Account deletion scheduled. You have 30 days to reactivate.'
       );
-      console.log(
-        '🗑️ This would delete all user data, profile, media, and chat history'
-      );
 
-      // Simulate deletion process
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      console.log('✅ Account deletion completed (simulated)');
-
-      // In real implementation, this would:
-      // 1. Delete user document from Firestore
-      // 2. Delete all user media from Storage
-      // 3. Remove user from all chat rooms
-      // 4. Delete user authentication
-      // 5. Sign out and redirect to login
-
+      // Close modal
       this.closeDeleteAccountModal();
+
+      // Logout and redirect to login with reason
+      await this.auth.logout();
+      this.router.navigate(['/auth/login'], {
+        queryParams: { reason: 'deletion-requested' }
+      });
     } catch (error) {
       console.error('❌ Error deleting account:', error);
+      this.toastService.error('Failed to delete account. Please try again.');
       this.isDeleting.set(false);
     }
   }

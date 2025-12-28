@@ -20,51 +20,6 @@ import { FormsModule } from '@angular/forms';
 
       <!-- Edit User Information -->
       <div class="space-y-4">
-        <!-- Username -->
-        <div class="space-y-2">
-          <label
-            class="text-sm font-medium"
-            [ngClass]="{
-              'text-purple-200/80': isActor(),
-              'text-neutral-300': !isActor()
-            }"
-          >
-            Username
-          </label>
-          <div class="flex gap-3">
-            <input
-              type="text"
-              [value]="localEditableData().name"
-              (input)="updateField('name', $event)"
-              [disabled]="!isEditingField('name')"
-              class="flex-1 px-3 py-2 text-sm rounded-lg border transition-all duration-200"
-              [ngClass]="{
-                'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20':
-                  isActor(),
-                'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20':
-                  !isActor(),
-                'opacity-60': !isEditingField('name')
-              }"
-            />
-            <button
-              (click)="onToggleEditField('name')"
-              class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
-              [ngClass]="{
-                'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
-                  isActor() && isEditingField('name'),
-                'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
-                  isActor() && !isEditingField('name'),
-                'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
-                  !isActor() && isEditingField('name'),
-                'border-neutral-700 text-neutral-300 hover:bg-black/20':
-                  !isActor() && !isEditingField('name')
-              }"
-            >
-              {{ isEditingField('name') ? 'Save' : 'Edit' }}
-            </button>
-          </div>
-        </div>
-
         <!-- Email -->
         <div class="space-y-2">
           <label
@@ -265,18 +220,17 @@ export class AccountSectionComponent {
   editableUserData = input.required<any>();
   editingFields = input.required<Set<string>>();
   toggleEditField =
-    input.required<(field: 'name' | 'email' | 'phone') => void>();
+    input.required<(field: 'email' | 'phone') => void>();
   canAddAccount = input.required<() => boolean>();
   getMissingRole = input.required<() => string>();
   addAccount = input.required<() => void>();
   switchRole = input.required<() => void>();
 
   // Output for data changes
-  dataChange = output<{ name: string; email: string; phone: string }>();
+  dataChange = output<{ email: string; phone: string }>();
 
   // Local editable data signals for two-way binding
-  localEditableData = signal<{ name: string; email: string; phone: string }>({
-    name: '',
+  localEditableData = signal<{ email: string; phone: string }>({
     email: '',
     phone: '',
   });
@@ -287,7 +241,6 @@ export class AccountSectionComponent {
       const data = this.editableUserData();
       if (data) {
         this.localEditableData.set({
-          name: data.name || '',
           email: data.email || '',
           phone: data.phone || '',
         });
@@ -299,7 +252,7 @@ export class AccountSectionComponent {
     return this.editingFields().has(field);
   }
 
-  updateField(field: 'name' | 'email' | 'phone', event: Event) {
+  updateField(field: 'email' | 'phone', event: Event) {
     const target = event.target as HTMLInputElement;
     const value = target.value;
     
@@ -315,7 +268,7 @@ export class AccountSectionComponent {
     this.dataChange.emit(newData);
   }
 
-  onToggleEditField(field: 'name' | 'email' | 'phone') {
+  onToggleEditField(field: 'email' | 'phone') {
     this.toggleEditField()(field);
   }
 

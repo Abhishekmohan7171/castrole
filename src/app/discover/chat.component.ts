@@ -1,8 +1,10 @@
 import { Component, OnDestroy, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { ChatService } from '../services/chat.service';
 import { AuthService } from '../services/auth.service';
 import { ActorService } from '../services/actor.service';
@@ -12,6 +14,8 @@ import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
 import { PresenceService } from '../services/presence.service';
 import { BlockService } from '../services/block.service';
+import { Profile } from '../../assets/interfaces/profile.interfaces';
+import { ProfileUrlService } from '../services/profile-url.service';
 
 @Component({
   selector: 'app-discover-chat',
@@ -91,12 +95,16 @@ import { BlockService } from '../services/block.service';
                     <button type="button" (mousedown)="$event.preventDefault()" (click)="selectSearchResult(convo)"
                             class="w-full text-left px-3 py-2 transition flex items-center gap-3"
                             [ngClass]="{'hover:bg-purple-950/10': myRole() === 'actor', 'hover:bg-white/5': myRole() !== 'actor'}">
-                      <div class="h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-300"
+                      <div class="h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-300 overflow-hidden"
                            [ngClass]="{
                              'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
                              'bg-white/10 text-neutral-400': myRole() !== 'actor'
                            }">
-                        {{ convo.name[0] | uppercase }}
+                        @if (convo.profilePhotoUrl) {
+                          <img [src]="convo.profilePhotoUrl" [alt]="convo.name" class="w-full h-full object-cover" />
+                        } @else {
+                          {{ convo.name[0] | uppercase }}
+                        }
                       </div>
                       <div class="flex-1 min-w-0">
                         <p class="truncate text-sm"
@@ -172,15 +180,20 @@ import { BlockService } from '../services/block.service';
               }"
               class="px-4 py-3 transition flex items-center gap-3"
             >
-              <!-- Avatar -->
-              <div
-                class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
+              <!-- Avatar with Profile Photo -->
+              <div 
+                (click)="viewProfile(c)"
+                class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
-                  'bg-white/10 text-neutral-400': myRole() !== 'actor'
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
+                  'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
                 }"
               >
-                {{ c.name[0] | uppercase }}
+                @if (c.profilePhotoUrl) {
+                  <img [src]="c.profilePhotoUrl" [alt]="c.name" class="w-full h-full object-cover" />
+                } @else {
+                  {{ c.name[0] | uppercase }}
+                }
               </div>
 
               <!-- Content -->
@@ -260,11 +273,38 @@ import { BlockService } from '../services/block.service';
               </svg>
             </button>
             
-            <!-- Active conversation name -->
-            <div class="text-sm font-medium"
-                 [ngClass]="{'text-purple-200': myRole() === 'actor', 'text-neutral-200': myRole() !== 'actor'}">
-              {{ active()?.name || 'select a chat' }}
-            </div>
+            <!-- Profile Photo and Active conversation name -->
+            @if (active()) {
+              <div 
+                (click)="viewProfile(active())"
+                class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
+                [ngClass]="{
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
+                  'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
+                }"
+              >
+                @if (active()?.profilePhotoUrl) {
+                  <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
+                } @else {
+                  {{ active()?.name?.[0] | uppercase }}
+                }
+              </div>
+              <div 
+                (click)="viewProfile(active())"
+                class="text-sm font-medium cursor-pointer hover:underline transition-all duration-200"
+                [ngClass]="{
+                  'text-purple-200 hover:text-purple-100': myRole() === 'actor',
+                  'text-neutral-200 hover:text-white': myRole() !== 'actor'
+                }"
+              >
+                {{ active()?.name }}
+              </div>
+            } @else {
+              <div class="text-sm font-medium"
+                   [ngClass]="{'text-purple-200': myRole() === 'actor', 'text-neutral-200': myRole() !== 'actor'}">
+                select a chat
+              </div>
+            }
           </div>
 
           <!-- Chat header -->
@@ -272,17 +312,29 @@ import { BlockService } from '../services/block.service';
             class="hidden lg:flex items-center gap-3 px-5 py-4 border-b transition-colors duration-300"
             [ngClass]="{'border-purple-900/10': myRole() === 'actor', 'border-white/5': myRole() !== 'actor'}"
           >
-            <div
-              class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300"
+            <div 
+              (click)="viewProfile(active())"
+              class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
               [ngClass]="{
-                'bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
-                'bg-white/10 text-neutral-400': myRole() !== 'actor'
+                'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
+                'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
               }"
             >
-              {{ active()?.name?.[0] | uppercase }}
+              @if (active()?.profilePhotoUrl) {
+                <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
+              } @else {
+                {{ active()?.name?.[0] | uppercase }}
+              }
             </div>
             <div class="text-sm flex-1">
-              <div [ngClass]="{'text-purple-100/80': myRole() === 'actor', 'text-neutral-100': myRole() !== 'actor'}">
+              <div 
+                (click)="viewProfile(active())"
+                class="cursor-pointer  transition-all duration-200"
+                [ngClass]="{
+                  'text-purple-100/80 hover:text-purple-100': myRole() === 'actor',
+                  'text-neutral-100 hover:text-white': myRole() !== 'actor'
+                }"
+              >
                 {{ active()?.name || 'select a chat' }}
               </div>
               <div class="flex items-center gap-2"
@@ -657,6 +709,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   private user = inject(UserService);
   private presence = inject(PresenceService);
   private blockService = inject(BlockService);
+  private firestore = inject(Firestore);
+  private router = inject(Router);
+  private profileUrlService = inject(ProfileUrlService);
 
   // Signals for reactive state
   conversations = signal<Conversation[]>([]);
@@ -890,22 +945,26 @@ export class ChatComponent implements OnInit, OnDestroy {
       shareReplay(1)
     );
 
-    // Conversations stream with counterpart names
+    // Conversations stream with counterpart names, photos, and slugs
     this.conversations$ = this.rooms$!.pipe(
       switchMap((rooms) => {
         if (!rooms.length) return of([] as Conversation[]);
         const lookups = rooms.map((r) => {
           const counterpartId = this.getCounterpartId(r);
           this.counterpartByRoom.set(r.id!, counterpartId);
-          return this.user.observeUser(counterpartId).pipe(
-            take(1),
-            map(u => ({
+          return combineLatest([
+            this.user.observeUser(counterpartId).pipe(take(1)),
+            this.fetchProfileData(counterpartId)
+          ]).pipe(
+            map(([u, profileData]) => ({
               id: r.id!,
               name: (u?.name as string) || counterpartId,
               last: r.lastMessage?.text || '',
               unreadCount: r.unreadCount,
               actorAccepted: r.actorAccepted,
               actorRejected: r.actorRejected,
+              profilePhotoUrl: profileData.photoUrl,
+              slugUid: profileData.slugUid,
               messages: [] as Message[]
             }))
           );
@@ -1470,6 +1529,29 @@ export class ChatComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  // Helper method to fetch profile photo and slug from Firestore
+  private fetchProfileData(uid: string): Observable<{ photoUrl?: string; slugUid?: string }> {
+    return new Observable(observer => {
+      const profileDocRef = doc(this.firestore, 'profiles', uid);
+      getDoc(profileDocRef).then(profileDocSnap => {
+        if (profileDocSnap.exists()) {
+          const profileData = profileDocSnap.data() as Profile;
+          const photoUrl = profileData.actorProfile?.actorProfileImageUrl || 
+                          profileData.producerProfile?.producerProfileImageUrl;
+          const slugUid = profileData.slug;
+          observer.next({ photoUrl, slugUid });
+        } else {
+          observer.next({});
+        }
+        observer.complete();
+      }).catch(error => {
+        console.error('Error fetching profile data:', error);
+        observer.next({});
+        observer.complete();
+      });
+    });
+  }
+
   // Helper method to get actor initial for display
   getActorInitial(actorId: string): string {
     // Try to get from cached names first
@@ -1506,6 +1588,20 @@ export class ChatComponent implements OnInit, OnDestroy {
     const activeConv = this.active();
     if (!activeConv) return false;
     return activeConv.actorRejected === true;
+  }
+
+  // Navigate to user profile (similar to search component)
+  viewProfile(conversation: Conversation | null): void {
+    if (!conversation) return;
+    
+    const counterpartId = this.counterpartByRoom.get(conversation.id);
+    if (!counterpartId) return;
+
+    // Use stored slug-uid if available, otherwise generate temporary one
+    const slugUid = conversation.slugUid || this.profileUrlService.generateSlugUid(conversation.name, counterpartId);
+    
+    // Navigate to profile
+    this.router.navigate(['/discover', slugUid]);
   }
 
   // Start a new chat with an actor (for producers, after rejection)

@@ -18,6 +18,13 @@ export const routes: Routes = [
     component: ResetPasswordComponent,
     canMatch: [loggedOutOnlyGuard],
   },
+  {
+    path: 'auth/reactivate',
+    loadComponent: () =>
+      import('./auth/reactivate/reactivate.component').then(
+        (m) => m.ReactivateComponent
+      ),
+  },
   { path: 'register', redirectTo: 'onboarding' },
 
   // Onboarding flow

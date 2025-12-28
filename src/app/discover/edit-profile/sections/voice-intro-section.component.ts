@@ -1,4 +1,6 @@
-import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, signal, inject } from '@angular/core';
+import { Subject, Observable, of } from 'rxjs';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import { Storage, ref, uploadBytes, getDownloadURL, listAll } from '@angular/fire/storage';
 import { Profile } from '../../../../assets/interfaces/profile.interfaces';
@@ -187,7 +189,9 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
     }
   `
 })
-export class VoiceIntroSectionComponent implements OnInit {
+export class VoiceIntroSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
+  private destroy$ = new Subject<void>();
+
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
 
@@ -416,5 +420,25 @@ export class VoiceIntroSectionComponent implements OnInit {
       this.isSaving.set(false);
       this.hasChanges.set(false);
     }, 1000);
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+
+    // Clean up audio element
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
+  }
+
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.hasChanges() && !this.isSaving()) {
+      // Force immediate save before navigation
+      this.onSave();
+      return of(true);
+    }
+    return true;
   }
 }

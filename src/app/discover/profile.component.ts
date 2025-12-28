@@ -31,14 +31,23 @@ import {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-transparent text-white">
+    <div
+      class="min-h-screen bg-transparent text-white relative"
+      [ngClass]="{ 'actor-theme': isActor() }"
+    >
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
           <!-- Left: Profile card + media -->
           <section class="space-y-4">
             <!-- Profile card -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50 relative"
+              class="rounded-xl p-5 border relative backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <!-- Settings Icon (top left, absolute) -->
               @if (isViewingOwnProfile()) {
@@ -87,11 +96,17 @@ import {
                     class="h-32 w-32 rounded-full overflow-hidden ring-2 ring-neutral-700/50"
                   >
                     @if (getProfileImageUrl()) {
-                    <img
-                      [src]="getProfileImageUrl()"
-                      [alt]="getDisplayName()"
-                      class="w-full h-full object-cover"
-                    />
+                    <button
+                      (click)="viewProfilePicture()"
+                      class="w-full h-full cursor-pointer"
+                      aria-label="View profile picture"
+                    >
+                      <img
+                        [src]="getProfileImageUrl()"
+                        [alt]="getDisplayName()"
+                        class="w-full h-full object-cover"
+                      />
+                    </button>
                     } @else if (isViewingOwnProfile()) {
                     <button
                       (click)="onDummyProfileClick()"
@@ -132,34 +147,12 @@ import {
                     </div>
                     }
                   </div>
-
-                  @if (isViewingOwnProfile() && getProfileImageUrl()) {
-                  <button
-                    (click)="removeProfilePicture()"
-                    class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-full"
-                    aria-label="Remove profile picture"
-                  >
-                    <svg
-                      class="w-8 h-8 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                  }
                 </div>
 
                 <!-- Right Column: Info -->
                 <div class="space-y-3">
                   <!-- Name -->
-                  <h1 class="text-2xl font-medium text-neutral-200">
+                  <h1 class="pl-4 text-2xl font-medium text-neutral-200">
                     {{ getDisplayName() }}
                   </h1>
 
@@ -434,7 +427,17 @@ import {
               </div>
 
               <!-- Videos Tab Content -->
-              @if (mediaTab === 'videos') { @if (hasVideos()) {
+              @if (mediaTab === 'videos') {
+              <!-- Loading Skeleton -->
+              @if (isLoadingMedia()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (i of [1, 2]; track i) {
+                <div
+                  class="aspect-video rounded-lg bg-neutral-800/50 animate-pulse"
+                ></div>
+                }
+              </div>
+              } @else if (hasVideos()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
                 @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
                 { @if (idx < 4) {
@@ -448,10 +451,30 @@ import {
                 >
                   <video
                     [src]="videoUrl"
-                    class="w-full h-full object-cover pointer-events-none"
+                    class="w-full h-full object-cover pointer-events-none bg-neutral-900"
+                    preload="metadata"
+                    loading="lazy"
                   ></video>
                 </div>
                 } }
+
+                <!-- Add More Videos Button -->
+                @if (isViewingOwnProfile() && videoUrls().length < 4) {
+                <button
+                  (click)="navigateToUpload()"
+                  class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    class="h-8 w-8 text-neutral-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                }
               </div>
               } @else if (isViewingOwnProfile()) {
               <button
@@ -494,10 +517,20 @@ import {
               } }
 
               <!-- Photos Tab Content -->
-              @if (mediaTab === 'photos') { @if (hasImages()) {
+              @if (mediaTab === 'photos') {
+              <!-- Loading Skeleton -->
+              @if (isLoadingMedia()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
-                @for (imageUrl of imageUrls(); track imageUrl; let idx = $index)
-                { @if (idx < 4) {
+                @for (i of [1, 2]; track i) {
+                <div
+                  class="aspect-video rounded-lg bg-neutral-800/50 animate-pulse"
+                ></div>
+                }
+              </div>
+              } @else if (hasImages()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (imageUrl of galleryImageUrls(); track imageUrl; let idx =
+                $index) { @if (idx < 4) {
                 <div
                   class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
                   [ngClass]="{
@@ -513,6 +546,24 @@ import {
                   />
                 </div>
                 } }
+
+                <!-- Add More Images Button -->
+                @if (isViewingOwnProfile() && galleryImageUrls().length < 4) {
+                <button
+                  (click)="navigateToUpload()"
+                  class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    class="h-8 w-8 text-neutral-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                }
               </div>
               } @else if (isViewingOwnProfile()) {
               <button
@@ -555,7 +606,7 @@ import {
               } } }
 
               <!-- Social Links -->
-              @if (hasSocialLinks() || isActor()) {
+              @if (hasSocialLinks() || isActor() || isViewingOwnProfile()) {
               <div class="pt-3 border-t border-neutral-800">
                 <div class="text-xs text-neutral-500 mb-2">social links</div>
                 <div class="flex items-center gap-2">
@@ -641,6 +692,25 @@ import {
                     </svg>
                   </a>
                   }
+
+                  <!-- Add Social Link Button -->
+                  @if (isViewingOwnProfile()) {
+                  <button
+                    (click)="navigateToSocialLinks()"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="Add social link"
+                  >
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                  }
                 </div>
               </div>
               }
@@ -652,10 +722,16 @@ import {
             @if (isActor()) {
             <!-- Location -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
               >
                 location
               </div>
@@ -667,10 +743,16 @@ import {
             <!-- Education -->
             @if (hasEducation()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 {{ isActor() ? 'acting education' : 'education' }}
               </div>
@@ -714,10 +796,16 @@ import {
             <!-- Experiences -->
             @if (hasWorks()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 {{ isActor() ? 'experiences' : 'previous works' }}
               </div>
@@ -733,7 +821,8 @@ import {
                       {{ isActor() ? '|' : '•' }} {{ work.genre }}</span
                     >} {{ isActor() ? '|' : '•' }} {{ work.year }}
                     } @else {
-                    {{ work.genre || 'supporting role' }} {{ isActor() ? '|' : '•' }} {{ work.year }}
+                    {{ work.genre || 'supporting role' }}
+                    {{ isActor() ? '|' : '•' }} {{ work.year }}
                     }
                   </div>
                   @if (work.projectLink) {
@@ -768,10 +857,16 @@ import {
             <!-- Languages -->
             @if (hasLanguages()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 languages
               </div>
@@ -810,16 +905,21 @@ import {
             <!-- Extra Curricular / Skills -->
             @if (hasSkills()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 extra curricular
               </div>
               <div class="space-y-2">
-                @for (skill of sortedSkills(); track getSkillName(skill))
-                {
+                @for (skill of sortedSkills(); track getSkillName(skill)) {
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">{{
                     getSkillName(skill)
@@ -851,12 +951,18 @@ import {
             <!-- Producer Sections -->
             <!-- Location -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     location
                   </div>
@@ -866,7 +972,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     designation
                   </div>
@@ -879,7 +985,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     production house
                   </div>
@@ -892,7 +998,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     industry type
                   </div>
@@ -906,7 +1012,7 @@ import {
               </div>
             </div>
 
- }
+            }
           </section>
         </div>
       </div>
@@ -915,7 +1021,7 @@ import {
     <!-- Media Preview Modal -->
     @if (isPreviewModalOpen()) {
     <div
-      class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       (click)="closePreviewModal()"
     >
       <div
@@ -943,28 +1049,53 @@ import {
           </svg>
         </button>
 
-        <!-- Set as Profile Picture button (only for images and own profile) -->
+        <!-- Profile Picture Actions (only for images and own profile) -->
         @if (previewMediaType() === 'image' && isViewingOwnProfile()) {
-        <button
-          (click)="setAsProfilePicture(); $event.stopPropagation()"
-          class="absolute top-4 left-4 z-10 px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
-          aria-label="Set as profile picture"
-        >
-          <svg
-            class="w-5 h-5 text-white"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+        <div class="absolute top-4 left-4 z-10 flex gap-2">
+          @if (!isPreviewImageProfilePicture()) {
+          <button
+            (click)="setAsProfilePicture(); $event.stopPropagation()"
+            class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Set as profile picture"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          <span class="text-white text-sm">Set as Profile Picture</span>
-        </button>
+            <svg
+              class="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span class="text-white text-sm">Set as Profile Picture</span>
+          </button>
+          } @if (isPreviewImageProfilePicture()) {
+          <button
+            (click)="removeProfilePicture(); $event.stopPropagation()"
+            class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Remove profile picture"
+          >
+            <svg
+              class="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span class="text-white text-sm">Remove Profile Picture</span>
+          </button>
+          }
+        </div>
         }
 
         <!-- Previous button -->
@@ -1014,29 +1145,62 @@ import {
         }
 
         <!-- Media content -->
-        <div class="w-full h-full flex items-center justify-center px-20">
+        <div
+          class="w-full h-full flex items-center justify-center px-20 relative"
+        >
           @if (previewMediaType() === 'image') {
           <img
             [src]="previewMediaUrl()"
             alt="Preview"
             class="max-w-full max-h-full object-contain rounded-lg"
+            [class.opacity-0]="isMediaLoading()"
+            (load)="onMediaLoaded()"
           />
           } @else if (previewMediaType() === 'video') {
           <video
             [src]="previewMediaUrl()"
             class="max-w-full max-h-full object-contain rounded-lg"
+            [class.opacity-0]="isMediaLoading()"
+            (loadeddata)="onMediaLoaded()"
             controls
             autoplay
           ></video>
           }
+
+          <!-- Loading Spinner -->
+          @if (isMediaLoading()) {
+          <div class="absolute inset-0 flex items-center justify-center">
+            <svg
+              class="w-12 h-12 text-white animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+          }
         </div>
 
         <!-- Counter indicator -->
+        @if (!isProfilePicIsolationMode()) {
         <div
           class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-black/50 rounded-full text-white text-sm ring-1 ring-white/20"
         >
           {{ currentMediaIndex() + 1 }} / {{ currentMediaList().length }}
         </div>
+        }
       </div>
     </div>
     }
@@ -1045,6 +1209,30 @@ import {
     `
       :host {
         display: block;
+      }
+      /* Subtle purple gradient background for actors */
+      .actor-theme::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            ellipse at top left,
+            rgba(147, 51, 234, 0.02) 0%,
+            transparent 35%
+          ),
+          radial-gradient(
+            ellipse at bottom right,
+            rgba(168, 85, 247, 0.015) 0%,
+            transparent 35%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .actor-theme {
+        position: relative;
       }
     `,
   ],
@@ -1104,11 +1292,26 @@ export class ProfileComponent implements OnInit {
   imageUrls = signal<string[]>([]);
   isLoadingMedia = signal(false);
 
+  // Gallery images (excluding profile picture)
+  galleryImageUrls = computed(() => {
+    const allImages = this.imageUrls();
+    const profilePicUrl = this.getProfileImageUrl();
+
+    if (!profilePicUrl) {
+      return allImages;
+    }
+
+    // Filter out the profile picture
+    return allImages.filter((url) => url !== profilePicUrl);
+  });
+
   // Modal state
   isPreviewModalOpen = signal(false);
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
+  isProfilePicIsolationMode = signal(false);
+  isMediaLoading = signal(false);
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1117,9 +1320,13 @@ export class ProfileComponent implements OnInit {
       : this.imageUrls();
   });
 
-  canGoToPrevious = computed(() => this.currentMediaIndex() > 0);
+  canGoToPrevious = computed(
+    () => !this.isProfilePicIsolationMode() && this.currentMediaIndex() > 0
+  );
   canGoToNext = computed(
-    () => this.currentMediaIndex() < this.currentMediaList().length - 1
+    () =>
+      !this.isProfilePicIsolationMode() &&
+      this.currentMediaIndex() < this.currentMediaList().length - 1
   );
 
   // Audio instance for voice intro
@@ -1136,7 +1343,7 @@ export class ProfileComponent implements OnInit {
   });
 
   hasVideos = computed(() => this.videoUrls().length > 0);
-  hasImages = computed(() => this.imageUrls().length > 0);
+  hasImages = computed(() => this.galleryImageUrls().length > 0);
 
   hasEducation = computed(() => {
     const profile = this.profileData();
@@ -1255,16 +1462,16 @@ export class ProfileComponent implements OnInit {
 
     // Check if we have a slugUid parameter (viewing someone else's profile)
     const slugUid = this.route.snapshot.paramMap.get('slugUid');
-    console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
+    // console.log('ProfileComponent ngOnInit - slugUid:', slugUid);
 
     if (slugUid) {
       // Viewing someone else's profile via stored slug-uid URL
-      console.log('Loading profile for slugUid:', slugUid);
+      // console.log('Loading profile for slugUid:', slugUid);
       this.isViewingOwnProfile.set(false);
       this.loadUserProfileBySlugUid(slugUid);
     } else {
       // Viewing own profile
-      console.log('Loading own profile');
+      // console.log('Loading own profile');
       this.isViewingOwnProfile.set(true);
       this.loadUserProfile();
     }
@@ -1276,7 +1483,7 @@ export class ProfileComponent implements OnInit {
    */
   private async loadUserProfileBySlugUid(slugUid: string) {
     try {
-      console.log('Loading profile by slugUid:', slugUid);
+      // console.log('Loading profile by slugUid:', slugUid);
 
       // Query profiles collection by slug field (which contains slug-uid)
       const profilesRef = collection(this.firestore, 'profiles');
@@ -1299,11 +1506,11 @@ export class ProfileComponent implements OnInit {
           return;
         }
 
-        console.log(
-          'Extracted short UID:',
-          shortUid,
-          'searching for matching profile...'
-        );
+        // console.log(
+        //   'Extracted short UID:',
+        //   shortUid,
+        //   'searching for matching profile...'
+        // );
 
         // Query all profiles and find one where UID ends with shortUid
         const allProfilesQuery = query(collection(this.firestore, 'profiles'));
@@ -1321,7 +1528,7 @@ export class ProfileComponent implements OnInit {
         }
 
         const profileData = matchingProfile.data() as Profile;
-        console.log('Profile found via UID suffix match:', profileData);
+        // console.log('Profile found via UID suffix match:', profileData);
 
         // Set profile data
         this.profileData.set(profileData);
@@ -1351,7 +1558,7 @@ export class ProfileComponent implements OnInit {
 
       const profileDoc = profileDocs.docs[0];
       const profileData = profileDoc.data() as Profile;
-      console.log('Profile found by slug:', profileData);
+      // console.log('Profile found by slug:', profileData);
 
       // Set profile data
       this.profileData.set(profileData);
@@ -1368,7 +1575,7 @@ export class ProfileComponent implements OnInit {
       }
 
       const userData = userDoc.data() as UserDoc;
-      console.log('User found:', userData);
+      // console.log('User found:', userData);
 
       // Set user data
       this.userData.set(userData);
@@ -1394,13 +1601,32 @@ export class ProfileComponent implements OnInit {
   private async loadMediaFromStorage(userId: string) {
     this.isLoadingMedia.set(true);
     try {
-      // Fetch videos
-      const videosRef = ref(this.storage, `users/${userId}/videos`);
-      const videosList = await listAll(videosRef);
-      const videoUrlPromises = videosList.items.map((item) =>
-        getDownloadURL(item)
+      // Fetch videos from processed folder
+      const processedRef = ref(this.storage, `processed/${userId}`);
+      const processedList = await listAll(processedRef);
+
+      // Each prefix is a videoId folder containing 1080p.mp4
+      const videoUrlPromises = processedList.prefixes.map(
+        async (videoIdFolder) => {
+          try {
+            const videoRef = ref(
+              this.storage,
+              `${videoIdFolder.fullPath}/1080p.mp4`
+            );
+            return await getDownloadURL(videoRef);
+          } catch (error) {
+            console.warn(
+              `Failed to load video from ${videoIdFolder.fullPath}:`,
+              error
+            );
+            return null;
+          }
+        }
       );
-      const videos = await Promise.all(videoUrlPromises);
+
+      const videos = (await Promise.all(videoUrlPromises)).filter(
+        (url): url is string => url !== null
+      );
       this.videoUrls.set(videos);
 
       // Fetch images
@@ -1581,7 +1807,7 @@ export class ProfileComponent implements OnInit {
   }
 
   // Helper method to get platform-specific icon
-  getSocialIcon(url: string, platform: string): string {
+  getSocialIcon(url: string): string {
     if (!url) return this.getDefaultLinkIcon();
 
     const lowerUrl = url.toLowerCase();
@@ -1657,9 +1883,20 @@ export class ProfileComponent implements OnInit {
     this.router.navigate(['/discover/upload']);
   }
 
-  openPreviewModal(url: string, type: 'image' | 'video') {
+  navigateToSocialLinks() {
+    this.router.navigate(['/discover/profile/edit'], {
+      queryParams: { section: 'socials' },
+    });
+  }
+
+  openPreviewModal(
+    url: string,
+    type: 'image' | 'video',
+    isolationMode: boolean = false
+  ) {
     this.previewMediaUrl.set(url);
     this.previewMediaType.set(type);
+    this.isProfilePicIsolationMode.set(isolationMode);
 
     // Find the index of the current media in the appropriate list
     const mediaList = type === 'video' ? this.videoUrls() : this.imageUrls();
@@ -1673,10 +1910,12 @@ export class ProfileComponent implements OnInit {
     this.isPreviewModalOpen.set(false);
     this.previewMediaUrl.set(null);
     this.currentMediaIndex.set(0);
+    this.isProfilePicIsolationMode.set(false);
   }
 
   goToPreviousMedia() {
     if (this.canGoToPrevious()) {
+      this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() - 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
@@ -1686,11 +1925,16 @@ export class ProfileComponent implements OnInit {
 
   goToNextMedia() {
     if (this.canGoToNext()) {
+      this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() + 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
       this.previewMediaUrl.set(mediaList[newIndex]);
     }
+  }
+
+  onMediaLoaded() {
+    this.isMediaLoading.set(false);
   }
 
   async setAsProfilePicture() {
@@ -1737,19 +1981,23 @@ export class ProfileComponent implements OnInit {
   }
 
   onDummyProfileClick() {
-    // Switch to photos tab
-    this.mediaTab = 'photos';
+    // Navigate to edit profile basic info section
+    this.router.navigate(['/discover/profile/edit'], {
+      fragment: 'basic-info',
+    });
+  }
 
-    // If there are images, open the first one in preview
-    if (this.hasImages()) {
-      const firstImage = this.imageUrls()[0];
-      this.openPreviewModal(firstImage, 'image');
-    } else {
-      // If no images, redirect to upload page with return URL
-      this.router.navigate(['/discover/upload'], {
-        queryParams: { returnUrl: '/discover/profile' },
-      });
+  viewProfilePicture() {
+    const profileImageUrl = this.getProfileImageUrl();
+    if (profileImageUrl) {
+      this.openPreviewModal(profileImageUrl, 'image', true);
     }
+  }
+
+  isPreviewImageProfilePicture(): boolean {
+    const profileImageUrl = this.getProfileImageUrl();
+    const previewUrl = this.previewMediaUrl();
+    return !!profileImageUrl && !!previewUrl && profileImageUrl === previewUrl;
   }
 
   async removeProfilePicture() {
@@ -1784,6 +2032,9 @@ export class ProfileComponent implements OnInit {
           this.profileData.set({ ...currentProfile });
         }
       }
+
+      // Close the preview modal after removing
+      this.closePreviewModal();
     } catch (error) {
       // Handle error silently
     }

@@ -20,7 +20,6 @@ export function app(): express.Express {
   // Add CORS headers for SharedArrayBuffer support (required for FFmpeg.wasm)
   server.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     next();
   });
 

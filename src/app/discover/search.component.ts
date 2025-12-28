@@ -1,4 +1,4 @@
- import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
 import { FilterPersistenceService } from '../services/filter-persistence.service';
 import { NotificationService } from '../services/notification.service';
+import { ProfileService } from '../services/profile.service';
 import { CHARACTER_TYPES, CHARACTER_TYPE_SYNONYMS, GENDER_OPTIONS, AVAILABLE_SKILLS, AVAILABLE_LANGUAGES, AVAILABLE_LOCATIONS_ALL } from './search-constants';
 
 interface ActorSearchResult {
@@ -70,10 +71,11 @@ interface ParsedSearchQuery {
           <div class="relative">
             <input
               type="text"
+              disabled
               [(ngModel)]="searchQuery"
               (input)="onSearchChange()"
-              placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills"
-              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors">
+              placeholder="Describe your character — e.g. 25-year-old fair boy with boxing skills (Smart search coming soon)"
+              class="w-full bg-white/5 border border-neutral-700/50 rounded-xl px-6 py-4 pr-24 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#90ACC8] focus:bg-white/10 transition-colors cursor-not-allowed ">
             
             <!-- Voice and AI icons -->
             <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
@@ -126,12 +128,23 @@ interface ParsedSearchQuery {
 
               <!-- Character Types (Searchable Multi-select) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">
+                <label class="block text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2">
                   Character Types
+                  @if (!isPremium() && filters().characterTypes.length >= 1) {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                  }
                   @if (filters().characterTypes.length > 0) {
                     <span class="ml-2 text-xs text-[#90ACC8]">({{ filters().characterTypes.length }} selected)</span>
                   }
                 </label>
+                
+                @if (!isPremium() && filters().characterTypes.length >= 1) {
+                  <div class="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <p class="text-xs text-amber-400">🔒 Free users can select 1 character type. Upgrade for unlimited selections.</p>
+                  </div>
+                }
                 
                 <!-- Search Input -->
                 <div class="relative">
@@ -141,8 +154,9 @@ interface ParsedSearchQuery {
                     (input)="onCharacterTypeSearchChange($any($event.target).value)"
                     (focus)="showCharacterTypeDropdown.set(true)"
                     (blur)="onCharacterTypeBlur()"
+                    [disabled]="!isPremium() && filters().characterTypes.length >= 1"
                     placeholder="Search character types..."
-                    class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#90ACC8] mb-2">
+                    [class]="(isPremium() || filters().characterTypes.length < 1) ? 'w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#90ACC8] mb-2' : 'w-full bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-500 text-sm cursor-not-allowed mb-2'">
                   
                   <!-- Dropdown List -->
                   @if (showCharacterTypeDropdown() && filteredCharacterTypes().length > 0) {
@@ -206,11 +220,26 @@ interface ParsedSearchQuery {
 
               <!-- Gender -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Gender</label>
+                <label class="block text-sm font-medium text-neutral-300 mb-2 flex items-center gap-2">
+                  Gender
+                  @if (!isPremium()) {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                  }
+                </label>
+                
+                @if (!isPremium()) {
+                  <div class="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <p class="text-xs text-amber-400">🔒 Premium feature - Upgrade to filter by gender</p>
+                  </div>
+                }
+                
                 <select 
                   [value]="filters().gender"
                   (change)="updateFilter('gender', $any($event.target).value)"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-[#455A64]">
+                  [disabled]="!isPremium()"
+                  [class]="isPremium() ? 'w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 focus:outline-none focus:border-[#455A64]' : 'w-full bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-500 cursor-not-allowed'">
                   @for (option of genderOptions; track option.value) {
                     <option [value]="option.value">{{ option.label }}</option>
                   }
@@ -596,109 +625,133 @@ interface ParsedSearchQuery {
                 </button>
               </div>
             } @else if (filteredActors().length > 0) {
-              <!-- Results -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                @for (actor of filteredActors(); track actor.uid) {
-                  <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-[#455A64]/50 transition-all duration-300 group">
-                    <!-- Circular Actor Photo -->
-                    <div class="relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center py-6">
-                      @if (actor.profileImageUrl) {
-                        <img 
-                          [src]="actor.profileImageUrl" 
-                          [alt]="actor.stageName" 
-                          class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-[#455A64]/50 transition-colors shadow-xl">
-                      } @else {
-                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#515D69] to-[#455A64] flex items-center justify-center text-white font-semibold text-sm">
-                          {{ actor.stageName.charAt(0).toUpperCase() }}
-                        </div>
-                      }
-                    </div>
-
-                    <!-- Actor Info -->
-                    <div class="p-4">
-                      <div class="flex items-start justify-between gap-2 mb-2">
-                        <div class="flex-1 min-w-0">
-                          <h3 class="text-base font-semibold text-neutral-100 truncate">{{ actor.stageName }}</h3>
-                          <div class="flex items-center gap-2 text-sm text-neutral-400 mt-0.5">
-                            @if (actor.age) {
-                              <span>{{ actor.age }} yrs</span>
-                            }
-                            @if (actor.gender) {
-                              <span>•</span>
-                              <span class="capitalize">{{ actor.gender }}</span>
-                            }
+              <!-- Results with integrated upgrade card -->
+              <div class="relative">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  @for (actor of displayedActors(); track actor.uid) {
+                    <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-[#455A64]/50 transition-all duration-300 group">
+                      <!-- Circular Actor Photo -->
+                      <div class="relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center py-6">
+                        @if (actor.profileImageUrl) {
+                          <img 
+                            [src]="actor.profileImageUrl" 
+                            [alt]="actor.stageName" 
+                            class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-[#455A64]/50 transition-colors shadow-xl">
+                        } @else {
+                          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#515D69] to-[#455A64] flex items-center justify-center text-white font-semibold text-sm">
+                            {{ actor.stageName.charAt(0).toUpperCase() }}
                           </div>
-                        </div>
-                        
-                        <!-- Wishlist Button -->
-                        <button 
-                          (click)="toggleWishlist(actor)"
-                          [class]="isInWishlist(actor) ? 'bg-[#455A64] text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-[#455A64]'"
-                          class="p-2 rounded-lg transition-colors flex-shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                        </button>
+                        }
                       </div>
 
-                      @if (actor.location) {
-                        <p class="text-xs text-neutral-500 mb-3 truncate">📍 {{ actor.location }}</p>
-                      }
-
-                      <!-- Voice Intro Player -->
-                      @if (actor.voiceIntroUrl) {
-                        <div class="mb-3 bg-neutral-800 rounded-lg p-2 flex items-center gap-2">
-                          <button 
-                            (click)="toggleVoicePlay(actor.uid)"
-                            class="p-1.5 rounded-full bg-[#455A64] hover:bg-[#455A64]/90 text-white transition-colors flex-shrink-0">
-                            @if (playingVoiceId() === actor.uid) {
-                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                              </svg>
-                            } @else {
-                              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z"/>
-                              </svg>
-                            }
-                          </button>
+                      <!-- Actor Info -->
+                      <div class="p-4">
+                        <div class="flex items-start justify-between gap-2 mb-2">
                           <div class="flex-1 min-w-0">
-                            <p class="text-xs text-neutral-400">Voice Intro</p>
+                            <h3 class="text-base font-semibold text-neutral-100 truncate">{{ actor.stageName }}</h3>
+                            <div class="flex items-center gap-2 text-sm text-neutral-400 mt-0.5">
+                              @if (actor.age) {
+                                <span>{{ actor.age }} yrs</span>
+                              }
+                              @if (actor.gender) {
+                                <span>•</span>
+                                <span class="capitalize">{{ actor.gender }}</span>
+                              }
+                            </div>
                           </div>
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          
+                          <!-- Wishlist Button -->
+                          <button 
+                            (click)="toggleWishlist(actor)"
+                            [class]="isInWishlist(actor) ? 'bg-[#455A64] text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-[#455A64]'"
+                            class="p-2 rounded-lg transition-colors flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        @if (actor.location) {
+                          <p class="text-xs text-neutral-500 mb-3 truncate">📍 {{ actor.location }}</p>
+                        }
+
+                        <!-- Voice Intro Player -->
+                        @if (actor.voiceIntroUrl) {
+                          <div class="mb-3 bg-neutral-800 rounded-lg p-2 flex items-center gap-2">
+                            <button 
+                              (click)="toggleVoicePlay(actor.uid)"
+                              class="p-1.5 rounded-full bg-[#455A64] hover:bg-[#455A64]/90 text-white transition-colors flex-shrink-0">
+                              @if (playingVoiceId() === actor.uid) {
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                                </svg>
+                              } @else {
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M8 5v14l11-7z"/>
+                                </svg>
+                              }
+                            </button>
+                            <div class="flex-1 min-w-0">
+                              <p class="text-xs text-neutral-400">Voice Intro</p>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                          </div>
+                        }
+
+                        <!-- Skills/Tags -->
+                        @if (actor.skills && actor.skills.length > 0) {
+                          <div class="flex flex-wrap gap-1.5 mb-3">
+                            @for (skill of actor.skills.slice(0, 3); track skill) {
+                              <span class="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-300">
+                                {{ skill }}
+                              </span>
+                            }
+                            @if (actor.skills.length > 3) {
+                              <span class="px-2 py-1 text-xs text-neutral-500">
+                                +{{ actor.skills.length - 3 }}
+                              </span>
+                            }
+                          </div>
+                        }
+
+                        <!-- Actions -->
+                        <button 
+                          (click)="viewProfile(actor)"
+                          class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Profile
+                        </button>
+                      </div>
+                    </div>
+                  }
+                  
+                  <!-- Premium Upgrade Card (6th position for non-premium users) -->
+                  @if (!isPremium() && totalResultsCount() > 5) {
+                    <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl border-2 border-amber-500/30 overflow-hidden relative group hover:border-amber-500/50 transition-all duration-300">
+                      <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5"></div>
+                      <div class="relative p-6 flex flex-col items-center justify-center text-center h-full min-h-[380px]">
+                        <div class="mb-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
                           </svg>
                         </div>
-                      }
-
-                      <!-- Skills/Tags -->
-                      @if (actor.skills && actor.skills.length > 0) {
-                        <div class="flex flex-wrap gap-1.5 mb-3">
-                          @for (skill of actor.skills.slice(0, 3); track skill) {
-                            <span class="px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-300">
-                              {{ skill }}
-                            </span>
-                          }
-                          @if (actor.skills.length > 3) {
-                            <span class="px-2 py-1 text-xs text-neutral-500">
-                              +{{ actor.skills.length - 3 }}
-                            </span>
-                          }
-                        </div>
-                      }
-
-                      <!-- Actions -->
-                      <button 
-                        (click)="viewProfile(actor)"
-                        class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View Profile
-                      </button>
+                        <h3 class="text-xl font-bold text-white mb-2">{{ totalResultsCount() }} Results Found</h3>
+                        <p class="text-neutral-300 text-sm mb-4 px-2">
+                          You're viewing 5 of {{ totalResultsCount() }} results
+                        </p>
+                        <button class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg mb-3">
+                          🔓 Upgrade to Premium
+                        </button>
+                        <p class="text-xs text-neutral-400">Unlock all results & advanced filters</p>
+                      </div>
                     </div>
-                  </div>
-                }
+                  }
+                </div>
               </div>
             } @else if (searchQuery() || hasActiveFilters()) {
               <!-- No Results State (only show if user has searched) -->
@@ -739,18 +792,39 @@ interface ParsedSearchQuery {
                 </div>
               } @else if (wishlist().length > 0) {
                 <!-- Wishlist Items -->
-                <div class="space-y-3 mb-4">
+                <div class="space-y-3">
                   @for (actor of wishlist(); track actor.uid) {
-                    <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
-                      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm">
-                        {{ actor.stageName.charAt(0).toUpperCase() }}
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-neutral-200 truncate">{{ actor.stageName }}</p>
-                      </div>
+                    <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors group">
+                      <!-- Profile Photo - Clickable -->
+                      <button 
+                        (click)="viewProfile(actor)"
+                        class="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-[#90ACC8] rounded-full">
+                        @if (actor.profileImageUrl) {
+                          <img 
+                            [src]="actor.profileImageUrl" 
+                            [alt]="actor.stageName"
+                            class="w-10 h-10 rounded-full object-cover border-2 border-transparent group-hover:border-[#90ACC8] transition-colors">
+                        } @else {
+                          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm border-2 border-transparent group-hover:border-[#90ACC8] transition-colors">
+                            {{ actor.stageName.charAt(0).toUpperCase() }}
+                          </div>
+                        }
+                      </button>
+                      
+                      <!-- Name - Clickable -->
+                      <button 
+                        (click)="viewProfile(actor)"
+                        class="flex-1 min-w-0 text-left focus:outline-none">
+                        <p class="text-sm font-medium text-neutral-200 truncate group-hover:text-[#90ACC8] transition-colors">
+                          {{ actor.stageName }}
+                        </p>
+                      </button>
+                      
+                      <!-- Remove from Wishlist Button -->
                       <button 
                         (click)="toggleWishlist(actor)"
-                        class="text-neutral-400 hover:text-red-400 transition-colors">
+                        class="text-neutral-400 hover:text-red-400 transition-colors flex-shrink-0"
+                        title="Remove from wishlist">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -758,12 +832,6 @@ interface ParsedSearchQuery {
                     </div>
                   }
                 </div>
-
-                <button 
-                  (click)="viewAllWishlist()"
-                  class="w-full bg-[#90ACC8] hover:bg-[#7A9AB8] text-white py-2 rounded-lg text-sm font-medium transition-colors">
-                  View Profile
-                </button>
               } @else {
                 <!-- Empty State -->
                 <div class="text-center py-8">
@@ -810,6 +878,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private filterPersistence = inject(FilterPersistenceService);
   private notificationService = inject(NotificationService);
+  private profileService = inject(ProfileService);
   private destroy$ = new Subject<void>();
   private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
@@ -961,6 +1030,19 @@ export class SearchComponent implements OnInit, OnDestroy {
   wishlist = signal<ActorSearchResult[]>([]);
   wishlistLoading = signal(false);
 
+  // Premium status
+  isPremium = computed(() => {
+    const profileData = this.profileService.profileData();
+    
+    // Check if user is a producer (has producerProfile) - producers are always premium
+    // if (profileData?.producerProfile) {
+    //   return true;
+    // }
+    console.log(profileData,profileData?.producerProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
+    // For actors, check subscription status
+    return profileData?.producerProfile?.isSubscribed ?? false;
+  });
+
   // Voice player
   playingVoiceId = signal<string | null>(null);
   private audioElement: HTMLAudioElement | null = null;
@@ -1105,6 +1187,23 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.logger.log(`Filtered results: ${actors.length} actors found`);
     return actors;
   });
+
+  // Displayed actors - limited to 5 for non-premium users (6th spot is upgrade card)
+  displayedActors = computed(() => {
+    const allResults = this.filteredActors();
+    const premium = this.isPremium();
+    
+    // Premium users see all results
+    if (premium) {
+      return allResults;
+    }
+    
+    // Non-premium users see only first 5 results (6th position shows upgrade card)
+    return allResults.slice(0, 5);
+  });
+
+  // Total results count for non-premium message
+  totalResultsCount = computed(() => this.filteredActors().length);
 
   ngOnInit(): void {
     // Get current user

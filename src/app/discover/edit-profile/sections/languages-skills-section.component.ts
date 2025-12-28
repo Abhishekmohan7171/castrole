@@ -4,9 +4,13 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnDestroy,
   signal,
   computed,
 } from '@angular/core';
+import { Subject, Observable, of } from 'rxjs';
+import { debounceTime, takeUntil } from 'rxjs/operators';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import {
   Profile,
@@ -495,7 +499,10 @@ import {
   `,
   styles: ``,
 })
-export class LanguagesSkillsSectionComponent implements OnInit {
+export class LanguagesSkillsSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
+  private destroy$ = new Subject<void>();
+  private autosaveChange$ = new Subject<void>();
+
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
 
@@ -757,6 +764,25 @@ export class LanguagesSkillsSectionComponent implements OnInit {
 
   ngOnInit() {
     this.populateData();
+    this.setupAutosave();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAutosave() {
+    this.autosaveChange$
+      .pipe(
+        debounceTime(400),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (!this.isSaving()) {
+          this.performAutosave();
+        }
+      });
   }
 
   populateData() {
@@ -992,10 +1018,11 @@ export class LanguagesSkillsSectionComponent implements OnInit {
   }
 
   private triggerAutosave() {
-    if (this.isSaving()) {
-      return;
-    }
+    this.hasChanges.set(true);
+    this.autosaveChange$.next();
+  }
 
+  private performAutosave() {
     this.isSaving.set(true);
 
     this.save.emit({
@@ -1008,5 +1035,14 @@ export class LanguagesSkillsSectionComponent implements OnInit {
       this.isSaving.set(false);
       this.hasChanges.set(false);
     }, 800);
+  }
+
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.hasChanges() && !this.isSaving()) {
+      // Force immediate save before navigation
+      this.performAutosave();
+      return of(true);
+    }
+    return true;
   }
 }

@@ -45,14 +45,14 @@ Your Castrole application now has a **fully serverless, scalable video processin
 │  - Downloads raw video from Firebase Storage                             │
 │  - Updates Firestore: processingStatus = "PROCESSING"                    │
 │  - Runs FFmpeg to compress to 1080p                                      │
-│  - Uploads processed video to output bucket                              │
+│  - Uploads processed video to Firebase Storage (processed/ folder)       │
 │  - Updates Firestore: processingStatus = "READY"                         │
 └────────────────────────────┬────────────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    OUTPUT STORAGE BUCKET                                 │
-│              gs://castrole-processed-videos/                             │
+│                    FIREBASE STORAGE (Same Bucket)                        │
+│         gs://yberhood-castrole.firebasestorage.app/processed/            │
 │                  {userId}/{videoId}/1080p.mp4                            │
 └─────────────────────────────────────────────────────────────────────────┘
                              │
@@ -61,7 +61,7 @@ Your Castrole application now has a **fully serverless, scalable video processin
 │                         FIRESTORE                                        │
 │         uploads/{userId}/userUploads/{videoId}                           │
 │  - processingStatus: "READY"                                             │
-│  - processedUrl: "gs://castrole-processed-videos/..."                    │
+│  - processedUrl: "gs://yberhood-castrole.firebasestorage.app/..."        │
 └────────────────────────────┬────────────────────────────────────────────┘
                              │
                              ▼
@@ -222,7 +222,7 @@ exports.videoEncodeTrigger = async (req, res) => {
           env: [
             { name: 'RAW_OBJECT', value: objectName },
             { name: 'RAW_BUCKET', value: bucketName },
-            { name: 'PROC_BUCKET', value: 'castrole-processed-videos' }
+            { name: 'PROC_BUCKET', value: 'yberhood-castrole.firebasestorage.app' }
           ]
         }]
       }
@@ -279,12 +279,12 @@ ffmpeg -i /tmp/input_video \
   -movflags +faststart \
   /tmp/output_video.mp4
 
-# 5. Upload processed video to output bucket
-OUTPUT_PATH="${USER_ID}/${VIDEO_ID}/1080p.mp4"
+# 5. Upload processed video to Firebase Storage (processed/ folder)
+OUTPUT_PATH="processed/${USER_ID}/${VIDEO_ID}/1080p.mp4"
 gsutil cp /tmp/output_video.mp4 "gs://${PROC_BUCKET}/${OUTPUT_PATH}"
 
-# 6. Get public URL for processed video
-PROCESSED_URL="https://storage.googleapis.com/${PROC_BUCKET}/${OUTPUT_PATH}"
+# 6. Store gs:// URL for Firebase Storage
+PROCESSED_URL="gs://${PROC_BUCKET}/${OUTPUT_PATH}"
 
 # 7. Update Firestore: processingStatus = "READY"
 curl -X PATCH \
@@ -305,7 +305,7 @@ curl -X PATCH \
 - Downloads the raw video from Firebase Storage
 - Updates Firestore to "PROCESSING"
 - Runs FFmpeg to compress the video to 1080p with optimized settings
-- Uploads the processed video to the output bucket
+- Uploads the processed video to Firebase Storage (processed/ folder)
 - Updates Firestore to "READY" with the processed video URL
 
 ---
@@ -384,31 +384,35 @@ gsutil cp gs://yberhood-castrole.firebasestorage.app/raw/{userId}/{videoId}/orig
 
 ### **Processed Videos (Compressed to 1080p)**
 
-**Location:** GCS Console
-- **URL:** https://console.cloud.google.com/storage/browser/castrole-processed-videos
-- **Bucket:** `castrole-processed-videos`
-- **Path:** `{userId}/{videoId}/1080p.mp4`
+**Location:** Firebase Storage Console
+- **URL:** https://console.firebase.google.com/project/yberhood-castrole/storage
+- **Bucket:** `yberhood-castrole.firebasestorage.app`
+- **Path:** `processed/{userId}/{videoId}/1080p.mp4`
 
 **Example:**
 ```
-gs://castrole-processed-videos/amUvys9dHPeQWNgtTjPdYpWTCuh2/vid_1766429756882_1wyrh3ses/1080p.mp4
+gs://yberhood-castrole.firebasestorage.app/processed/amUvys9dHPeQWNgtTjPdYpWTCuh2/vid_1766429756882_1wyrh3ses/1080p.mp4
 ```
 
 **Via CLI:**
 ```bash
 # List all processed videos
-gsutil ls gs://castrole-processed-videos/
+gsutil ls gs://yberhood-castrole.firebasestorage.app/processed/
 
 # List videos for a specific user
-gsutil ls gs://castrole-processed-videos/{userId}/
+gsutil ls gs://yberhood-castrole.firebasestorage.app/processed/{userId}/
 
 # Download a processed video
-gsutil cp gs://castrole-processed-videos/{userId}/{videoId}/1080p.mp4 ./
+gsutil cp gs://yberhood-castrole.firebasestorage.app/processed/{userId}/{videoId}/1080p.mp4 ./
 ```
 
-**Public URL Format:**
-```
-https://storage.googleapis.com/castrole-processed-videos/{userId}/{videoId}/1080p.mp4
+**Access via Firebase SDK:**
+```typescript
+import { Storage, ref, getDownloadURL } from '@angular/fire/storage';
+
+const storage = inject(Storage);
+const videoRef = ref(storage, `processed/${userId}/${videoId}/1080p.mp4`);
+const downloadUrl = await getDownloadURL(videoRef);
 ```
 
 ---
@@ -428,7 +432,7 @@ https://storage.googleapis.com/castrole-processed-videos/{userId}/{videoId}/1080
   "fileSize": 152970000,
   "mimeType": "video/quicktime",
   "rawUrl": "https://firebasestorage.googleapis.com/...",
-  "processedUrl": "https://storage.googleapis.com/castrole-processed-videos/.../1080p.mp4",
+  "processedUrl": "gs://yberhood-castrole.firebasestorage.app/processed/.../1080p.mp4",
   "processingStatus": "READY",
   "uploadStartedAt": "2025-12-22T18:39:52.417Z",
   "uploadCompletedAt": "2025-12-22T18:40:15.450Z",
@@ -529,9 +533,10 @@ gcloud run jobs executions list --job=video-encode-job --region=asia-south1
    - **Lifecycle:** Files deleted after 3 days
    - **Notification:** Triggers Pub/Sub on OBJECT_FINALIZE
 
-2. **castrole-processed-videos**
-   - **Type:** GCS bucket
+2. **Firebase Storage (processed/ folder)**
+   - **Type:** Firebase Storage (same bucket as raw)
    - **Purpose:** Processed video storage
+   - **Path:** `processed/{userId}/{videoId}/1080p.mp4`
    - **Lifecycle:** Permanent storage
    - **Access:** Public read (via signed URLs or IAM)
 
@@ -565,7 +570,7 @@ gcloud run jobs executions list --job=video-encode-job --region=asia-south1
 **Environment Variables:**
 ```
 RAW_BUCKET=yberhood-castrole.firebasestorage.app
-PROC_BUCKET=castrole-processed-videos
+PROC_BUCKET=yberhood-castrole.firebasestorage.app
 JOB_NAME=video-encode-job
 REGION=asia-south1
 GCP_PROJECT=yberhood-castrole
@@ -587,7 +592,7 @@ GCP_PROJECT=yberhood-castrole
 ```
 RAW_OBJECT={path to raw video}
 RAW_BUCKET=yberhood-castrole.firebasestorage.app
-PROC_BUCKET=castrole-processed-videos
+PROC_BUCKET=yberhood-castrole.firebasestorage.app
 GCP_PROJECT=yberhood-castrole
 ```
 
@@ -739,7 +744,7 @@ gcloud run jobs executions list --job=video-encode-job --region=asia-south1
 gsutil ls gs://yberhood-castrole.firebasestorage.app/raw/{userId}/
 
 # Processed video
-gsutil ls gs://castrole-processed-videos/{userId}/
+gsutil ls gs://yberhood-castrole.firebasestorage.app/processed/{userId}/
 ```
 
 ### **4. Verify in Firebase Console**
@@ -854,7 +859,7 @@ gcloud run jobs add-iam-policy-binding video-encode-job \
 ✅ **Trigger works:** Cloud Function logs show execution
 ✅ **Queue works:** Firestore document shows `processingStatus: "QUEUED"`
 ✅ **Job works:** Cloud Run Job execution appears in list
-✅ **Processing works:** Processed video appears in `castrole-processed-videos` bucket
+✅ **Processing works:** Processed video appears in Firebase Storage `processed/` folder
 ✅ **Complete:** Firestore shows `processingStatus: "READY"` with `processedUrl`
 ✅ **UI updates:** Angular app shows success message
 
