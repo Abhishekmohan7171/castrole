@@ -30,14 +30,23 @@ import {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-transparent text-white">
+    <div
+      class="min-h-screen bg-transparent text-white relative"
+      [ngClass]="{ 'actor-theme': isActor() }"
+    >
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
           <!-- Left: Profile card + media -->
           <section class="space-y-4">
             <!-- Profile card -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50 relative"
+              class="rounded-xl p-5 border relative backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <!-- Settings Icon (top left, absolute) -->
               @if (isViewingOwnProfile()) {
@@ -519,8 +528,8 @@ import {
               </div>
               } @else if (hasImages()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
-                @for (imageUrl of galleryImageUrls(); track imageUrl; let idx = $index)
-                { @if (idx < 4) {
+                @for (imageUrl of galleryImageUrls(); track imageUrl; let idx =
+                $index) { @if (idx < 4) {
                 <div
                   class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
                   [ngClass]="{
@@ -712,10 +721,16 @@ import {
             @if (isActor()) {
             <!-- Location -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
               >
                 location
               </div>
@@ -727,10 +742,16 @@ import {
             <!-- Education -->
             @if (hasEducation()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 {{ isActor() ? 'acting education' : 'education' }}
               </div>
@@ -774,10 +795,16 @@ import {
             <!-- Experiences -->
             @if (hasWorks()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 {{ isActor() ? 'experiences' : 'previous works' }}
               </div>
@@ -829,10 +856,16 @@ import {
             <!-- Languages -->
             @if (hasLanguages()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 languages
               </div>
@@ -871,10 +904,16 @@ import {
             <!-- Extra Curricular / Skills -->
             @if (hasSkills()) {
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div
-                class="text-xs text-neutral-500 uppercase tracking-wide mb-3"
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
                 extra curricular
               </div>
@@ -911,12 +950,18 @@ import {
             <!-- Producer Sections -->
             <!-- Location -->
             <div
-              class="bg-neutral-900/50 rounded-xl p-5 border border-neutral-800/50"
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
             >
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     location
                   </div>
@@ -926,7 +971,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     designation
                   </div>
@@ -939,7 +984,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     production house
                   </div>
@@ -952,7 +997,7 @@ import {
                 </div>
                 <div>
                   <div
-                    class="text-xs text-neutral-500 uppercase tracking-wide mb-2"
+                    class="text-sm text-neutral-500 uppercase tracking-wide mb-2"
                   >
                     industry type
                   </div>
@@ -1099,7 +1144,9 @@ import {
         }
 
         <!-- Media content -->
-        <div class="w-full h-full flex items-center justify-center px-20 relative">
+        <div
+          class="w-full h-full flex items-center justify-center px-20 relative"
+        >
           @if (previewMediaType() === 'image') {
           <img
             [src]="previewMediaUrl()"
@@ -1125,20 +1172,21 @@ import {
             <svg
               class="w-12 h-12 text-white animate-spin"
               fill="none"
-              viewBox="0 0 24 24">
+              viewBox="0 0 24 24"
+            >
               <circle
                 class="opacity-25"
                 cx="12"
                 cy="12"
                 r="10"
                 stroke="currentColor"
-                stroke-width="4">
-              </circle>
+                stroke-width="4"
+              ></circle>
               <path
                 class="opacity-75"
                 fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
           </div>
           }
@@ -1160,6 +1208,30 @@ import {
     `
       :host {
         display: block;
+      }
+      /* Subtle purple gradient background for actors */
+      .actor-theme::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            ellipse at top left,
+            rgba(147, 51, 234, 0.02) 0%,
+            transparent 35%
+          ),
+          radial-gradient(
+            ellipse at bottom right,
+            rgba(168, 85, 247, 0.015) 0%,
+            transparent 35%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .actor-theme {
+        position: relative;
       }
     `,
   ],
@@ -1228,7 +1300,7 @@ export class ProfileComponent implements OnInit {
     }
 
     // Filter out the profile picture
-    return allImages.filter(url => url !== profilePicUrl);
+    return allImages.filter((url) => url !== profilePicUrl);
   });
 
   // Modal state
@@ -1246,9 +1318,13 @@ export class ProfileComponent implements OnInit {
       : this.imageUrls();
   });
 
-  canGoToPrevious = computed(() => !this.isProfilePicIsolationMode() && this.currentMediaIndex() > 0);
+  canGoToPrevious = computed(
+    () => !this.isProfilePicIsolationMode() && this.currentMediaIndex() > 0
+  );
   canGoToNext = computed(
-    () => !this.isProfilePicIsolationMode() && this.currentMediaIndex() < this.currentMediaList().length - 1
+    () =>
+      !this.isProfilePicIsolationMode() &&
+      this.currentMediaIndex() < this.currentMediaList().length - 1
   );
 
   // Audio instance for voice intro
@@ -1528,17 +1604,27 @@ export class ProfileComponent implements OnInit {
       const processedList = await listAll(processedRef);
 
       // Each prefix is a videoId folder containing 1080p.mp4
-      const videoUrlPromises = processedList.prefixes.map(async (videoIdFolder) => {
-        try {
-          const videoRef = ref(this.storage, `${videoIdFolder.fullPath}/1080p.mp4`);
-          return await getDownloadURL(videoRef);
-        } catch (error) {
-          console.warn(`Failed to load video from ${videoIdFolder.fullPath}:`, error);
-          return null;
+      const videoUrlPromises = processedList.prefixes.map(
+        async (videoIdFolder) => {
+          try {
+            const videoRef = ref(
+              this.storage,
+              `${videoIdFolder.fullPath}/1080p.mp4`
+            );
+            return await getDownloadURL(videoRef);
+          } catch (error) {
+            console.warn(
+              `Failed to load video from ${videoIdFolder.fullPath}:`,
+              error
+            );
+            return null;
+          }
         }
-      });
+      );
 
-      const videos = (await Promise.all(videoUrlPromises)).filter((url): url is string => url !== null);
+      const videos = (await Promise.all(videoUrlPromises)).filter(
+        (url): url is string => url !== null
+      );
       this.videoUrls.set(videos);
 
       // Fetch images
@@ -1779,11 +1865,15 @@ export class ProfileComponent implements OnInit {
 
   navigateToSocialLinks() {
     this.router.navigate(['/discover/profile/edit'], {
-      queryParams: { section: 'socials' }
+      queryParams: { section: 'socials' },
     });
   }
 
-  openPreviewModal(url: string, type: 'image' | 'video', isolationMode: boolean = false) {
+  openPreviewModal(
+    url: string,
+    type: 'image' | 'video',
+    isolationMode: boolean = false
+  ) {
     this.previewMediaUrl.set(url);
     this.previewMediaType.set(type);
     this.isProfilePicIsolationMode.set(isolationMode);
@@ -1873,7 +1963,7 @@ export class ProfileComponent implements OnInit {
   onDummyProfileClick() {
     // Navigate to edit profile basic info section
     this.router.navigate(['/discover/profile/edit'], {
-      fragment: 'basic-info'
+      fragment: 'basic-info',
     });
   }
 
