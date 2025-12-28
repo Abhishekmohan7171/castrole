@@ -523,11 +523,11 @@ export class UploadComponent implements OnInit, OnDestroy {
   // Subscription status
   isSubscribed = computed(() => {
     const profileData = this.profileService.profileData();
-    
     // Check if user is a producer (has producerProfile)
-    if (profileData?.producerProfile) {
-      return true; // Producers have no limits
-    }
+    // if (profileData?.producerProfile) {
+    //   return true; // Producers have no limits
+    // }
+    console.log(profileData,profileData?.actorProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
     
     // For actors, check subscription status
     return profileData?.actorProfile?.isSubscribed ?? false;
