@@ -447,6 +447,24 @@ import {
                   ></video>
                 </div>
                 } }
+
+                <!-- Add More Videos Button -->
+                @if (isViewingOwnProfile() && videoUrls().length < 4) {
+                <button
+                  (click)="navigateToUpload()"
+                  class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    class="h-8 w-8 text-neutral-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                }
               </div>
               } @else if (isViewingOwnProfile()) {
               <button
@@ -518,6 +536,24 @@ import {
                   />
                 </div>
                 } }
+
+                <!-- Add More Images Button -->
+                @if (isViewingOwnProfile() && imageUrls().length < 4) {
+                <button
+                  (click)="navigateToUpload()"
+                  class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    class="h-8 w-8 text-neutral-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                }
               </div>
               } @else if (isViewingOwnProfile()) {
               <button
@@ -1062,11 +1098,13 @@ import {
         </div>
 
         <!-- Counter indicator -->
+        @if (!isProfilePicIsolationMode()) {
         <div
           class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-black/50 rounded-full text-white text-sm ring-1 ring-white/20"
         >
           {{ currentMediaIndex() + 1 }} / {{ currentMediaList().length }}
         </div>
+        }
       </div>
     </div>
     }
@@ -1138,6 +1176,7 @@ export class ProfileComponent implements OnInit {
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
+  isProfilePicIsolationMode = signal(false);
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1146,9 +1185,9 @@ export class ProfileComponent implements OnInit {
       : this.imageUrls();
   });
 
-  canGoToPrevious = computed(() => this.currentMediaIndex() > 0);
+  canGoToPrevious = computed(() => !this.isProfilePicIsolationMode() && this.currentMediaIndex() > 0);
   canGoToNext = computed(
-    () => this.currentMediaIndex() < this.currentMediaList().length - 1
+    () => !this.isProfilePicIsolationMode() && this.currentMediaIndex() < this.currentMediaList().length - 1
   );
 
   // Audio instance for voice intro
@@ -1677,9 +1716,10 @@ export class ProfileComponent implements OnInit {
     this.router.navigate(['/discover/upload']);
   }
 
-  openPreviewModal(url: string, type: 'image' | 'video') {
+  openPreviewModal(url: string, type: 'image' | 'video', isolationMode: boolean = false) {
     this.previewMediaUrl.set(url);
     this.previewMediaType.set(type);
+    this.isProfilePicIsolationMode.set(isolationMode);
 
     // Find the index of the current media in the appropriate list
     const mediaList = type === 'video' ? this.videoUrls() : this.imageUrls();
@@ -1693,6 +1733,7 @@ export class ProfileComponent implements OnInit {
     this.isPreviewModalOpen.set(false);
     this.previewMediaUrl.set(null);
     this.currentMediaIndex.set(0);
+    this.isProfilePicIsolationMode.set(false);
   }
 
   goToPreviousMedia() {
@@ -1757,25 +1798,16 @@ export class ProfileComponent implements OnInit {
   }
 
   onDummyProfileClick() {
-    // Switch to photos tab
-    this.mediaTab = 'photos';
-
-    // If there are images, open the first one in preview
-    if (this.hasImages()) {
-      const firstImage = this.imageUrls()[0];
-      this.openPreviewModal(firstImage, 'image');
-    } else {
-      // If no images, redirect to upload page with return URL
-      this.router.navigate(['/discover/upload'], {
-        queryParams: { returnUrl: '/discover/profile' },
-      });
-    }
+    // Navigate to edit profile basic info section
+    this.router.navigate(['/discover/profile/edit'], {
+      fragment: 'basic-info'
+    });
   }
 
   viewProfilePicture() {
     const profileImageUrl = this.getProfileImageUrl();
     if (profileImageUrl) {
-      this.openPreviewModal(profileImageUrl, 'image');
+      this.openPreviewModal(profileImageUrl, 'image', true);
     }
   }
 
