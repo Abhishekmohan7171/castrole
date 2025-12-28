@@ -417,7 +417,17 @@ import {
               </div>
 
               <!-- Videos Tab Content -->
-              @if (mediaTab === 'videos') { @if (hasVideos()) {
+              @if (mediaTab === 'videos') {
+              <!-- Loading Skeleton -->
+              @if (isLoadingMedia()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (i of [1, 2]; track i) {
+                <div
+                  class="aspect-video rounded-lg bg-neutral-800/50 animate-pulse"
+                ></div>
+                }
+              </div>
+              } @else if (hasVideos()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
                 @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
                 { @if (idx < 4) {
@@ -431,7 +441,9 @@ import {
                 >
                   <video
                     [src]="videoUrl"
-                    class="w-full h-full object-cover pointer-events-none"
+                    class="w-full h-full object-cover pointer-events-none bg-neutral-900"
+                    preload="metadata"
+                    loading="lazy"
                   ></video>
                 </div>
                 } }
@@ -477,7 +489,17 @@ import {
               } }
 
               <!-- Photos Tab Content -->
-              @if (mediaTab === 'photos') { @if (hasImages()) {
+              @if (mediaTab === 'photos') {
+              <!-- Loading Skeleton -->
+              @if (isLoadingMedia()) {
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                @for (i of [1, 2]; track i) {
+                <div
+                  class="aspect-video rounded-lg bg-neutral-800/50 animate-pulse"
+                ></div>
+                }
+              </div>
+              } @else if (hasImages()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
                 @for (imageUrl of imageUrls(); track imageUrl; let idx = $index)
                 { @if (idx < 4) {
