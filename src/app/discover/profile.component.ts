@@ -17,7 +17,7 @@ import {
   getDocs,
   limit,
 } from '@angular/fire/firestore';
-import { Storage, ref, listAll, getDownloadURL } from '@angular/fire/storage';
+import { Storage, ref, listAll, getDownloadURL, deleteObject } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import {
   Profile,
@@ -33,6 +33,7 @@ import {
     <div
       class="min-h-screen bg-transparent text-white relative"
       [ngClass]="{ 'actor-theme': isActor() }"
+      (click)="closeMenu()"
     >
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
@@ -444,19 +445,89 @@ import {
                 @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
                 { @if (idx < 4) {
                 <div
-                  class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                  class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
                   [ngClass]="{
                     'hover:ring-purple-500/50': isActor(),
-                    'hover:ring-neutral-600': !isActor()
+                    'hover:ring-neutral-600': !isActor(),
+                    'overflow-hidden': openMenuUrl() !== videoUrl,
+                    'overflow-visible': openMenuUrl() === videoUrl
                   }"
                   (click)="openPreviewModal(videoUrl, 'video')"
                 >
                   <video
                     [src]="videoUrl"
-                    class="w-full h-full object-cover pointer-events-none bg-neutral-900"
+                    class="w-full h-full object-cover pointer-events-none bg-neutral-900 rounded-lg"
                     preload="metadata"
                     loading="lazy"
                   ></video>
+
+                  <!-- 3-dot menu button (only for own profile) -->
+                  @if (isViewingOwnProfile()) {
+                  <button
+                    (click)="toggleMenu(videoUrl, $event)"
+                    class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="More options"
+                  >
+                    <svg
+                      class="w-4 h-4 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                      />
+                    </svg>
+                  </button>
+
+                  <!-- Dropdown Menu -->
+                  @if (openMenuUrl() === videoUrl) {
+                  <div
+                    class="absolute top-10 right-2 bg-neutral-900 rounded-lg shadow-xl ring-1 ring-white/10 z-10 min-w-[160px] overflow-hidden"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <!-- Share Option -->
+                    <button
+                      (click)="shareMediaLink(videoUrl)"
+                      class="w-full px-4 py-2.5 text-left text-white hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                        />
+                      </svg>
+                      <span class="text-sm">Share Link</span>
+                    </button>
+
+                    <!-- Delete Option -->
+                    <button
+                      (click)="showDeleteConfirmation(videoUrl, 'video')"
+                      class="w-full px-4 py-2.5 text-left text-red-400 hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                      <span class="text-sm">Delete</span>
+                    </button>
+                  </div>
+                  } }
                 </div>
                 } }
 
@@ -534,18 +605,88 @@ import {
                 @for (imageUrl of galleryImageUrls(); track imageUrl; let idx =
                 $index) { @if (idx < 4) {
                 <div
-                  class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
+                  class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
                   [ngClass]="{
                     'hover:ring-purple-500/50': isActor(),
-                    'hover:ring-neutral-600': !isActor()
+                    'hover:ring-neutral-600': !isActor(),
+                    'overflow-hidden': openMenuUrl() !== imageUrl,
+                    'overflow-visible': openMenuUrl() === imageUrl
                   }"
                   (click)="openPreviewModal(imageUrl, 'image')"
                 >
                   <img
                     [src]="imageUrl"
                     alt="Portfolio image"
-                    class="w-full h-full object-cover"
+                    class="w-full h-full object-cover rounded-lg"
                   />
+
+                  <!-- 3-dot menu button (only for own profile) -->
+                  @if (isViewingOwnProfile()) {
+                  <button
+                    (click)="toggleMenu(imageUrl, $event)"
+                    class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="More options"
+                  >
+                    <svg
+                      class="w-4 h-4 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                      />
+                    </svg>
+                  </button>
+
+                  <!-- Dropdown Menu -->
+                  @if (openMenuUrl() === imageUrl) {
+                  <div
+                    class="absolute top-10 right-2 bg-neutral-900 rounded-lg shadow-xl ring-1 ring-white/10 z-10 min-w-[160px] overflow-hidden"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <!-- Share Option -->
+                    <button
+                      (click)="shareMediaLink(imageUrl)"
+                      class="w-full px-4 py-2.5 text-left text-white hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                        />
+                      </svg>
+                      <span class="text-sm">Share Link</span>
+                    </button>
+
+                    <!-- Delete Option -->
+                    <button
+                      (click)="showDeleteConfirmation(imageUrl, 'image')"
+                      class="w-full px-4 py-2.5 text-left text-red-400 hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                      <span class="text-sm">Delete</span>
+                    </button>
+                  </div>
+                  } }
                 </div>
                 } }
 
@@ -1100,6 +1241,57 @@ import {
         </div>
         }
 
+        <!-- Share and Delete Actions (only for own profile) -->
+        @if (isViewingOwnProfile() && !isProfilePicIsolationMode()) {
+        <div class="absolute bottom-16 right-4 z-10 flex gap-2">
+          <!-- Share Link Button -->
+          <button
+            (click)="shareMediaLink(); $event.stopPropagation()"
+            class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Share link"
+            title="Copy media link to clipboard"
+          >
+            <svg
+              class="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+              />
+            </svg>
+            <span class="text-white text-sm">Share</span>
+          </button>
+
+          <!-- Delete Button -->
+          <button
+            (click)="showDeleteConfirmation(); $event.stopPropagation()"
+            class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+            aria-label="Delete media"
+            title="Delete this media"
+          >
+            <svg
+              class="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+            <span class="text-white text-sm">Delete</span>
+          </button>
+        </div>
+        }
+
         <!-- Previous button -->
         @if (canGoToPrevious()) {
         <button
@@ -1203,6 +1395,68 @@ import {
           {{ currentMediaIndex() + 1 }} / {{ currentMediaList().length }}
         </div>
         }
+      </div>
+    </div>
+    }
+
+    <!-- Delete Confirmation Dialog -->
+    @if (isDeleteConfirmationOpen()) {
+    <div
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+      (click)="cancelDelete()"
+    >
+      <div
+        class="bg-neutral-900 rounded-xl p-6 max-w-md w-full ring-1 ring-white/10 shadow-2xl"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Warning Icon -->
+        <div class="flex items-center justify-center mb-4">
+          <div class="bg-red-600/20 rounded-full p-3">
+            <svg
+              class="w-8 h-8 text-red-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Dialog Title -->
+        <h3 class="text-xl font-semibold text-white text-center mb-2">
+          Delete {{ pendingDeleteType() === 'video' ? 'Video' : 'Image' }}?
+        </h3>
+
+        <!-- Dialog Message -->
+        <p class="text-neutral-400 text-center mb-6">
+          This action cannot be undone. The {{ pendingDeleteType() }} will be
+          permanently removed from your gallery.
+        </p>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <!-- Cancel Button -->
+          <button
+            (click)="cancelDelete()"
+            class="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors font-medium"
+          >
+            Cancel
+          </button>
+
+          <!-- Confirm Delete Button -->
+          <button
+            (click)="confirmDelete()"
+            class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
     }
@@ -1313,6 +1567,14 @@ export class ProfileComponent implements OnInit {
   currentMediaIndex = signal(0);
   isProfilePicIsolationMode = signal(false);
   isMediaLoading = signal(false);
+
+  // Delete confirmation dialog state
+  isDeleteConfirmationOpen = signal(false);
+  pendingDeleteUrl = signal<string | null>(null);
+  pendingDeleteType = signal<'image' | 'video'>('image');
+
+  // Thumbnail context menu state
+  openMenuUrl = signal<string | null>(null);
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -2093,6 +2355,199 @@ export class ProfileComponent implements OnInit {
       this.closePreviewModal();
     } catch (error) {
       // Handle error silently
+    }
+  }
+
+  /**
+   * Toggle thumbnail context menu
+   */
+  toggleMenu(url: string, event: Event) {
+    event.stopPropagation();
+    if (this.openMenuUrl() === url) {
+      this.openMenuUrl.set(null);
+    } else {
+      this.openMenuUrl.set(url);
+    }
+  }
+
+  /**
+   * Close thumbnail context menu
+   */
+  closeMenu() {
+    this.openMenuUrl.set(null);
+  }
+
+  /**
+   * Share media link by copying to clipboard (works for both modal and thumbnails)
+   */
+  async shareMediaLink(url?: string) {
+    const mediaUrl = url || this.previewMediaUrl();
+    if (!mediaUrl) return;
+
+    // Close menu if sharing from thumbnail
+    if (url) {
+      this.closeMenu();
+    }
+
+    try {
+      await navigator.clipboard.writeText(mediaUrl);
+      // You can add a toast notification here if you have a notification service
+      console.log('Media link copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy link to clipboard:', error);
+      // Fallback: try to select and copy the text
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = mediaUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        console.log('Media link copied to clipboard (fallback)');
+      } catch (fallbackError) {
+        console.error('Fallback copy also failed:', fallbackError);
+      }
+    }
+  }
+
+  /**
+   * Show delete confirmation dialog (works for both modal and thumbnails)
+   */
+  showDeleteConfirmation(url?: string, type?: 'image' | 'video') {
+    const mediaUrl = url || this.previewMediaUrl();
+    const mediaType = type || this.previewMediaType();
+    if (!mediaUrl) return;
+
+    // Close menu if deleting from thumbnail
+    if (url) {
+      this.closeMenu();
+    }
+
+    this.pendingDeleteUrl.set(mediaUrl);
+    this.pendingDeleteType.set(mediaType);
+    this.isDeleteConfirmationOpen.set(true);
+  }
+
+  /**
+   * Cancel delete operation
+   */
+  cancelDelete() {
+    this.isDeleteConfirmationOpen.set(false);
+    this.pendingDeleteUrl.set(null);
+  }
+
+  /**
+   * Confirm and execute delete operation
+   */
+  async confirmDelete() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    const mediaUrl = this.pendingDeleteUrl();
+    const mediaType = this.pendingDeleteType();
+    if (!mediaUrl) return;
+
+    // Close confirmation dialog
+    this.isDeleteConfirmationOpen.set(false);
+
+    try {
+      // Extract the storage path from the URL
+      const storagePath = this.extractStoragePathFromUrl(mediaUrl);
+      if (!storagePath) {
+        console.error('Could not extract storage path from URL:', mediaUrl);
+        alert('Failed to delete media. Could not parse storage path.');
+        return;
+      }
+
+      console.log('Deleting from path:', storagePath);
+
+      // Delete from Firebase Storage
+      const storageRef = ref(this.storage, storagePath);
+      await deleteObject(storageRef);
+
+      // If it's a video, also delete the entire video folder
+      if (mediaType === 'video') {
+        // Extract video folder path (everything before /1080p.mp4)
+        const videoFolderPath = storagePath.replace('/1080p.mp4', '');
+        try {
+          const videoFolderRef = ref(this.storage, videoFolderPath);
+          const folderContents = await listAll(videoFolderRef);
+
+          // Delete all files in the folder
+          await Promise.all(
+            folderContents.items.map((item) => deleteObject(item))
+          );
+        } catch (error) {
+          console.warn('Could not delete entire video folder:', error);
+        }
+      }
+
+      // Update local state by removing the URL from the appropriate array
+      if (mediaType === 'video') {
+        const updatedVideos = this.videoUrls().filter((url) => url !== mediaUrl);
+        this.videoUrls.set(updatedVideos);
+      } else {
+        const updatedImages = this.imageUrls().filter((url) => url !== mediaUrl);
+        this.imageUrls.set(updatedImages);
+      }
+
+      // Close the modal
+      this.closePreviewModal();
+
+      console.log(`${mediaType} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      alert(`Failed to delete ${mediaType}. Please try again.`);
+    }
+  }
+
+  /**
+   * Extract Firebase Storage path from download URL
+   * Handles both formats:
+   * - https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Ffile?alt=media&token=...
+   * - gs://bucket/path/to/file
+   */
+  private extractStoragePathFromUrl(url: string): string | null {
+    try {
+      // Try to parse as HTTP/HTTPS URL first
+      if (url.startsWith('http')) {
+        const urlObj = new URL(url);
+
+        // Check if it's a Firebase Storage URL
+        if (urlObj.hostname.includes('firebasestorage.googleapis.com')) {
+          // Extract path from /v0/b/{bucket}/o/{encodedPath}
+          const pathMatch = urlObj.pathname.match(/\/v0\/b\/[^\/]+\/o\/(.+)/);
+          if (pathMatch && pathMatch[1]) {
+            // Decode the path (URL encoded)
+            // Remove query parameters if any
+            const encodedPath = pathMatch[1].split('?')[0];
+            return decodeURIComponent(encodedPath);
+          }
+        }
+
+        // Try alternate format
+        const altMatch = urlObj.pathname.match(/\/o\/(.+)/);
+        if (altMatch && altMatch[1]) {
+          const encodedPath = altMatch[1].split('?')[0];
+          return decodeURIComponent(encodedPath);
+        }
+      }
+
+      // Try gs:// format
+      if (url.startsWith('gs://')) {
+        const gsMatch = url.match(/^gs:\/\/[^\/]+\/(.+)/);
+        if (gsMatch && gsMatch[1]) {
+          return gsMatch[1];
+        }
+      }
+
+      console.error('Could not match URL pattern:', url);
+      return null;
+    } catch (error) {
+      console.error('Error extracting storage path from URL:', error, url);
+      return null;
     }
   }
 
