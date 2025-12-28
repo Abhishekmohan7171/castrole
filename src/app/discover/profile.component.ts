@@ -1401,13 +1401,22 @@ export class ProfileComponent implements OnInit {
   private async loadMediaFromStorage(userId: string) {
     this.isLoadingMedia.set(true);
     try {
-      // Fetch videos
-      const videosRef = ref(this.storage, `users/${userId}/videos`);
-      const videosList = await listAll(videosRef);
-      const videoUrlPromises = videosList.items.map((item) =>
-        getDownloadURL(item)
-      );
-      const videos = await Promise.all(videoUrlPromises);
+      // Fetch videos from processed folder
+      const processedRef = ref(this.storage, `processed/${userId}`);
+      const processedList = await listAll(processedRef);
+
+      // Each prefix is a videoId folder containing 1080p.mp4
+      const videoUrlPromises = processedList.prefixes.map(async (videoIdFolder) => {
+        try {
+          const videoRef = ref(this.storage, `${videoIdFolder.fullPath}/1080p.mp4`);
+          return await getDownloadURL(videoRef);
+        } catch (error) {
+          console.warn(`Failed to load video from ${videoIdFolder.fullPath}:`, error);
+          return null;
+        }
+      });
+
+      const videos = (await Promise.all(videoUrlPromises)).filter((url): url is string => url !== null);
       this.videoUrls.set(videos);
 
       // Fetch images
