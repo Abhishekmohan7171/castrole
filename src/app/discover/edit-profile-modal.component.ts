@@ -498,12 +498,12 @@ import {
                     formControlName="industryType"
                     class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select industry</option>
-                    <option value="Film">Film</option>
-                    <option value="Television">Television</option>
-                    <option value="Web Series">Web Series</option>
-                    <option value="Theater">Theater</option>
-                    <option value="Advertisement">Advertisement</option>
+                    <option value="">select industry</option>
+                    <option value="Film">film</option>
+                    <option value="Television">television</option>
+                    <option value="Web Series">web series</option>
+                    <option value="Theater">theater</option>
+                    <option value="Advertisement">advertisement</option>
                   </select>
                 </div>
               </div>

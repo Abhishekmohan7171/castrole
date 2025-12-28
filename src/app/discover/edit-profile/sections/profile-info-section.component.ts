@@ -122,7 +122,7 @@ import { Profile } from '../../../../assets/interfaces/profile.interfaces';
               class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
             >
               <option value="" disabled class="bg-neutral-900 text-neutral-500">
-                Select industry type
+                select industry type
               </option>
               <option value="film" class="bg-neutral-900 text-white">
                 film

@@ -155,16 +155,16 @@ export const CHARACTER_TYPE_SYNONYMS: Record<string, string> = {
 
 // Gender options (matching Edit Profile)
 export const GENDER_OPTIONS = [
-  { value: 'any', label: 'Any' },
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'non-binary', label: 'Non-Binary' },
-  { value: 'transgender', label: 'Transgender' },
-  { value: 'genderqueer', label: 'Genderqueer' },
-  { value: 'genderfluid', label: 'Genderfluid' },
-  { value: 'agender', label: 'Agender' },
-  { value: 'two-spirit', label: 'Two-Spirit' },
-  { value: 'other', label: 'Other' }
+  { value: 'any', label: 'any' },
+  { value: 'male', label: 'male' },
+  { value: 'female', label: 'female' },
+  { value: 'non-binary', label: 'non-binary' },
+  { value: 'transgender', label: 'transgender' },
+  { value: 'genderqueer', label: 'genderqueer' },
+  { value: 'genderfluid', label: 'genderfluid' },
+  { value: 'agender', label: 'agender' },
+  { value: 'two-spirit', label: 'two-spirit' },
+  { value: 'other', label: 'other' }
 ];
 
 // Skills list (from Edit Profile)
