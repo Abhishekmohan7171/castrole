@@ -151,7 +151,10 @@ import {
                 <!-- Right Column: Info -->
                 <div class="space-y-3">
                   <!-- Name -->
-                  <h1 class="pl-4 text-2xl font-medium text-neutral-200">
+                  <h1
+                    class="text-2xl font-medium text-neutral-200"
+                    [ngClass]="{ 'pl-4': isActor() }"
+                  >
                     {{ getDisplayName() }}
                   </h1>
 
@@ -739,120 +742,6 @@ import {
               </div>
             </div>
 
-            <!-- Education -->
-            @if (hasEducation()) {
-            <div
-              class="rounded-xl p-5 border backdrop-blur-xl"
-              [ngClass]="{
-                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
-                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
-              }"
-            >
-              <div
-                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
-              >
-                {{ isActor() ? 'acting education' : 'education' }}
-              </div>
-              <div class="space-y-3">
-                @for (edu of getEducationList(); track edu) {
-                <div>
-                  <div class="text-sm text-neutral-300 font-medium">
-                    {{ edu.courseName }}
-                  </div>
-                  <div class="text-xs text-neutral-500 mt-0.5">
-                    {{ edu.schoolName }} | {{ edu.yearCompleted }}
-                  </div>
-                  @if (edu.certificateUrl) {
-                  <a
-                    [href]="edu.certificateUrl"
-                    target="_blank"
-                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    view certificate
-                  </a>
-                  }
-                </div>
-                }
-              </div>
-            </div>
-            }
-
-            <!-- Experiences -->
-            @if (hasWorks()) {
-            <div
-              class="rounded-xl p-5 border backdrop-blur-xl"
-              [ngClass]="{
-                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
-                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
-              }"
-            >
-              <div
-                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
-              >
-                {{ isActor() ? 'experiences' : 'previous works' }}
-              </div>
-              <div class="space-y-3">
-                @for (work of getWorksList(); track work) {
-                <div>
-                  <div class="text-sm text-neutral-300 font-medium">
-                    {{ work.projectName }}
-                  </div>
-                  <div class="text-xs text-neutral-500 mt-0.5">
-                    @if (work.role) {
-                    {{ work.role }}@if (work.genre) {<span>
-                      {{ isActor() ? '|' : '•' }} {{ work.genre }}</span
-                    >} {{ isActor() ? '|' : '•' }} {{ work.year }}
-                    } @else {
-                    {{ work.genre || 'supporting role' }}
-                    {{ isActor() ? '|' : '•' }} {{ work.year }}
-                    }
-                  </div>
-                  @if (work.projectLink) {
-                  <a
-                    [href]="work.projectLink"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    view project
-                  </a>
-                  }
-                </div>
-                }
-              </div>
-            </div>
-            }
-
             <!-- Languages -->
             @if (hasLanguages()) {
             <div
@@ -1011,6 +900,120 @@ import {
               </div>
             </div>
 
+            }
+
+            <!-- Education -->
+            @if (hasEducation()) {
+            <div
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
+            >
+              <div
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                {{ isActor() ? 'acting education' : 'education' }}
+              </div>
+              <div class="space-y-3">
+                @for (edu of getEducationList(); track edu) {
+                <div>
+                  <div class="text-sm text-neutral-300 font-medium">
+                    {{ edu.courseName }}
+                  </div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    {{ edu.schoolName }} | {{ edu.yearCompleted }}
+                  </div>
+                  @if (edu.certificateUrl) {
+                  <a
+                    [href]="edu.certificateUrl"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    view certificate
+                  </a>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Experiences -->
+            @if (hasWorks()) {
+            <div
+              class="rounded-xl p-5 border backdrop-blur-xl"
+              [ngClass]="{
+                'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
+                  isActor(),
+                'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
+                  !isActor()
+              }"
+            >
+              <div
+                class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
+              >
+                {{ isActor() ? 'experiences' : 'previous credits' }}
+              </div>
+              <div class="space-y-3">
+                @for (work of getWorksList(); track work) {
+                <div>
+                  <div class="text-sm text-neutral-300 font-medium">
+                    {{ work.projectName }}
+                  </div>
+                  <div class="text-xs text-neutral-500 mt-0.5">
+                    @if (work.role) {
+                    {{ work.role }}@if (work.genre) {<span>
+                      {{ isActor() ? '|' : '•' }} {{ work.genre }}</span
+                    >} {{ isActor() ? '|' : '•' }} {{ work.year }}
+                    } @else {
+                    {{ work.genre || 'supporting role' }}
+                    {{ isActor() ? '|' : '•' }} {{ work.year }}
+                    }
+                  </div>
+                  @if (work.projectLink) {
+                  <a
+                    [href]="work.projectLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-medium text-white bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    view project
+                  </a>
+                  }
+                </div>
+                }
+              </div>
+            </div>
             }
           </section>
         </div>
