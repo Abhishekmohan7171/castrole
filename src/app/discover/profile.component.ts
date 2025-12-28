@@ -519,7 +519,7 @@ import {
               </div>
               } @else if (hasImages()) {
               <div class="grid grid-cols-2 gap-2 mb-4">
-                @for (imageUrl of imageUrls(); track imageUrl; let idx = $index)
+                @for (imageUrl of galleryImageUrls(); track imageUrl; let idx = $index)
                 { @if (idx < 4) {
                 <div
                   class="aspect-video rounded-lg overflow-hidden bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all"
@@ -538,7 +538,7 @@ import {
                 } }
 
                 <!-- Add More Images Button -->
-                @if (isViewingOwnProfile() && imageUrls().length < 4) {
+                @if (isViewingOwnProfile() && galleryImageUrls().length < 4) {
                 <button
                   (click)="navigateToUpload()"
                   class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
@@ -956,7 +956,7 @@ import {
     <!-- Media Preview Modal -->
     @if (isPreviewModalOpen()) {
     <div
-      class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       (click)="closePreviewModal()"
     >
       <div
@@ -1080,20 +1080,48 @@ import {
         }
 
         <!-- Media content -->
-        <div class="w-full h-full flex items-center justify-center px-20">
+        <div class="w-full h-full flex items-center justify-center px-20 relative">
           @if (previewMediaType() === 'image') {
           <img
             [src]="previewMediaUrl()"
             alt="Preview"
             class="max-w-full max-h-full object-contain rounded-lg"
+            [class.opacity-0]="isMediaLoading()"
+            (load)="onMediaLoaded()"
           />
           } @else if (previewMediaType() === 'video') {
           <video
             [src]="previewMediaUrl()"
             class="max-w-full max-h-full object-contain rounded-lg"
+            [class.opacity-0]="isMediaLoading()"
+            (loadeddata)="onMediaLoaded()"
             controls
             autoplay
           ></video>
+          }
+
+          <!-- Loading Spinner -->
+          @if (isMediaLoading()) {
+          <div class="absolute inset-0 flex items-center justify-center">
+            <svg
+              class="w-12 h-12 text-white animate-spin"
+              fill="none"
+              viewBox="0 0 24 24">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4">
+              </circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+          </div>
           }
         </div>
 
@@ -1171,12 +1199,26 @@ export class ProfileComponent implements OnInit {
   imageUrls = signal<string[]>([]);
   isLoadingMedia = signal(false);
 
+  // Gallery images (excluding profile picture)
+  galleryImageUrls = computed(() => {
+    const allImages = this.imageUrls();
+    const profilePicUrl = this.getProfileImageUrl();
+
+    if (!profilePicUrl) {
+      return allImages;
+    }
+
+    // Filter out the profile picture
+    return allImages.filter(url => url !== profilePicUrl);
+  });
+
   // Modal state
   isPreviewModalOpen = signal(false);
   previewMediaUrl = signal<string | null>(null);
   previewMediaType = signal<'image' | 'video'>('image');
   currentMediaIndex = signal(0);
   isProfilePicIsolationMode = signal(false);
+  isMediaLoading = signal(false);
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1204,7 +1246,7 @@ export class ProfileComponent implements OnInit {
   });
 
   hasVideos = computed(() => this.videoUrls().length > 0);
-  hasImages = computed(() => this.imageUrls().length > 0);
+  hasImages = computed(() => this.galleryImageUrls().length > 0);
 
   hasEducation = computed(() => {
     const profile = this.profileData();
@@ -1738,6 +1780,7 @@ export class ProfileComponent implements OnInit {
 
   goToPreviousMedia() {
     if (this.canGoToPrevious()) {
+      this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() - 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
@@ -1747,11 +1790,16 @@ export class ProfileComponent implements OnInit {
 
   goToNextMedia() {
     if (this.canGoToNext()) {
+      this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() + 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
       this.previewMediaUrl.set(mediaList[newIndex]);
     }
+  }
+
+  onMediaLoaded() {
+    this.isMediaLoading.set(false);
   }
 
   async setAsProfilePicture() {
