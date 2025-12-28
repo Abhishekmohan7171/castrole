@@ -147,14 +147,31 @@ export interface ImageMetadata {
 }
 
 //ANALYTICS INTERFACES
+export interface SearchImpressionMetadata {
+  characterTypes?: string[];
+  gender?: string;
+  languages?: string[];
+  skills?: string[];
+  location?: string;
+}
+
 export interface AnalyticsEvent {
   id?: string;
-  eventType: 'profile_view' | 'wishlist_add';
+  eventType: 'profile_view' | 'wishlist_add' | 'search_impression' | 'video_view';
   actorId: string;
   producerId: string;
   timestamp: Timestamp;
   metadata?: {
     duration?: number; // View duration in seconds
+    // Video view metadata
+    videoId?: string;
+    videoFileName?: string;
+    videoTitle?: string;
+    videoTags?: string[];
+    watchDuration?: number;
+    // Search impression metadata
+    searchFilters?: SearchImpressionMetadata;
+    visibleVideos?: string[];
   };
 }
 
@@ -167,5 +184,53 @@ export interface UserAnalytics {
   };
   wishlistCount: number;
   visibilityScore: number; // 0-100 calculated metric
+
+  // Phase 1: Search Appearances
+  searchImpressions?: {
+    total: number;
+    last30Days: number;
+    last7Days: number;
+    visibleVideosFrequency: Record<string, number>; // { fileName: count }
+  };
+
+  // Phase 1: Top Performing Video
+  topVideo?: {
+    videoId: string;
+    videoTitle: string;
+    totalViews: number;
+    avgWatchTime: number; // In seconds
+    thumbnailUrl?: string;
+  };
+
+  // Phase 1: Video Performance Summary
+  videoMetrics?: {
+    totalVideoViews: number;
+    totalVideosWithViews: number;
+    avgViewsPerVideo: number;
+  };
+
   lastUpdated: Timestamp;
+}
+
+export interface VideoAnalytics {
+  actorId: string;
+  videoId: string;
+  videoTitle: string;
+  videoTags: string[];
+  totalViews: number;
+  totalWatchTime: number;
+  avgWatchDuration: number;
+  viewsLast30Days: number;
+  viewsLast7Days: number;
+  firstViewedAt: Timestamp;
+  lastViewedAt: Timestamp;
+}
+
+export interface TagAnalytics {
+  actorId: string;
+  tag: string;
+  totalVideoViews: number;
+  videosWithTag: number;
+  avgViewsPerVideo: number;
+  percentageOfTotalViews: number;
 }

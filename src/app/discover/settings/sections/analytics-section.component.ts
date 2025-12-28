@@ -238,6 +238,8 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
 export class AnalyticsSectionComponent {
   isSubscribed = input.required<boolean>();
   analyticsData = input.required<UserAnalytics | null>();
+  videoAnalytics = input<any | null>();
+  tagAnalytics = input<any | null>();
   upgradeSubscription = input.required<() => void>();
 
   onUpgradeSubscription() {
@@ -273,24 +275,68 @@ export class AnalyticsSectionComponent {
   }
 
   getSearchAppearances() {
-    // Phase 1: Not yet implemented
+    const data = this.analyticsData();
+    if (!data || !data.searchImpressions) {
+      return {
+        count: 0,
+        videos: [] as Array<{ title: string; thumbnail: string }>
+      };
+    }
+
+    const visibleVideos = data.searchImpressions.visibleVideosFrequency || {};
+    const sortedVideos = Object.entries(visibleVideos)
+      .sort(([, countA], [, countB]) => (countB as number) - (countA as number))
+      .slice(0, 5)
+      .map(([fileName]) => ({
+        title: this.formatVideoTitle(fileName),
+        thumbnail: ''
+      }));
+
     return {
-      count: 0,
-      videos: [] as Array<{ title: string; thumbnail: string }>
+      count: data.searchImpressions.total || 0,
+      videos: sortedVideos
     };
   }
 
   getTopPerformingVideo() {
-    // Phase 1: Not yet implemented
+    const data = this.analyticsData();
+    if (!data || !data.topVideo) {
+      return {
+        title: 'No videos yet',
+        views: '0',
+        avgWatchTime: 'N/A',
+      };
+    }
+
     return {
-      title: 'N/A',
-      views: 'Coming soon',
-      avgWatchTime: 'N/A',
+      title: data.topVideo.videoTitle || 'Untitled Video',
+      views: data.topVideo.totalViews?.toString() || '0',
+      avgWatchTime: this.formatDuration(data.topVideo.avgWatchTime || 0),
     };
   }
 
   getTagInsights() {
-    // Phase 1: Not yet implemented
-    return [] as Array<{ tag: string; percentage: number }>;
+    const tagData = this.tagAnalytics();
+    if (!tagData || !tagData.tags) {
+      return [] as Array<{ tag: string; percentage: number }>;
+    }
+
+    return Object.values(tagData.tags)
+      .sort((a: any, b: any) => b.percentageOfTotalViews - a.percentageOfTotalViews)
+      .slice(0, 10)
+      .map((tag: any) => ({
+        tag: tag.tag,
+        percentage: Math.round(tag.percentageOfTotalViews)
+      }));
+  }
+
+  // Helper to format video titles from filenames
+  private formatVideoTitle(fileName: string): string {
+    // Remove file extension
+    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+    // Replace underscores/hyphens with spaces
+    const formatted = nameWithoutExt.replace(/[_-]/g, ' ');
+    // Capitalize first letter
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   }
 }

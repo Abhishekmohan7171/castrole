@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -880,7 +880,10 @@ export class SearchComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
+  private currentUserRole: string | null = null;
   private wishlistUnsubscribe: Unsubscribe | null = null;
+  private trackingSubject = new Subject<ActorSearchResult[]>();
+  private lastTrackedResults: Set<string> = new Set();
 
   // Expose constants for template
   readonly characterTypes = CHARACTER_TYPES;
@@ -1203,9 +1206,32 @@ export class SearchComponent implements OnInit, OnDestroy {
   // Total results count for non-premium message
   totalResultsCount = computed(() => this.filteredActors().length);
 
-  ngOnInit(): void {
+  constructor() {
+    // Set up effect to track search impressions when filtered results change
+    effect(() => {
+      const results = this.filteredActors();
+      // Emit results to trackingSubject for debounced tracking
+      if (results.length > 0) {
+        this.trackingSubject.next(results);
+      }
+    });
+  }
+
+  async ngOnInit(): Promise<void> {
     // Get current user
     this.currentUserId = this.auth.currentUser?.uid || null;
+
+    // Get current user's role
+    if (this.currentUserId) {
+      try {
+        const userDoc = await getDoc(doc(this.firestore, 'users', this.currentUserId));
+        if (userDoc.exists()) {
+          this.currentUserRole = userDoc.data()['currentRole'] || null;
+        }
+      } catch (error) {
+        this.logger.log('Error fetching user role:', error);
+      }
+    }
 
     // Set wishlist loading if user is logged in
     if (this.currentUserId) {
@@ -1226,6 +1252,9 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Setup auto-save for filter changes
     this.setupAutoSave();
 
+    // Setup debounced search impression tracking
+    this.setupImpressionTracking();
+
     // Load actors in background but don't display until search
     // Wishlist will be loaded after actors are loaded
     this.loadActors();
@@ -1242,6 +1271,19 @@ export class SearchComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(() => {
       this.persistFilters();
+    });
+  }
+
+  /**
+   * Setup debounced search impression tracking
+   * Tracks impressions after 1000ms of inactivity to avoid excessive writes
+   */
+  private setupImpressionTracking(): void {
+    this.trackingSubject.pipe(
+      debounceTime(1000),
+      takeUntil(this.destroy$)
+    ).subscribe((actors) => {
+      this.trackSearchImpressions(actors);
     });
   }
 
@@ -1270,6 +1312,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.searchSubject.complete();
     this.saveSubject.complete();
+    this.trackingSubject.complete();
 
     // Unsubscribe from wishlist listener
     if (this.wishlistUnsubscribe) {
@@ -2046,6 +2089,59 @@ export class SearchComponent implements OnInit, OnDestroy {
 
   isInWishlist(actor: ActorSearchResult): boolean {
     return this.wishlist().some(a => a.uid === actor.uid);
+  }
+
+  /**
+   * Track search impressions for actors
+   * Called when actor profiles appear in producer search results
+   */
+  private async trackSearchImpressions(actors: ActorSearchResult[]): Promise<void> {
+    // Only track if user is logged in and is a producer
+    if (!this.currentUserId || this.currentUserRole !== 'producer') {
+      return;
+    }
+
+    // Avoid tracking the same results multiple times
+    const currentResultIds = new Set(actors.map(a => a.uid));
+    if (this.areSetsEqual(currentResultIds, this.lastTrackedResults)) {
+      return; // Same results, skip tracking
+    }
+    this.lastTrackedResults = currentResultIds;
+
+    // Batch track top 20 results to avoid excessive Firestore writes
+    const promises = actors.slice(0, 20).map(async (actor) => {
+      const visibleVideos = actor.carouselImages || [];
+      const currentFilters = this.filters();
+
+      const searchFilters: any = {
+        characterTypes: currentFilters.characterTypes.length > 0 ? currentFilters.characterTypes : undefined,
+        gender: currentFilters.gender !== 'any' ? currentFilters.gender : undefined,
+        languages: currentFilters.languages.length > 0 ? currentFilters.languages : undefined,
+        skills: currentFilters.skills.length > 0 ? currentFilters.skills : undefined,
+        location: currentFilters.location || undefined,
+      };
+
+      await this.analyticsService.trackSearchImpression(
+        actor.uid,
+        this.currentUserId!,
+        searchFilters,
+        visibleVideos
+      );
+    });
+
+    await Promise.allSettled(promises);
+    this.logger.log(`Tracked ${Math.min(actors.length, 20)} search impressions`);
+  }
+
+  /**
+   * Helper to compare two sets for equality
+   */
+  private areSetsEqual<T>(setA: Set<T>, setB: Set<T>): boolean {
+    if (setA.size !== setB.size) return false;
+    for (const item of setA) {
+      if (!setB.has(item)) return false;
+    }
+    return true;
   }
 
   /**

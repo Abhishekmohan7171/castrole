@@ -18,6 +18,11 @@ export {
   sendDeletionReminders,
 } from './scheduledDeletion';
 
+// ==================== ANALYTICS FUNCTIONS ====================
+
+// Scheduled function - aggregates analytics data daily
+export { aggregateAnalytics } from './analyticsAggregation';
+
 // ==================== VIDEO PROCESSING FUNCTIONS ====================
 
 /**

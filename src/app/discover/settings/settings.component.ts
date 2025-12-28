@@ -102,6 +102,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   // Real analytics data
   analyticsData = signal<UserAnalytics | null>(null);
+  videoAnalytics = signal<any | null>(null);
+  tagAnalytics = signal<any | null>(null);
 
   // Privacy settings signals
   ghostMode = signal<boolean>(false);
@@ -212,10 +214,25 @@ export class SettingsComponent implements OnInit, OnDestroy {
         // Load analytics data if user is an actor
         const user = this.auth.getCurrentUser();
         if (user && this.isActor()) {
+          // Subscribe to user analytics
           this.analyticsSubscription = this.analyticsService
             .getUserAnalytics(user.uid)
             .subscribe((analytics) => {
               this.analyticsData.set(analytics);
+            });
+
+          // Subscribe to video analytics
+          this.analyticsService
+            .getVideoAnalytics(user.uid)
+            .subscribe((data) => {
+              this.videoAnalytics.set(data);
+            });
+
+          // Subscribe to tag analytics
+          this.analyticsService
+            .getTagAnalytics(user.uid)
+            .subscribe((data) => {
+              this.tagAnalytics.set(data);
             });
         }
       });

@@ -42,6 +42,9 @@ testem.log
 Thumbs.db
 
 /functions/node_modules
+/functions/lib
+
+firebase-debug.log
 
 .nx/cache
 .nx/workspace-data
