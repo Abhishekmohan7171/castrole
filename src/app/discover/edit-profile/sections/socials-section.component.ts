@@ -4,9 +4,13 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnDestroy,
   signal,
   inject,
 } from '@angular/core';
+import { Subject, Observable, from, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -39,7 +43,6 @@ import {
               formControlName="instaIdUrl"
               placeholder="www.instagram.com"
               class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-              (blur)="onFieldBlur()"
             />
             <button
               type="button"
@@ -80,7 +83,6 @@ import {
               formControlName="youtubeIdUrl"
               placeholder="www.youtube.com"
               class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-              (blur)="onFieldBlur()"
             />
             <button
               type="button"
@@ -121,7 +123,6 @@ import {
               formControlName="externalLinkUrl"
               placeholder="www.otherhood.com"
               class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-              (blur)="onFieldBlur()"
             />
             <button
               type="button"
@@ -219,20 +220,52 @@ import {
   `,
   styles: ``,
 })
-export class SocialsSectionComponent implements OnInit {
+export class SocialsSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
 
   private fb = inject(FormBuilder);
+  private destroy$ = new Subject<void>();
+  private additionalLinkChange$ = new Subject<void>();
 
   form!: FormGroup;
   additionalLinks = signal<string[]>([]);
   isSaving = signal(false);
-  private autosaveTimeout: any;
 
   ngOnInit() {
     this.initializeForm();
     this.populateForm();
+    this.setupAutosave();
+    this.setupAdditionalLinksAutosave();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAutosave() {
+    this.form.valueChanges
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (this.form.valid && this.form.dirty && !this.isSaving()) {
+          this.onSave();
+        }
+      });
+  }
+
+  private setupAdditionalLinksAutosave() {
+    this.additionalLinkChange$
+      .pipe(debounceTime(400), takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.form.valid && !this.isSaving()) {
+          this.onSave();
+        }
+      });
   }
 
   initializeForm() {
@@ -331,13 +364,13 @@ export class SocialsSectionComponent implements OnInit {
     const updated = [...current];
     updated[index] = input.value;
     this.additionalLinks.set(updated);
-    this.scheduleAutosave();
+    this.additionalLinkChange$.next();
   }
 
   removeAdditionalLink(index: number) {
     const current = this.additionalLinks();
     this.additionalLinks.set(current.filter((_, i) => i !== index));
-    this.scheduleAutosave();
+    this.additionalLinkChange$.next();
   }
 
   private normalizeUrl(url: string): string {
@@ -373,24 +406,13 @@ export class SocialsSectionComponent implements OnInit {
     }, 800);
   }
 
-  onFieldBlur() {
-    if (!this.form.dirty) {
-      return;
-    }
-    this.scheduleAutosave();
-  }
-
-  private scheduleAutosave() {
-    if (this.form.invalid || this.isSaving()) {
-      return;
-    }
-
-    if (this.autosaveTimeout) {
-      clearTimeout(this.autosaveTimeout);
-    }
-
-    this.autosaveTimeout = setTimeout(() => {
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.form.dirty && !this.isSaving()) {
+      // Force immediate save before navigation
       this.onSave();
-    }, 400);
+      return of(true);
+    }
+    return true;
   }
+
 }
