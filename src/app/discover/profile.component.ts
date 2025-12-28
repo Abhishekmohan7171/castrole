@@ -596,7 +596,7 @@ import {
               } } }
 
               <!-- Social Links -->
-              @if (hasSocialLinks() || isActor()) {
+              @if (hasSocialLinks() || isActor() || isViewingOwnProfile()) {
               <div class="pt-3 border-t border-neutral-800">
                 <div class="text-xs text-neutral-500 mb-2">social links</div>
                 <div class="flex items-center gap-2">
@@ -681,6 +681,25 @@ import {
                       />
                     </svg>
                   </a>
+                  }
+
+                  <!-- Add Social Link Button -->
+                  @if (isViewingOwnProfile()) {
+                  <button
+                    (click)="navigateToSocialLinks()"
+                    class="h-8 w-8 rounded-full bg-neutral-800/50 hover:bg-neutral-700/50 transition-colors flex items-center justify-center"
+                    aria-label="Add social link"
+                  >
+                    <svg
+                      class="h-4 w-4 text-neutral-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
                   }
                 </div>
               </div>
@@ -1756,6 +1775,12 @@ export class ProfileComponent implements OnInit {
 
   navigateToUpload() {
     this.router.navigate(['/discover/upload']);
+  }
+
+  navigateToSocialLinks() {
+    this.router.navigate(['/discover/profile/edit'], {
+      queryParams: { section: 'socials' }
+    });
   }
 
   openPreviewModal(url: string, type: 'image' | 'video', isolationMode: boolean = false) {
