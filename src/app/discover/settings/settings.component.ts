@@ -81,6 +81,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     const profileData = this.profileService.profileData();
+    console.log(profileData,profileData?.actorProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
     return profileData?.actorProfile?.isSubscribed ?? false;
   });
 
