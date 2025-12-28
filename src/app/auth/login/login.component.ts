@@ -83,6 +83,11 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
             Password reset email sent. Please check your inbox.
           </div>
 
+          <!-- Deletion Message -->
+          <div *ngIf="deletionMessage" class="text-sm text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            {{ deletionMessage }}
+          </div>
+
           <!-- Error -->
           <p *ngIf="error" class="text-sm text-red-400">{{ error }}</p>
 
@@ -131,20 +136,29 @@ export class LoginComponent implements OnInit {
   error = '';
   resetEmailSent = false;
   showPassword = false;
-  
+  deletionMessage: string = '';
+
   private firebaseAuth = inject(Auth);
   private db = inject(Firestore);
-  
+
   async ngOnInit() {
     // Get return url from route parameters or default to '/discover'
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/discover';
-    
+
+    // Check for account deletion reason
+    const reason = this.route.snapshot.queryParams['reason'];
+    if (reason === 'deletion-requested') {
+      this.deletionMessage = 'Account deletion scheduled. You have 30 days to reactivate by logging in.';
+    } else if (reason === 'account-deleted') {
+      this.error = 'This account has been permanently deleted.';
+    }
+
     // Check if user is already authenticated but hasn't completed onboarding
     const user = this.firebaseAuth.currentUser;
     if (user) {
       const userRef = doc(this.db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
-      
+
       if (!userDoc.exists()) {
         // User authenticated but no Firestore doc - redirect to onboarding
         // Use replaceUrl to prevent back button from returning here

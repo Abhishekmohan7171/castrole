@@ -4,6 +4,7 @@ import { Auth, User } from '@angular/fire/auth';
 import { Observable, map, filter, take, from, switchMap } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
 import { UserOnboardingCacheService } from '../services/user-onboarding-cache.service';
+import { AuthService } from '../services/auth.service';
 
 // No longer needed as we use LoadingService to wait for auth initialization
 
@@ -36,9 +37,10 @@ export const authGuard: CanActivateFn = () => {
 export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
   const router = inject(Router);
   const auth = inject(Auth);
+  const authService = inject(AuthService);
   const loadingService = inject(LoadingService);
   const onboardingCache = inject(UserOnboardingCacheService);
-  
+
   return loadingService.isLoading$.pipe(
     // Wait until loading is complete
     filter(isLoading => !isLoading),
@@ -48,24 +50,42 @@ export const authCanMatch: CanMatchFn = (route, segments: UrlSegment[]) => {
       if (!user) {
         // No Firebase Auth user, redirect to login
         const url = '/' + segments.map(segment => segment.path).join('/');
-        return from(Promise.resolve(router.createUrlTree(['/login'], { 
+        return from(Promise.resolve(router.createUrlTree(['/login'], {
           queryParams: { returnUrl: url }
         })));
       }
-      
+
       // User is authenticated, check if Firestore document exists (cached)
       return from(onboardingCache.hasCompletedOnboarding(user.uid)).pipe(
-        map(hasCompleted => {
-          if (hasCompleted) {
-            // User has completed onboarding, allow access
-            return true;
-          } else {
+        switchMap(hasCompleted => {
+          if (!hasCompleted) {
             // User authenticated but hasn't completed onboarding
             // Redirect to onboarding with email pre-filled
-            return router.createUrlTree(['/onboarding'], {
+            return from(Promise.resolve(router.createUrlTree(['/onboarding'], {
               queryParams: { email: user.email || '' }
-            });
+            })));
           }
+
+          // User has completed onboarding, check account deletion status
+          return from(authService.checkAccountStatus(user.uid)).pipe(
+            switchMap(async (status) => {
+              if (status === 'pending_deletion') {
+                // Account is scheduled for deletion, redirect to reactivation page
+                return router.createUrlTree(['/auth/reactivate']);
+              }
+
+              if (status === 'deleted') {
+                // Grace period expired or account manually deleted, force logout
+                await authService.logout();
+                return router.createUrlTree(['/auth/login'], {
+                  queryParams: { reason: 'account-deleted' }
+                });
+              }
+
+              // Account is active, allow access
+              return true;
+            })
+          );
         })
       );
     })

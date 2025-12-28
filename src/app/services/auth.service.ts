@@ -31,6 +31,8 @@ import {
   updateDoc,
   serverTimestamp,
   getDoc,
+  deleteField,
+  Timestamp,
 } from '@angular/fire/firestore';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import {
@@ -680,6 +682,90 @@ export class AuthService {
     } catch (error) {
       console.error('[AuthService] Error logging out from all devices:', error);
       throw error;
+    }
+  }
+
+  // =========================
+  // Account Deletion & Reactivation
+  // =========================
+
+  /**
+   * Request account deletion with 30-day grace period
+   * Sets deleteAccount flag and future deletion date
+   * Logs out user from all devices
+   */
+  async requestAccountDeletion(uid: string, reason?: string): Promise<void> {
+    try {
+      const userDocRef = doc(this.db, 'users', uid);
+      const deletionDate = new Date();
+      deletionDate.setDate(deletionDate.getDate() + 30); // 30 days grace period
+
+      await updateDoc(userDocRef, {
+        deleteAccount: true,
+        deleteAccountDate: Timestamp.fromDate(deletionDate),
+        deletionReason: reason || '',
+        updatedAt: serverTimestamp(),
+      });
+
+      // Logout from all devices
+      await this.logoutAllDevices(uid);
+
+      console.log('[AuthService] Account deletion requested for uid:', uid, 'Deletion date:', deletionDate);
+    } catch (error) {
+      console.error('[AuthService] Error requesting account deletion:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reactivate account by removing deletion flags
+   * Allows user to recover their account during grace period
+   */
+  async reactivateAccount(uid: string): Promise<void> {
+    try {
+      const userDocRef = doc(this.db, 'users', uid);
+
+      await updateDoc(userDocRef, {
+        deleteAccount: deleteField(),
+        deleteAccountDate: deleteField(),
+        deletionReason: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log('[AuthService] Account reactivated for uid:', uid);
+    } catch (error) {
+      console.error('[AuthService] Error reactivating account:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check account status to determine if user can access the app
+   * @returns 'active' | 'pending_deletion' | 'deleted'
+   */
+  async checkAccountStatus(uid: string): Promise<'active' | 'pending_deletion' | 'deleted'> {
+    try {
+      const userDocRef = doc(this.db, 'users', uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        return 'deleted';
+      }
+
+      const data = userDoc.data() as UserDoc;
+
+      if (data.deleteAccount) {
+        const deletionDate = data.deleteAccountDate?.toDate?.();
+        if (deletionDate && deletionDate < new Date()) {
+          return 'deleted'; // Grace period expired
+        }
+        return 'pending_deletion';
+      }
+
+      return 'active';
+    } catch (error) {
+      console.error('[AuthService] Error checking account status:', error);
+      return 'active'; // Default to active on error to avoid blocking legitimate users
     }
   }
 

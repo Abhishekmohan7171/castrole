@@ -1,4 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnInit, signal, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, signal, inject } from '@angular/core';
+import { Subject, Observable, from, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
+import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
@@ -53,7 +56,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                         <input
                           type="text"
                           formControlName="schoolName"
-                          (blur)="onFieldBlur()"
                           placeholder="Swami Vivekananda Institute of film production"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -67,7 +69,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                         <input
                           type="text"
                           formControlName="courseName"
-                          (blur)="onFieldBlur()"
                           placeholder="diploma in screen acting"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -81,7 +82,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                         <input
                           type="text"
                           formControlName="projectName"
-                          (blur)="onFieldBlur()"
                           placeholder="KGF Chapter 2"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -95,7 +95,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                         <input
                           type="text"
                           formControlName="genre"
-                          (blur)="onFieldBlur()"
                           placeholder="action thriller"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
@@ -123,7 +122,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                       <div class="relative">
                         <select
                           [formControlName]="isActor ? 'yearCompleted' : 'year'"
-                          (change)="onFieldBlur()"
                           class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
                         >
                           <option value="" disabled selected class="text-neutral-500">select year</option>
@@ -287,7 +285,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                           <input
                             type="text"
                             formControlName="projectName"
-                            (blur)="onFieldBlur()"
                             placeholder="KGF Chapter 2"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
@@ -301,7 +298,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                           <input
                             type="text"
                             formControlName="role"
-                            (blur)="onFieldBlur()"
                             placeholder="Lead Actor"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
@@ -315,7 +311,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                           <input
                             type="text"
                             formControlName="genre"
-                            (blur)="onFieldBlur()"
                             placeholder="action thriller"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
@@ -341,7 +336,6 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
                         <div class="relative">
                           <select
                             formControlName="year"
-                            (change)="onFieldBlur()"
                             class="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
                           >
                             <option value="" disabled selected class="text-neutral-500">select year</option>
@@ -409,14 +403,14 @@ import { Profile, Education, Work } from '../../../../assets/interfaces/profile.
   `,
   styles: ``
 })
-export class EducationSectionComponent implements OnInit {
+export class EducationSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   @Input() profile: Profile | null = null;
   @Input() isActor = false;
   @Output() save = new EventEmitter<any>();
 
   private fb = inject(FormBuilder);
   private storage = inject(Storage);
-  private autosaveTimeout: any;
+  private destroy$ = new Subject<void>();
 
   form!: FormGroup;
   editingIndex = signal<number | null>(null);
@@ -437,6 +431,27 @@ export class EducationSectionComponent implements OnInit {
   ngOnInit() {
     this.initializeForm();
     this.populateForm();
+    this.setupAutosave();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAutosave() {
+    // Watch both education and experience arrays
+    this.form.valueChanges
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (!this.isSaving()) {
+          this.autosaveAll();
+        }
+      });
   }
 
   initializeForm() {
@@ -551,8 +566,6 @@ export class EducationSectionComponent implements OnInit {
       this.getFormGroup(index).patchValue({
         certificateUrl: downloadURL
       });
-
-      this.onFieldBlur();
     } catch (error) {
       console.error('Error uploading certificate:', error);
       alert('Failed to upload certificate. Please try again.');
@@ -566,7 +579,6 @@ export class EducationSectionComponent implements OnInit {
     if (itemGroup.invalid) return;
 
     this.editingIndex.set(null);
-    this.onFieldBlur();
   }
 
   removeEducation(index: number) {
@@ -597,7 +609,6 @@ export class EducationSectionComponent implements OnInit {
     if (itemGroup.invalid) return;
 
     this.editingExperienceIndex.set(null);
-    this.onFieldBlur();
   }
 
   removeExperience(index: number) {
@@ -605,19 +616,6 @@ export class EducationSectionComponent implements OnInit {
       this.experienceArray.removeAt(index);
       this.editingExperienceIndex.set(null);
     }
-  }
-
-  onFieldBlur() {
-    if (this.isSaving()) return;
-    if (this.educationArray.length === 0 && this.experienceArray.length === 0) return;
-
-    if (this.autosaveTimeout) {
-      clearTimeout(this.autosaveTimeout);
-    }
-
-    this.autosaveTimeout = setTimeout(() => {
-      this.autosaveAll();
-    }, 400);
   }
 
   private autosaveAll() {
@@ -648,5 +646,18 @@ export class EducationSectionComponent implements OnInit {
         });
       }
     }
+  }
+
+  canDeactivate(): Observable<boolean> | boolean {
+    // For FormArray, check if any form group is dirty
+    const hasUnsavedChanges = this.educationArray.controls.some(control => control.dirty) ||
+                              this.experienceArray.controls.some(control => control.dirty);
+
+    if (hasUnsavedChanges && !this.isSaving()) {
+      // Force immediate save before navigation
+      this.autosaveAll();
+      return of(true);
+    }
+    return true;
   }
 }
