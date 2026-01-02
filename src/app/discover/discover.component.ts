@@ -324,7 +324,7 @@ import {
                       'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
-                    Profile
+                    profile
                   </a>
                   <a
                     routerLink="/discover/settings"
@@ -338,7 +338,7 @@ import {
                       'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
-                    Settings
+                    <section></section>settings
                   </a>
                   <button
                     (click)="logout()"
@@ -348,7 +348,7 @@ import {
                       'text-neutral-200 hover:bg-[#515D69]/20': !isActor()
                     }"
                   >
-                    Logout
+                    logout
                   </button>
                 </div>
               </div>

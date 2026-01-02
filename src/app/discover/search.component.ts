@@ -154,22 +154,22 @@ interface ParsedSearchQuery {
                     (focus)="showCharacterTypeDropdown.set(true)"
                     (blur)="onCharacterTypeBlur()"
                     [disabled]="!isPremium() && filters().characterTypes.length >= 1"
-                    placeholder="Search character types..."
-                    [class]="(isPremium() || filters().characterTypes.length < 1) ? 'w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#90ACC8] mb-2' : 'w-full bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-500 text-sm cursor-not-allowed mb-2'">
+                    placeholder="search character types..."
+                    [class]="(isPremium() || filters().characterTypes.length < 1) ? 'w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 lowercase text-neutral-200 text-sm focus:outline-none focus:border-[#90ACC8] mb-2' : 'w-full bg-neutral-800/50 border border-neutral-700 rounded-lg px-3 py-2 lowercase text-neutral-500 text-sm cursor-not-allowed mb-2'">
                   
                   <!-- Dropdown List -->
                   @if (showCharacterTypeDropdown() && filteredCharacterTypes().length > 0) {
                     <div 
                       (mousedown)="$event.preventDefault()"
-                      class="absolute z-10 w-full max-h-48 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 space-y-1 shadow-xl">
+                      class="absolute z-10 w-full max-h-48 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-lg p-2 space-y-1 shadow-xl lowercase">
                       @for (type of filteredCharacterTypes(); track type) {
-                        <label class="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 px-2 py-1.5 rounded transition-colors">
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 px-2 py-1.5 rounded transition-colors ">
                           <input 
                             type="checkbox"
                             [checked]="filters().characterTypes.includes(type)"
                             (change)="toggleCharacterType(type)"
-                            class="w-4 h-4 rounded border-neutral-600 text-[#90ACC8] focus:ring-[#90ACC8] focus:ring-offset-0 bg-neutral-700 cursor-pointer">
-                          <span class="text-sm text-neutral-200 capitalize">{{ type }}</span>
+                            class="w-4 h-4 rounded border-neutral-600 text-[#90ACC8] focus:ring-[#90ACC8] focus:ring-offset-0 bg-neutral-700 cursor-pointer lowercase">
+                          <span class="text-sm text-neutral-200 lowercase">{{ type }}</span>
                         </label>
                       }
                     </div>
@@ -180,7 +180,7 @@ interface ParsedSearchQuery {
                 @if (filters().characterTypes.length > 0) {
                   <div class="flex flex-wrap gap-1.5">
                     @for (type of filters().characterTypes; track type) {
-                      <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-2 py-1 rounded text-xs capitalize">
+                      <span class="inline-flex items-center gap-1 bg-[#455A64]/20 text-[#455A64] px-2 py-1 rounded text-xs lowercase">
                         {{ type }}
                         <button (click)="toggleCharacterType(type)" class="hover:text-[#455A64]">
                           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,7 +654,7 @@ interface ParsedSearchQuery {
                               }
                               @if (actor.gender) {
                                 <span>•</span>
-                                <span class="capitalize">{{ actor.gender }}</span>
+                                <span class="lowercase">{{ actor.gender }}</span>
                               }
                             </div>
                           </div>

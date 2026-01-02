@@ -18,7 +18,6 @@ export interface SocialLink {
 
 export type EditSection =
   | 'basic-info'
-  | 'profile-info'
   | 'education'
   | 'voice-intro'
   | 'languages-skills'

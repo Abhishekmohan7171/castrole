@@ -44,7 +44,7 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
           <button 
             *ngFor="let category of categories()"
             type="button" 
-            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 capitalize"
+            class="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 lowercase"
             [ngClass]="{
               'bg-[#946BA9]/20 text-[#946BA9] ring-2 ring-[#946BA9]/40': tab === category && isActor(),
               'bg-[#515D69] text-white ring-2 ring-[#515D69]/60': tab === category && !isActor(),
