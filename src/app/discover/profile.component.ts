@@ -1487,6 +1487,7 @@ import {
             [class.opacity-0]="isMediaLoading()"
             (loadeddata)="onMediaLoaded()"
             controls
+            controlsList="nodownload"
             autoplay
           ></video>
           }
