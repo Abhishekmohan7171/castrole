@@ -409,7 +409,8 @@ import {
         bottom: 0;
         background: linear-gradient(
           180deg,
-          #101214 0%,
+          
+          #0d1419 30%,
           #000000 100%
         );
         pointer-events: none;
