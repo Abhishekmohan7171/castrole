@@ -185,8 +185,8 @@ import { ProfileUrlService } from '../services/profile-url.service';
                 (click)="viewProfile(c)"
                 class="h-9 w-9 rounded-full flex items-center justify-center transition-colors duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
-                  'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
+                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
                 }"
               >
                 @if (c.profilePhotoUrl) {
@@ -279,8 +279,8 @@ import { ProfileUrlService } from '../services/profile-url.service';
                 (click)="viewProfile(active())"
                 class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
-                  'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
+                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
                 }"
               >
                 @if (active()?.profilePhotoUrl) {
@@ -316,8 +316,8 @@ import { ProfileUrlService } from '../services/profile-url.service';
               (click)="viewProfile(active())"
               class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
               [ngClass]="{
-                'bg-purple-950/10 text-purple-300/50 hover:ring-purple-500': myRole() === 'actor',
-                'bg-white/10 text-neutral-400 hover:ring-fuchsia-500': myRole() !== 'actor'
+                'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
+                'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
               }"
             >
               @if (active()?.profilePhotoUrl) {
