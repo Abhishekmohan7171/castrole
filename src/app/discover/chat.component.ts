@@ -73,7 +73,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
               class="w-full rounded-full px-4 py-2 outline-none ring-1 transition text-sm"
               [ngClass]="{
                 'bg-purple-950/10 text-purple-100 placeholder-purple-300/50 ring-purple-900/15 focus:ring-2 focus:ring-purple-500/30': myRole() === 'actor',
-                'bg-neutral-900 text-neutral-200 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/30': myRole() !== 'actor'
+                'bg-neutral-900 text-neutral-200 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-[#90ACC8]/30': myRole() !== 'actor'
               }"
             />
             
@@ -659,7 +659,11 @@ import { ProfileUrlService } from '../services/profile-url.service';
               placeholder="type a message"
               autocomplete="off"
               (input)="onInputChange()"
-              class="flex-1 bg-neutral-900 text-neutral-100 placeholder-neutral-500 rounded-full px-4 py-2 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-fuchsia-500/30 transition"
+              class="flex-1 rounded-full px-4 py-2 outline-none ring-1 transition"
+              [ngClass]="{
+                'bg-purple-950/10 text-purple-100 placeholder-purple-300/50 ring-purple-900/15 focus:ring-2 focus:ring-purple-500/30': myRole() === 'actor',
+                'bg-neutral-900 text-neutral-100 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-[#90ACC8]/30': myRole() !== 'actor'
+              }"
             />
             <button
               type="submit"

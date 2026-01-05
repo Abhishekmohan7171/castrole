@@ -38,7 +38,7 @@ import {
   template: `
     <div
       class="min-h-screen bg-transparent text-white relative"
-      [ngClass]="{ 'actor-theme': isActor() }"
+      [ngClass]="{ 'actor-theme': isActorTheme() }"
       (click)="closeMenu(); closeShareMenu()"
     >
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
@@ -50,9 +50,9 @@ import {
               class="rounded-xl p-5 border relative backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <!-- Settings Icon (top left, absolute) -->
@@ -393,9 +393,9 @@ import {
                       class="px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
                       [ngClass]="{
                         'bg-[#90ACC8] hover:bg-[#7A9AB8] text-white':
-                          !isConnecting() && !isActor(),
+                          !isConnecting() && !isActorTheme(),
                         'bg-purple-600 hover:bg-purple-700 text-white':
-                          !isConnecting() && isActor(),
+                          !isConnecting() && isActorTheme(),
                         'bg-neutral-700 text-neutral-400 cursor-not-allowed':
                           isConnecting()
                       }"
@@ -532,9 +532,9 @@ import {
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
                       'border-purple-400 text-purple-200':
-                        mediaTab === 'videos' && isActor(),
+                        mediaTab === 'videos' && isActorTheme(),
                       'border-white text-white':
-                        mediaTab === 'videos' && !isActor(),
+                        mediaTab === 'videos' && !isActorTheme(),
                       'border-transparent text-neutral-500 hover:text-neutral-300':
                         mediaTab !== 'videos'
                     }"
@@ -546,9 +546,9 @@ import {
                     class="px-4 py-2 text-sm transition-all duration-200 border-b-2"
                     [ngClass]="{
                       'border-purple-400 text-purple-200':
-                        mediaTab === 'photos' && isActor(),
+                        mediaTab === 'photos' && isActorTheme(),
                       'border-white text-white':
-                        mediaTab === 'photos' && !isActor(),
+                        mediaTab === 'photos' && !isActorTheme(),
                       'border-transparent text-neutral-500 hover:text-neutral-300':
                         mediaTab !== 'photos'
                     }"
@@ -577,8 +577,8 @@ import {
                 <div
                   class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
                   [ngClass]="{
-                    'hover:ring-purple-500/50': isActor(),
-                    'hover:ring-neutral-600': !isActor(),
+                    'hover:ring-purple-500/50': isActorTheme(),
+                    'hover:ring-neutral-600': !isActorTheme(),
                     'overflow-hidden': openMenuUrl() !== videoUrl,
                     'overflow-visible': openMenuUrl() === videoUrl
                   }"
@@ -737,8 +737,8 @@ import {
                 <div
                   class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
                   [ngClass]="{
-                    'hover:ring-purple-500/50': isActor(),
-                    'hover:ring-neutral-600': !isActor(),
+                    'hover:ring-purple-500/50': isActorTheme(),
+                    'hover:ring-neutral-600': !isActorTheme(),
                     'overflow-hidden': openMenuUrl() !== imageUrl,
                     'overflow-visible': openMenuUrl() === imageUrl
                   }"
@@ -998,9 +998,9 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div
@@ -1019,9 +1019,9 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div
@@ -1067,9 +1067,9 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div
@@ -1113,9 +1113,9 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1179,9 +1179,9 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div
@@ -1232,15 +1232,15 @@ import {
               class="rounded-xl p-5 border backdrop-blur-xl"
               [ngClass]="{
                 'bg-purple-950/10 ring-1 ring-purple-900/10 border-purple-950/10':
-                  isActor(),
+                  isActorTheme(),
                 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30':
-                  !isActor()
+                  !isActorTheme()
               }"
             >
               <div
                 class="text-sm text-neutral-500 uppercase tracking-wide mb-3"
               >
-                {{ isActor() ? 'experiences' : 'previous credits' }}
+                {{ isActorTheme() ? 'experiences' : 'previous credits' }}
               </div>
               <div class="space-y-3">
                 @for (work of getWorksList(); track work) {
@@ -1647,7 +1647,10 @@ export class ProfileComponent implements OnInit {
   isViewingOwnProfile = signal<boolean>(true);
   targetUsername = signal<string | null>(null);
   targetUserId = signal<string | null>(null);
-  currentUserRole = signal<string | null>(null);
+  currentUserRole = signal<string>('producer'); // Default to producer to prevent purple flash
+  
+  // Theming based on logged-in user's role (not the profile being viewed)
+  isActorTheme = computed(() => this.currentUserRole() === 'actor');
 
   // Connect button state
   isConnecting = signal<boolean>(false);
@@ -1850,10 +1853,12 @@ export class ProfileComponent implements OnInit {
         );
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data() as UserDoc;
-          this.currentUserRole.set(currentUserData.currentRole || null);
+          this.currentUserRole.set(currentUserData.currentRole || 'producer');
         }
       } catch (error) {
         console.error('Error loading current user role:', error);
+        // Fallback to producer on error
+        this.currentUserRole.set('producer');
       }
     }
 

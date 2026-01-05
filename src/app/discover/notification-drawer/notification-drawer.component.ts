@@ -112,7 +112,7 @@ export interface Notification {
                           class="flex-shrink-0 w-2 h-2 rounded-full"
                           [ngClass]="{
                             'bg-purple-400': isActor,
-                            'bg-fuchsia-500': !isActor
+                            'bg-[#90ACC8]': !isActor
                           }"></span>
                   </div>
                   

@@ -151,7 +151,7 @@ import {
                   class="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-xs animate-pulse"
                   [ngClass]="{
                     'bg-purple-500': isActor(),
-                    'bg-fuchsia-600': !isActor()
+                    'bg-[#5E7E9A]': !isActor()
                   }"
                 >
                   {{ notificationCount }}
@@ -188,7 +188,7 @@ import {
                 class="absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full text-white text-xs font-medium animate-pulse"
                 [ngClass]="{
                   'bg-purple-500': isActor(),
-                  'bg-fuchsia-600': !isActor()
+                  'bg-[#5E7E9A]': !isActor()
                 }"
               >
                 {{
@@ -409,7 +409,8 @@ import {
         bottom: 0;
         background: linear-gradient(
           180deg,
-          #101214 0%,
+          
+          #0d1419 30%,
           #000000 100%
         );
         pointer-events: none;
