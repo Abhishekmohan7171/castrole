@@ -147,14 +147,14 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
       <!-- Modal Overlay -->
       <div 
         *ngIf="isModalOpen && currentCard"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 lg:p-8"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 lg:p-8"
         (click)="closeModal()">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
 
         <!-- Modal Content -->
         <div 
-          class="relative w-full max-w-6xl max-h-[90vh] rounded-2xl bg-neutral-900/95 backdrop-blur-md border border-white/10 overflow-hidden shadow-2xl shadow-black/60 animate-fadeIn"
+          class="relative w-full max-w-6xl h-[75vh] my-6 rounded-2xl bg-neutral-900/95 backdrop-blur-md border border-white/10 overflow-hidden shadow-2xl shadow-black/60 animate-fadeIn flex flex-col"
           (click)="$event.stopPropagation()">
           
           <!-- Close Button -->
@@ -193,9 +193,9 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
           </button>
 
           <!-- Modal Body -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 max-h-[90vh] overflow-y-auto">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 flex-1 overflow-hidden">
             <!-- Media Section (Video or Image) -->
-            <div class="relative aspect-video lg:aspect-auto lg:min-h-[500px] overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900">
+            <div class="relative h-full overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
               <!-- Video Player for Video Posts -->
               <video 
                 *ngIf="currentCard.type === 'video' && currentCard.videoUrl"
@@ -212,7 +212,7 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
                 *ngIf="currentCard.type === 'image' && currentCard.imageUrl"
                 [src]="currentCard.imageUrl" 
                 [alt]="currentCard.title"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-contain"
                 loading="lazy"
               />
               
@@ -220,7 +220,7 @@ import { UserDoc } from '../../assets/interfaces/interfaces';
             </div>
 
             <!-- Content Section -->
-            <div class="p-8 lg:p-12 flex flex-col justify-between">
+            <div class="p-8 lg:p-12 flex flex-col justify-between overflow-y-auto">
               <div class="space-y-6">
                 <!-- Author & Date -->
                 <div class="flex items-center gap-3 text-sm text-neutral-400">
