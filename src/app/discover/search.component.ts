@@ -122,7 +122,7 @@ interface ParsedSearchQuery {
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <!-- Filters Sidebar -->
           <aside class="lg:col-span-1">
-            <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+            <div class="sticky top-32 bg-[#101214]/95 ring-1 ring-[#53565F]/20 border border-[#364361]/30 rounded-xl backdrop-blur-xl p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-6">Filters</h2>
 
               <!-- Character Types (Searchable Multi-select) -->
@@ -628,16 +628,16 @@ interface ParsedSearchQuery {
               <div class="relative">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   @for (actor of displayedActors(); track actor.uid) {
-                    <div class="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden hover:border-[#455A64]/50 transition-all duration-300 group">
+                    <div class="bg-gradient-to-br from-[#101214]/95 to-[#0d1419]/95 ring-1 ring-[#53565F]/20 border border-[#364361]/30 rounded-xl backdrop-blur-xl overflow-hidden hover:border-[#90ACC8]/50 transition-all duration-300 group">
                       <!-- Circular Actor Photo -->
-                      <div class="relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center py-6">
+                      <div class="relative bg-gradient-to-br from-[#15191c] to-[#0d1419] flex items-center justify-center py-6">
                         @if (actor.profileImageUrl) {
                           <img 
                             [src]="actor.profileImageUrl" 
                             [alt]="actor.stageName" 
-                            class="w-24 h-24 rounded-full object-cover border-4 border-neutral-700 group-hover:border-[#455A64]/50 transition-colors shadow-xl">
+                            class="w-24 h-24 rounded-full object-cover border-4 border-[#364361]/50 group-hover:border-[#90ACC8]/50 transition-colors shadow-xl">
                         } @else {
-                          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#515D69] to-[#455A64] flex items-center justify-center text-white font-semibold text-sm">
+                          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#515D69] to-[#90ACC8] flex items-center justify-center text-white font-semibold text-sm">
                             {{ actor.stageName.charAt(0).toUpperCase() }}
                           </div>
                         }
@@ -662,7 +662,7 @@ interface ParsedSearchQuery {
                           <!-- Wishlist Button -->
                           <button 
                             (click)="toggleWishlist(actor)"
-                            [class]="isInWishlist(actor) ? 'bg-[#455A64] text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-[#455A64]'"
+                            [class]="isInWishlist(actor) ? 'bg-[#90ACC8] text-white' : 'bg-[#101214]/95 ring-1 ring-[#53565F]/20 border border-[#364361]/30 text-neutral-400 hover:bg-[#53565F]/30 hover:text-[#90ACC8]'"
                             class="p-2 rounded-lg transition-colors flex-shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" [attr.fill]="isInWishlist(actor) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -676,10 +676,10 @@ interface ParsedSearchQuery {
 
                         <!-- Voice Intro Player -->
                         @if (actor.voiceIntroUrl) {
-                          <div class="mb-3 bg-neutral-800 rounded-lg p-2 flex items-center gap-2">
+                          <div class="mb-3 bg-[#101214]/95 ring-1 ring-[#53565F]/20 border border-[#364361]/30 rounded-lg p-2 flex items-center gap-2">
                             <button 
                               (click)="toggleVoicePlay(actor.uid)"
-                              class="p-1.5 rounded-full bg-[#455A64] hover:bg-[#455A64]/90 text-white transition-colors flex-shrink-0">
+                              class="p-1.5 rounded-full bg-[#90ACC8] hover:bg-[#90ACC8]/90 text-white transition-colors flex-shrink-0">
                               @if (playingVoiceId() === actor.uid) {
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
@@ -780,7 +780,7 @@ interface ParsedSearchQuery {
 
           <!-- Wishlist Sidebar -->
           <aside class="lg:col-span-1">
-            <div class="sticky top-32 bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+            <div class="sticky top-32 bg-gradient-to-br from-[#101214] to-[#0d1419] ring-1 ring-[#53565F]/20 border border-[#364361]/30 rounded-xl backdrop-blur-xl p-6">
               <h2 class="text-lg font-semibold text-neutral-100 mb-4">Wishlist</h2>
 
               @if (wishlistLoading()) {
@@ -793,7 +793,7 @@ interface ParsedSearchQuery {
                 <!-- Wishlist Items -->
                 <div class="space-y-3">
                   @for (actor of wishlist(); track actor.uid) {
-                    <div class="flex items-center gap-3 p-2 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors group">
+                    <div class="flex items-center gap-3 p-2 bg-[#101214]/95 ring-1 ring-[#53565F]/20 border border-[#364361]/30 rounded-lg hover:bg-[#53565F]/30 transition-colors group">
                       <!-- Profile Photo - Clickable -->
                       <button 
                         (click)="viewProfile(actor)"
