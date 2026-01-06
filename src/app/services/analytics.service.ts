@@ -4,16 +4,14 @@ import {
   collection,
   doc,
   getDoc,
-  addDoc,
-  setDoc,
   updateDoc,
   increment,
-  serverTimestamp,
+  Timestamp,
   docData,
 } from '@angular/fire/firestore';
-import { Observable, from, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { AnalyticsEvent, UserAnalytics, SearchImpressionMetadata } from '../../assets/interfaces/interfaces';
+import { ActorProfile, ActorAnalytics, VideoAnalytics } from '../../assets/interfaces/profile.interfaces';
 
 @Injectable({
   providedIn: 'root',
@@ -22,86 +20,83 @@ export class AnalyticsService {
   private firestore = inject(Firestore);
 
   /**
-   * Check if user has ghost mode enabled
+   * Check if actor has ghost mode enabled
+   * Ghost mode is stored in users/{userId}.ghost field
    */
-  async checkGhostMode(userId: string): Promise<boolean> {
+  private async checkGhostMode(actorId: string): Promise<boolean> {
     try {
-      const userDoc = await getDoc(doc(this.firestore, 'users', userId));
+      const userDoc = await getDoc(doc(this.firestore, 'users', actorId));
+      if (!userDoc.exists()) return false;
+
       return userDoc.data()?.['ghost'] === true;
     } catch (error) {
       console.error('Error checking ghost mode:', error);
-      return false; // Default to not ghost mode on error
+      return false;
     }
   }
 
   /**
-   * Track profile view event
+   * Track profile view event - Updates profile document in real-time
    * @param actorId The actor whose profile is being viewed
    * @param producerId The producer viewing the profile
-   * @param duration Optional view duration in seconds
+   * @param duration Optional view duration in seconds (deprecated, not used)
    */
   async trackProfileView(
     actorId: string,
     producerId: string,
     duration?: number
   ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping analytics tracking');
-      return;
-    }
-
     try {
-      // Create analytics event
-      const event: AnalyticsEvent = {
-        eventType: 'profile_view',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: duration ? { duration } : undefined,
-      };
-
-      // Add to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
-
-      // Update aggregated analytics
-      const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-      const analyticsDoc = await getDoc(analyticsRef);
-
-      if (analyticsDoc.exists()) {
-        // Document exists - increment counters
-        const updateData: any = {
-          'profileViews.total': increment(1),
-          'profileViews.last30Days': increment(1),
-          lastUpdated: serverTimestamp(),
-        };
-
-        // Update average duration if provided
-        if (duration) {
-          const currentData = analyticsDoc.data() as UserAnalytics;
-          const currentTotal = currentData.profileViews.total;
-          const currentAvg = currentData.profileViews.avgDuration || 0;
-          const newAvg = (currentAvg * currentTotal + duration) / (currentTotal + 1);
-          updateData['profileViews.avgDuration'] = newAvg;
-        }
-
-        await updateDoc(analyticsRef, updateData);
-      } else {
-        // Document doesn't exist - create it
-        const newAnalytics: UserAnalytics = {
-          actorId,
-          profileViews: {
-            total: 1,
-            last30Days: 1,
-            avgDuration: duration || 0,
-          },
-          wishlistCount: 0,
-          visibilityScore: 0,
-          lastUpdated: serverTimestamp() as any,
-        };
-        await setDoc(analyticsRef, newAnalytics);
+      // Check ghost mode
+      const isGhostMode = await this.checkGhostMode(actorId);
+      if (isGhostMode) {
+        console.log('Ghost mode enabled - skipping analytics tracking');
+        return;
       }
+
+      const profileRef = doc(this.firestore, 'profiles', actorId);
+      const profileDoc = await getDoc(profileRef);
+
+      if (!profileDoc.exists()) {
+        console.error('Profile not found:', actorId);
+        return;
+      }
+
+      const profile = profileDoc.data() as ActorProfile;
+      const currentAnalytics: ActorAnalytics[] = profile.actorAnalytics || [];
+
+      // Find existing entry for this producer
+      const existingIndex = currentAnalytics.findIndex(a => a.producerId === producerId);
+
+      if (existingIndex >= 0) {
+        // Update existing entry
+        currentAnalytics[existingIndex] = {
+          ...currentAnalytics[existingIndex],
+          lastViewedAt: Timestamp.now(),
+          totalViews: currentAnalytics[existingIndex].totalViews + 1,
+        };
+      } else {
+        // Add new entry
+        currentAnalytics.push({
+          producerId,
+          lastViewedAt: Timestamp.now(),
+          totalViews: 1,
+          isWishlist: false,
+          videosWatched: [],
+          firstViewedAt: Timestamp.now(),
+        });
+      }
+
+      // Keep only last 100 entries (sorted by most recent)
+      const sortedAnalytics = currentAnalytics
+        .sort((a, b) => b.lastViewedAt.toMillis() - a.lastViewedAt.toMillis())
+        .slice(0, 100);
+
+      // Update Firestore
+      await updateDoc(profileRef, {
+        profileViewCount: increment(1),
+        actorAnalytics: sortedAnalytics,
+      });
 
       console.log('✓ Profile view tracked for actor:', actorId);
     } catch (error) {
@@ -110,55 +105,53 @@ export class AnalyticsService {
   }
 
   /**
-   * Track wishlist addition event
+   * Track wishlist addition - Updates profile document in real-time
    * @param actorId The actor being added to wishlist
    * @param producerId The producer adding to wishlist
    */
   async trackWishlistAdd(actorId: string, producerId: string): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping analytics tracking');
-      return;
-    }
-
     try {
-      // Create analytics event
-      const event: AnalyticsEvent = {
-        eventType: 'wishlist_add',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-      };
-
-      // Add to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
-
-      // Update aggregated analytics
-      const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-      const analyticsDoc = await getDoc(analyticsRef);
-
-      if (analyticsDoc.exists()) {
-        // Document exists - increment wishlist counter
-        await updateDoc(analyticsRef, {
-          wishlistCount: increment(1),
-          lastUpdated: serverTimestamp(),
-        });
-      } else {
-        // Document doesn't exist - create it
-        const newAnalytics: UserAnalytics = {
-          actorId,
-          profileViews: {
-            total: 0,
-            last30Days: 0,
-            avgDuration: 0,
-          },
-          wishlistCount: 1,
-          visibilityScore: 0,
-          lastUpdated: serverTimestamp() as any,
-        };
-        await setDoc(analyticsRef, newAnalytics);
+      // Check ghost mode
+      const isGhostMode = await this.checkGhostMode(actorId);
+      if (isGhostMode) {
+        console.log('Ghost mode enabled - skipping analytics tracking');
+        return;
       }
+
+      const profileRef = doc(this.firestore, 'profiles', actorId);
+      const profileDoc = await getDoc(profileRef);
+
+      if (!profileDoc.exists()) {
+        console.error('Profile not found:', actorId);
+        return;
+      }
+
+      const profile = profileDoc.data() as ActorProfile;
+      const currentAnalytics: ActorAnalytics[] = profile.actorAnalytics || [];
+
+      // Find producer in analytics array
+      const existingIndex = currentAnalytics.findIndex(a => a.producerId === producerId);
+
+      if (existingIndex >= 0) {
+        // Update existing entry
+        currentAnalytics[existingIndex].isWishlist = true;
+      } else {
+        // Create new entry
+        currentAnalytics.push({
+          producerId,
+          lastViewedAt: Timestamp.now(),
+          totalViews: 0,
+          isWishlist: true,
+          videosWatched: [],
+          firstViewedAt: Timestamp.now(),
+        });
+      }
+
+      // Update Firestore
+      await updateDoc(profileRef, {
+        wishListCount: increment(1),
+        actorAnalytics: currentAnalytics,
+      });
 
       console.log('✓ Wishlist addition tracked for actor:', actorId);
     } catch (error) {
@@ -167,110 +160,116 @@ export class AnalyticsService {
   }
 
   /**
-   * Get user analytics for an actor
-   * @param actorId The actor's user ID
-   * @returns Observable of UserAnalytics or null if no data exists
+   * Track wishlist removal - Updates profile document in real-time
+   * @param actorId The actor being removed from wishlist
+   * @param producerId The producer removing from wishlist
    */
-  getUserAnalytics(actorId: string): Observable<UserAnalytics | null> {
-    const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-    return docData(analyticsRef, { idField: 'id' }).pipe(
-      map((data) => {
-        if (data) {
-          return data as UserAnalytics;
-        }
-        return null;
-      }),
-      catchError((error) => {
-        console.error('Error fetching user analytics:', error);
-        return of(null);
-      })
-    );
-  }
-
-  /**
-   * Track search impression event
-   * Called when actor profile appears in producer's search results
-   * @param actorId The actor whose profile appeared in search
-   * @param producerId The producer performing the search
-   * @param searchFilters Applied filters at time of impression
-   * @param visibleVideos Array of video fileNames visible in the search result
-   */
-  async trackSearchImpression(
-    actorId: string,
-    producerId: string,
-    searchFilters: SearchImpressionMetadata,
-    visibleVideos: string[]
-  ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping search impression tracking');
-      return;
-    }
-
+  async trackWishlistRemove(actorId: string, producerId: string): Promise<void> {
     try {
-      const event: AnalyticsEvent = {
-        eventType: 'search_impression',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: {
-          searchFilters,
-          visibleVideos,
-        },
-      };
+      const profileRef = doc(this.firestore, 'profiles', actorId);
+      const profileDoc = await getDoc(profileRef);
 
-      // Log event to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
+      if (!profileDoc.exists()) {
+        console.error('Profile not found:', actorId);
+        return;
+      }
 
-      console.log('✓ Search impression tracked for actor:', actorId);
+      const profile = profileDoc.data() as ActorProfile;
+      const currentAnalytics: ActorAnalytics[] = profile.actorAnalytics || [];
+
+      // Find and update producer entry
+      const existingIndex = currentAnalytics.findIndex(a => a.producerId === producerId);
+
+      if (existingIndex >= 0) {
+        currentAnalytics[existingIndex].isWishlist = false;
+
+        await updateDoc(profileRef, {
+          wishListCount: increment(-1),
+          actorAnalytics: currentAnalytics,
+        });
+
+        console.log('✓ Wishlist removal tracked for actor:', actorId);
+      }
     } catch (error) {
-      console.error('Error tracking search impression:', error);
+      console.error('Error tracking wishlist removal:', error);
     }
   }
 
   /**
-   * Track video view event
-   * Called when a video is played (anywhere in the app)
+   * Track video view event - Updates profile document in real-time
    * @param actorId The actor who owns the video
    * @param producerId The producer viewing the video
    * @param videoId Video file name (unique identifier)
    * @param videoTitle Video description/title
-   * @param videoTags Tags associated with the video
-   * @param watchDuration How long the video was watched (seconds)
+   * @param videoTags Tags associated with the video (deprecated, not used)
+   * @param watchDuration How long the video was watched (deprecated, not used)
    */
   async trackVideoView(
     actorId: string,
     producerId: string,
     videoId: string,
     videoTitle: string,
-    videoTags: string[],
+    videoTags: string[] = [],
     watchDuration?: number
   ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping video view tracking');
-      return;
-    }
-
     try {
-      const event: AnalyticsEvent = {
-        eventType: 'video_view',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: {
-          videoId,
-          videoFileName: videoId,
-          videoTitle,
-          videoTags,
-          watchDuration,
-        },
-      };
+      // Check ghost mode
+      const isGhostMode = await this.checkGhostMode(actorId);
+      if (isGhostMode) {
+        console.log('Ghost mode enabled - skipping video view tracking');
+        return;
+      }
 
-      // Log event to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
+      const profileRef = doc(this.firestore, 'profiles', actorId);
+      const profileDoc = await getDoc(profileRef);
+
+      if (!profileDoc.exists()) {
+        console.error('Profile not found:', actorId);
+        return;
+      }
+
+      const profile = profileDoc.data() as ActorProfile;
+
+      // Update actorAnalytics (add video to videosWatched)
+      const currentAnalytics: ActorAnalytics[] = profile.actorAnalytics || [];
+      const existingIndex = currentAnalytics.findIndex(a => a.producerId === producerId);
+
+      if (existingIndex >= 0) {
+        const videosWatched = currentAnalytics[existingIndex].videosWatched || [];
+        if (!videosWatched.includes(videoId)) {
+          videosWatched.push(videoId);
+          currentAnalytics[existingIndex].videosWatched = videosWatched.slice(-10); // Keep last 10
+        }
+      }
+
+      // Update videoAnalytics
+      const currentVideoAnalytics: VideoAnalytics[] = profile.videoAnalytics || [];
+      const videoIndex = currentVideoAnalytics.findIndex(v => v.videoId === videoId);
+
+      if (videoIndex >= 0) {
+        // Increment existing video
+        currentVideoAnalytics[videoIndex] = {
+          ...currentVideoAnalytics[videoIndex],
+          viewCount: currentVideoAnalytics[videoIndex].viewCount + 1,
+          lastViewedAt: Timestamp.now(),
+          lastViewedBy: producerId,
+        };
+      } else {
+        // Add new video
+        currentVideoAnalytics.push({
+          videoId,
+          videoTitle,
+          viewCount: 1,
+          lastViewedAt: Timestamp.now(),
+          lastViewedBy: producerId,
+        });
+      }
+
+      // Update Firestore
+      await updateDoc(profileRef, {
+        actorAnalytics: currentAnalytics,
+        videoAnalytics: currentVideoAnalytics,
+      });
 
       console.log('✓ Video view tracked:', videoId);
     } catch (error) {
@@ -279,40 +278,74 @@ export class AnalyticsService {
   }
 
   /**
-   * Get video analytics for an actor
+   * Get analytics summary for an actor from their profile
    * @param actorId The actor's user ID
-   * @returns Observable of video analytics data
+   * @returns Analytics data from profile document
    */
-  getVideoAnalytics(actorId: string): Observable<any | null> {
-    const videoAnalyticsRef = doc(
-      this.firestore,
-      'video_analytics',
-      `${actorId}_videos`
-    );
-    return docData(videoAnalyticsRef, { idField: 'id' }).pipe(
-      map((data) => data || null),
-      catchError((error) => {
-        console.error('Error fetching video analytics:', error);
-        return of(null);
-      })
-    );
+  async getProfileAnalytics(actorId: string): Promise<{
+    profileViewCount: number;
+    wishListCount: number;
+    actorAnalytics: ActorAnalytics[];
+    videoAnalytics: VideoAnalytics[];
+  } | null> {
+    try {
+      const profileDoc = await getDoc(doc(this.firestore, 'profiles', actorId));
+
+      if (!profileDoc.exists()) {
+        return null;
+      }
+
+      const profile = profileDoc.data() as ActorProfile;
+
+      return {
+        profileViewCount: profile.profileViewCount || 0,
+        wishListCount: profile.wishListCount || 0,
+        actorAnalytics: profile.actorAnalytics || [],
+        videoAnalytics: profile.videoAnalytics || [],
+      };
+    } catch (error) {
+      console.error('Error fetching profile analytics:', error);
+      return null;
+    }
   }
 
   /**
-   * Get tag analytics for an actor
+   * Get real-time analytics Observable for an actor from their profile
+   * This Observable will emit updates whenever the profile document changes
    * @param actorId The actor's user ID
-   * @returns Observable of tag analytics data
+   * @returns Observable of analytics data
    */
-  getTagAnalytics(actorId: string): Observable<any | null> {
-    const tagAnalyticsRef = doc(
-      this.firestore,
-      'tag_analytics',
-      `${actorId}_tags`
-    );
-    return docData(tagAnalyticsRef, { idField: 'id' }).pipe(
-      map((data) => data || null),
+  getProfileAnalyticsRealtime(actorId: string): Observable<{
+    profileViewCount: number;
+    wishListCount: number;
+    actorAnalytics: ActorAnalytics[];
+    videoAnalytics: VideoAnalytics[];
+    visibilityScore: number;
+  } | null> {
+    const profileRef = doc(this.firestore, 'profiles', actorId);
+
+    return docData(profileRef, { idField: 'uid' }).pipe(
+      map((data) => {
+        if (!data) return null;
+
+        const profile = data as ActorProfile;
+        const profileViewCount = profile.profileViewCount || 0;
+        const wishListCount = profile.wishListCount || 0;
+
+        // Calculate visibility score (simple formula: views + wishlist * 2, normalized to 0-100)
+        const rawScore = profileViewCount + (wishListCount * 2);
+        const visibilityScore = Math.min(Math.round(rawScore / 10), 100);
+
+        return {
+          profileViewCount,
+          wishListCount,
+          actorAnalytics: profile.actorAnalytics || [],
+          videoAnalytics: profile.videoAnalytics || [],
+          visibilityScore,
+        };
+      }),
       catchError((error) => {
-        console.error('Error fetching tag analytics:', error);
+        console.error('Error fetching profile analytics:', error);
         return of(null);
       })
     );

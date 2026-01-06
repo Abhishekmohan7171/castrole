@@ -46,9 +46,10 @@ export interface ActorProfile {
   notifications?: Notification[];
 
   // Related to analytics
-  actorAnalytics?: ActorAnalytics[];
-  profileViewCount?: number; // Based on actor analytics list count
-  wishListCount?: number; // Based on actor analytics list with isWishlist true
+  actorAnalytics?: ActorAnalytics[]; // Recent viewers (max 100 entries)
+  profileViewCount?: number; // All-time total profile views
+  wishListCount?: number; // All-time wishlist additions
+  videoAnalytics?: VideoAnalytics[]; // Per-video view counts
 
   // Payment related
   isSubscribed?: boolean; // Default false
@@ -96,8 +97,20 @@ export interface Social {
 }
 
 export interface ActorAnalytics {
-  producerId: string; // Producer -> select actor profile, producer -> when watches videos
-  watchTime?: number;
-  isWishList?: boolean;
-  keywordsMatched?: string[];
+  producerId: string; // Producer who viewed/interacted
+  lastViewedAt: any; // Timestamp - Most recent view
+  totalViews: number; // Total views from this producer
+  isWishlist: boolean; // Currently in wishlist
+  videosWatched?: string[]; // Video filenames watched (max 10 recent)
+  firstViewedAt?: any; // Timestamp - First view (optional)
+  watchTime?: number; // Deprecated - kept for backwards compatibility
+  keywordsMatched?: string[]; // Deprecated - kept for backwards compatibility
+}
+
+export interface VideoAnalytics {
+  videoId: string; // Filename or unique identifier
+  videoTitle: string; // Video title/description
+  viewCount: number; // Total views
+  lastViewedAt?: any; // Timestamp - Last view
+  lastViewedBy?: string; // Last viewer producer ID
 }

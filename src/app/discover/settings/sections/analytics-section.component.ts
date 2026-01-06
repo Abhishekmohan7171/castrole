@@ -1,6 +1,6 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
+import { VideoAnalytics } from '../../../../assets/interfaces/profile.interfaces';
 
 @Component({
   selector: 'app-analytics-section',
@@ -237,9 +237,13 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
 })
 export class AnalyticsSectionComponent {
   isSubscribed = input.required<boolean>();
-  analyticsData = input.required<UserAnalytics | null>();
-  videoAnalytics = input<any | null>();
-  tagAnalytics = input<any | null>();
+  analyticsData = input.required<{
+    profileViewCount: number;
+    wishListCount: number;
+    actorAnalytics: any[];
+    videoAnalytics: VideoAnalytics[];
+    visibilityScore: number;
+  } | null>();
   upgradeSubscription = input.required<() => void>();
 
   onUpgradeSubscription() {
@@ -267,40 +271,24 @@ export class AnalyticsSectionComponent {
     }
 
     return {
-      profileViews: data.profileViews.total || 0,
-      wishlistCount: data.wishlistCount || 0,
-      avgTimeOnProfile: this.formatDuration(data.profileViews.avgDuration),
-      visibilityScore: Math.round(data.visibilityScore || 0),
+      profileViews: data.profileViewCount || 0,
+      wishlistCount: data.wishListCount || 0,
+      avgTimeOnProfile: 'N/A', // No longer tracking duration
+      visibilityScore: data.visibilityScore || 0,
     };
   }
 
   getSearchAppearances() {
-    const data = this.analyticsData();
-    if (!data || !data.searchImpressions) {
-      return {
-        count: 0,
-        videos: [] as Array<{ title: string; thumbnail: string }>
-      };
-    }
-
-    const visibleVideos = data.searchImpressions.visibleVideosFrequency || {};
-    const sortedVideos = Object.entries(visibleVideos)
-      .sort(([, countA], [, countB]) => (countB as number) - (countA as number))
-      .slice(0, 5)
-      .map(([fileName]) => ({
-        title: this.formatVideoTitle(fileName),
-        thumbnail: ''
-      }));
-
+    // Search impressions no longer tracked
     return {
-      count: data.searchImpressions.total || 0,
-      videos: sortedVideos
+      count: 0,
+      videos: [] as Array<{ title: string; thumbnail: string }>
     };
   }
 
   getTopPerformingVideo() {
     const data = this.analyticsData();
-    if (!data || !data.topVideo) {
+    if (!data || !data.videoAnalytics || data.videoAnalytics.length === 0) {
       return {
         title: 'No videos yet',
         views: '0',
@@ -308,35 +296,20 @@ export class AnalyticsSectionComponent {
       };
     }
 
+    // Find video with most views
+    const topVideo = data.videoAnalytics.reduce((max, video) =>
+      video.viewCount > max.viewCount ? video : max
+    );
+
     return {
-      title: data.topVideo.videoTitle || 'Untitled Video',
-      views: data.topVideo.totalViews?.toString() || '0',
-      avgWatchTime: this.formatDuration(data.topVideo.avgWatchTime || 0),
+      title: topVideo.videoTitle || 'Untitled Video',
+      views: topVideo.viewCount?.toString() || '0',
+      avgWatchTime: 'N/A', // No longer tracking watch duration
     };
   }
 
   getTagInsights() {
-    const tagData = this.tagAnalytics();
-    if (!tagData || !tagData.tags) {
-      return [] as Array<{ tag: string; percentage: number }>;
-    }
-
-    return Object.values(tagData.tags)
-      .sort((a: any, b: any) => b.percentageOfTotalViews - a.percentageOfTotalViews)
-      .slice(0, 10)
-      .map((tag: any) => ({
-        tag: tag.tag,
-        percentage: Math.round(tag.percentageOfTotalViews)
-      }));
-  }
-
-  // Helper to format video titles from filenames
-  private formatVideoTitle(fileName: string): string {
-    // Remove file extension
-    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
-    // Replace underscores/hyphens with spaces
-    const formatted = nameWithoutExt.replace(/[_-]/g, ' ');
-    // Capitalize first letter
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    // Tag analytics no longer tracked
+    return [] as Array<{ tag: string; percentage: number }>;
   }
 }
