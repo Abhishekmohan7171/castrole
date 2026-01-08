@@ -1075,6 +1075,9 @@ export class UploadComponent implements OnInit, OnDestroy {
             // Increment video count
             this.uploadedVideoCount.set(this.uploadedVideoCount() + 1);
             
+            // Update profile characterTypes
+            this.updateProfileCharacterTypes(userId);
+            
             // Stop watching
             if (this.statusUnsubscribe) {
               this.statusUnsubscribe();
@@ -1283,6 +1286,12 @@ export class UploadComponent implements OnInit, OnDestroy {
               // Increment image count
               this.uploadedImageCount.set(this.uploadedImageCount() + 1);
 
+              // Update profile characterTypes
+              const userId = this.auth.currentUser?.uid;
+              if (userId) {
+                this.updateProfileCharacterTypes(userId);
+              }
+
               // Redirect if returnUrl is set
               const returnUrl = this.returnUrl();
               if (returnUrl) {
@@ -1432,6 +1441,54 @@ export class UploadComponent implements OnInit, OnDestroy {
     const imageInput = document.getElementById('image-upload') as HTMLInputElement;
     if (imageInput) {
       imageInput.value = '';
+    }
+  }
+
+  /**
+   * Update profile characterTypes by aggregating all tags from user's uploads
+   */
+  private async updateProfileCharacterTypes(userId: string): Promise<void> {
+    try {
+      // Fetch all uploads for this user
+      const uploadsRef = collection(this.firestore, `uploads/${userId}/userUploads`);
+      const uploadDocs = await getDocs(uploadsRef);
+      
+      // Aggregate all unique character types
+      const characterTypesSet = new Set<string>();
+      
+      uploadDocs.forEach((uploadDoc) => {
+        const uploadData = uploadDoc.data();
+        
+        // Tags can be in metadata.tags (videos) or tags (images)
+        const metadata = uploadData['metadata'] as any;
+        let tags: string[] | undefined;
+        
+        if (metadata && Array.isArray(metadata['tags'])) {
+          tags = metadata['tags'];
+        } else if (Array.isArray(uploadData['tags'])) {
+          tags = uploadData['tags'];
+        }
+        
+        if (tags && tags.length > 0) {
+          tags.forEach(tag => {
+            if (typeof tag === 'string' && tag.trim().length > 0) {
+              characterTypesSet.add(tag.toLowerCase());
+            }
+          });
+        }
+      });
+      
+      // Update profile with aggregated character types
+      const profileRef = doc(this.firestore, 'profiles', userId);
+      await setDoc(profileRef, {
+        actorProfile: {
+          characterTypes: Array.from(characterTypesSet)
+        }
+      }, { merge: true });
+      
+      console.log(`Updated profile characterTypes for user ${userId}:`, Array.from(characterTypesSet));
+    } catch (error) {
+      console.error('Error updating profile characterTypes:', error);
     }
   }
 

@@ -40,6 +40,7 @@ export interface ActorProfile {
   voiceIntro?: string;
   skills?: Skill[];
   languages?: Language[];
+  characterTypes?: string[]; // Character type tags from uploads (for search optimization)
   listEducation?: Education[];
   actorWorks?: Work[]; // Get the last from the list for recent work
   notifications?: Notification[];

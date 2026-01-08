@@ -1352,7 +1352,8 @@ export class SearchComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Step 2: Batch fetch profiles (Firestore 'in' query limit is 10)
+      // Step 2: Batch fetch profiles with characterTypes (Firestore 'in' query limit is 10)
+      // Character types are now stored directly in actorProfile.characterTypes
       const actors: ActorSearchResult[] = [];
       
       for (let i = 0; i < actorUids.length; i += 10) {
@@ -1361,54 +1362,10 @@ export class SearchComponent implements OnInit, OnDestroy {
         const profilesQuery = query(profilesRef, where('uid', 'in', batch));
         const profileDocs = await getDocs(profilesQuery);
         
-        // Fetch character types from uploads (both videos and images are in the same collection)
-        // Path: uploads/{userId}/userUploads/{uploadId}
-        // Tags are stored in: metadata.tags (for videos) or tags (for images)
-        const actorCharacterTypes = new Map<string, Set<string>>();
-        
-        for (const actorUid of batch) {
-          // Fetch all uploads (videos and images) for this actor
-          const uploadsRef = collection(this.firestore, `uploads/${actorUid}/userUploads`);
-          const uploadDocs = await getDocs(uploadsRef);
-          
-          this.logger.log(`Actor ${actorUid}: Found ${uploadDocs.size} uploads`);
-          
-          // Extract tags from all uploads
-          uploadDocs.forEach((uploadDoc) => {
-            const uploadData = uploadDoc.data();
-            
-            // Tags can be in metadata.tags (videos) or tags (images)
-            const metadata = uploadData['metadata'] as any;
-            let tags: string[] | undefined;
-            
-            if (metadata && Array.isArray(metadata['tags'])) {
-              tags = metadata['tags'];
-            } else if (Array.isArray(uploadData['tags'])) {
-              tags = uploadData['tags'];
-            }
-            
-            if (tags && tags.length > 0) {
-              if (!actorCharacterTypes.has(actorUid)) {
-                actorCharacterTypes.set(actorUid, new Set<string>());
-              }
-              tags.forEach(tag => {
-                if (typeof tag === 'string' && tag.trim().length > 0) {
-                  actorCharacterTypes.get(actorUid)!.add(tag.toLowerCase());
-                  this.logger.log(`  Added character type "${tag.toLowerCase()}" for actor ${actorUid}`);
-                }
-              });
-            }
-          });
-        }
-        
-        this.logger.log('Character types map for batch:', Array.from(actorCharacterTypes.entries()).map(([uid, types]) => ({
-          uid,
-          types: Array.from(types)
-        })));
-        
         profileDocs.forEach((doc) => {
           const profile = doc.data() as Profile;
-          const characterTypes = Array.from(actorCharacterTypes.get(profile.uid) || []);
+          // Character types are now directly available in actorProfile
+          const characterTypes = profile.actorProfile?.characterTypes || [];
           const actorResult = this.transformProfileToSearchResult(profile, characterTypes);
           if (actorResult) {
             actors.push(actorResult);
