@@ -277,7 +277,9 @@ export class AnalyticsSectionComponent implements OnInit {
       const visibilityScore = this.calculateVisibilityScore(
         lifetimeData?.profileViews || 0,
         wishlistCount,
-        lifetimeData?.searchAppearances || 0
+        lifetimeData?.searchAppearances || 0,
+        lifetimeData?.totalVideoViews || 0,
+        lifetimeData?.totalWatchMs || 0
       );
 
       // 6. Update signal
@@ -353,13 +355,40 @@ export class AnalyticsSectionComponent implements OnInit {
   private calculateVisibilityScore(
     profileViews: number,
     wishlistCount: number,
-    searchAppearances: number
+    searchAppearances: number,
+    totalVideoViews: number,
+    totalWatchMs: number
   ): number {
-    // Simple formula: normalize to 0-100 scale
-    // Weight: views (1x) + wishlist (3x) + search (0.5x)
-    const rawScore = profileViews + (wishlistCount * 3) + (searchAppearances * 0.5);
+    /**
+     * Enhanced visibility score formula with video metrics
+     * Weights:
+     * - Profile views: 1x (baseline engagement)
+     * - Wishlist count: 3x (strong interest signal)
+     * - Search appearances: 0.5x (exposure metric)
+     * - Video views: 2x (content engagement)
+     * - Avg watch time: bonus multiplier (quality metric)
+     */
 
-    // Normalize (adjust divisor based on your needs)
+    // Base engagement score
+    const baseScore = profileViews + (wishlistCount * 3) + (searchAppearances * 0.5) + (totalVideoViews * 2);
+
+    // Calculate average watch time in seconds (if there are video views)
+    const avgWatchTimeSec = totalVideoViews > 0 ? (totalWatchMs / totalVideoViews / 1000) : 0;
+
+    // Bonus multiplier based on average watch time
+    // 0-10s: 1.0x, 10-30s: 1.1x, 30-60s: 1.2x, 60s+: 1.3x
+    let watchTimeMultiplier = 1.0;
+    if (avgWatchTimeSec >= 60) {
+      watchTimeMultiplier = 1.3;
+    } else if (avgWatchTimeSec >= 30) {
+      watchTimeMultiplier = 1.2;
+    } else if (avgWatchTimeSec >= 10) {
+      watchTimeMultiplier = 1.1;
+    }
+
+    const rawScore = baseScore * watchTimeMultiplier;
+
+    // Normalize to 0-100 scale (adjust divisor based on your needs)
     return Math.min(Math.round(rawScore / 10), 100);
   }
 

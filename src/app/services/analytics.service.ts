@@ -120,7 +120,9 @@ export class AnalyticsService implements OnDestroy {
         );
       }
       if (increments.searchAppearances) {
-        incrementData.searchAppearances = increment(increments.searchAppearances);
+        incrementData.searchAppearances = increment(
+          increments.searchAppearances
+        );
       }
       if (increments.totalVideoViews) {
         incrementData.totalVideoViews = increment(increments.totalVideoViews);
@@ -286,17 +288,29 @@ export class AnalyticsService implements OnDestroy {
     videoId: string,
     userId: string
   ): Promise<void> {
+    console.log('[AnalyticsService] startVideoTracking called', {
+      actorId,
+      videoId,
+      userId,
+    });
+
     // Check ghost mode
     const isGhost = await this.checkGhostMode(actorId);
     if (isGhost) {
-      console.log('Ghost mode enabled - skipping video tracking');
+      console.log(
+        '[AnalyticsService] Ghost mode enabled - skipping video tracking'
+      );
       return;
     }
 
     const videoPath = `uploads/${userId}/userUploads/${videoId}`;
+    console.log('[AnalyticsService] Video path constructed:', videoPath);
 
     if (this.videoSessions.has(videoPath)) {
-      console.log('Video session already active:', videoPath);
+      console.log(
+        '[AnalyticsService] Video session already active:',
+        videoPath
+      );
       return;
     }
 
@@ -311,7 +325,10 @@ export class AnalyticsService implements OnDestroy {
     };
 
     this.videoSessions.set(videoPath, session);
-    console.log('Started video tracking:', videoPath);
+    console.log('[AnalyticsService] ✓ Started video tracking session:', {
+      videoPath,
+      session,
+    });
   }
 
   /**
@@ -330,7 +347,10 @@ export class AnalyticsService implements OnDestroy {
     const session = this.videoSessions.get(videoPath);
 
     if (!session) {
-      console.warn('No active video session for:', videoPath);
+      console.warn(
+        '[AnalyticsService] No active video session for:',
+        videoPath
+      );
       return;
     }
 
@@ -350,7 +370,13 @@ export class AnalyticsService implements OnDestroy {
       session.accumulatedWatchMs >= this.VIDEO_VIEW_THRESHOLD_MS
     ) {
       session.viewCountIncremented = true;
-      console.log('View threshold reached for:', videoPath);
+      console.log(
+        '[AnalyticsService] ✓ View threshold reached for:',
+        videoPath,
+        {
+          accumulatedWatchMs: session.accumulatedWatchMs,
+        }
+      );
     }
   }
 
@@ -362,6 +388,7 @@ export class AnalyticsService implements OnDestroy {
    */
   async endVideoTracking(videoId: string, userId: string): Promise<void> {
     const videoPath = `uploads/${userId}/userUploads/${videoId}`;
+    console.log('[AnalyticsService] endVideoTracking called for:', videoPath);
     await this.flushVideoSession(videoPath);
   }
 
@@ -369,11 +396,22 @@ export class AnalyticsService implements OnDestroy {
    * Flush a single video session to Firestore
    */
   private async flushVideoSession(videoPath: string): Promise<void> {
+    console.log('[AnalyticsService] flushVideoSession called for:', videoPath);
     const session = this.videoSessions.get(videoPath);
-    if (!session) return;
+    if (!session) {
+      console.log('[AnalyticsService] No session found for:', videoPath);
+      return;
+    }
+
+    console.log('[AnalyticsService] Session data:', {
+      accumulatedWatchMs: session.accumulatedWatchMs,
+      viewCountIncremented: session.viewCountIncremented,
+      videoPath: session.videoPath,
+    });
 
     // Only flush if there's accumulated data
     if (session.accumulatedWatchMs === 0 && !session.viewCountIncremented) {
+      console.log('[AnalyticsService] No data to flush, deleting session');
       this.videoSessions.delete(videoPath);
       return;
     }
@@ -383,6 +421,7 @@ export class AnalyticsService implements OnDestroy {
 
       // 1. Update video document in uploads collection
       const videoRef = doc(this.firestore, session.videoPath);
+      console.log('[AnalyticsService] Video doc path:', session.videoPath);
 
       const videoUpdates: any = {};
       if (session.viewCountIncremented) {
@@ -394,12 +433,16 @@ export class AnalyticsService implements OnDestroy {
         );
       }
 
+      console.log('[AnalyticsService] Video updates to apply:', videoUpdates);
+
       if (Object.keys(videoUpdates).length > 0) {
         batch.update(videoRef, videoUpdates);
       }
 
       // Commit batch
+      console.log('[AnalyticsService] Committing batch to Firestore...');
       await batch.commit();
+      console.log('[AnalyticsService] ✓ Batch committed successfully');
 
       // 2. Update actor analytics (separate operation after batch)
       const increments: AnalyticsIncrement = {};
@@ -411,15 +454,27 @@ export class AnalyticsService implements OnDestroy {
       }
 
       if (Object.keys(increments).length > 0) {
+        console.log('[AnalyticsService] Updating actor analytics:', increments);
         await this.updateActorAnalytics(session.actorId, increments);
       }
 
-      console.log('✓ Video session flushed:', session.videoPath, {
-        viewCounted: session.viewCountIncremented,
-        watchMs: session.accumulatedWatchMs,
-      });
+      console.log(
+        '[AnalyticsService] ✓ Video session flushed:',
+        session.videoPath,
+        {
+          viewCounted: session.viewCountIncremented,
+          watchMs: session.accumulatedWatchMs,
+        }
+      );
     } catch (error) {
-      console.error('Error flushing video session:', error);
+      console.error(
+        '[AnalyticsService] ❌ Error flushing video session:',
+        error
+      );
+      console.error('[AnalyticsService] Error details:', {
+        videoPath: session.videoPath,
+        error: error,
+      });
     } finally {
       this.videoSessions.delete(videoPath);
     }
@@ -467,10 +522,7 @@ export class AnalyticsService implements OnDestroy {
    * @param actorId Actor being removed from wishlist
    * @param producerId Producer removing from wishlist
    */
-  async removeFromWishlist(
-    actorId: string,
-    producerId: string
-  ): Promise<void> {
+  async removeFromWishlist(actorId: string, producerId: string): Promise<void> {
     try {
       const wishlistId = `${producerId}_${actorId}`;
       const wishlistRef = doc(this.firestore, 'wishlists', wishlistId);
