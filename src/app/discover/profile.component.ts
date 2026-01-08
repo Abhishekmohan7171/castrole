@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -1482,10 +1482,15 @@ import {
           />
           } @else if (previewMediaType() === 'video') {
           <video
+            #videoPlayer
             [src]="previewMediaUrl()"
             class="max-w-full max-h-full object-contain rounded-lg"
             [class.opacity-0]="isMediaLoading()"
             (loadeddata)="onMediaLoaded()"
+            (play)="onVideoPlay()"
+            (pause)="onVideoPause()"
+            (timeupdate)="onVideoTimeUpdate($event)"
+            (ended)="onVideoEnded()"
             controls
             controlsList="nodownload"
             autoplay
@@ -1635,6 +1640,9 @@ export class ProfileComponent implements OnInit {
   private analyticsService = inject(AnalyticsService);
   private blockService = inject(BlockService);
 
+  // Video player reference for tracking
+  @ViewChild('videoPlayer') videoPlayer?: ElementRef<HTMLVideoElement>;
+
   mediaTab: 'videos' | 'photos' = 'videos';
 
   // User role and profile data signals
@@ -1712,6 +1720,10 @@ export class ProfileComponent implements OnInit {
 
   // Share menu state
   isShareMenuOpen = signal(false);
+
+  // Video tracking state
+  private currentVideoId: string | null = null;
+  private currentActorId: string | null = null;
 
   // Computed for navigation
   currentMediaList = computed(() => {
@@ -1879,6 +1891,16 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  async ngOnDestroy() {
+    // End profile view tracking when leaving the page
+    await this.analyticsService.endProfileView();
+
+    // End any active video tracking session
+    if (this.currentVideoId && this.currentActorId) {
+      await this.analyticsService.endVideoTracking(this.currentVideoId, this.currentActorId);
+    }
+  }
+
   /**
    * Load user profile by stored slug-uid parameter
    * Format: slug-uid (e.g., "rajkumar-rao-xK9mP2nQ7R") - STORED in database
@@ -1945,13 +1967,15 @@ export class ProfileComponent implements OnInit {
           this.userRole.set(userData.currentRole || 'actor');
           this.targetUsername.set(userData.name);
           this.targetUserId.set(profileData.uid);
+
+          // Start profile view tracking (new analytics system)
+          if (this.currentUserRole() === 'producer' && userData.currentRole === 'actor') {
+            await this.analyticsService.startProfileView(profileData.uid);
+          }
         }
 
         // Load media
         this.loadMediaFromStorage(profileData.uid);
-
-        // Track profile view if current user is a producer viewing an actor's profile
-        this.trackProfileView(profileData.uid);
 
         // Check block status
         this.checkBlockStatus();
@@ -1988,8 +2012,10 @@ export class ProfileComponent implements OnInit {
       // Load media from storage
       this.loadMediaFromStorage(profileData.uid);
 
-      // Track profile view if current user is a producer viewing an actor's profile
-      this.trackProfileView(profileData.uid);
+      // Start profile view tracking (new analytics system)
+      if (this.currentUserRole() === 'producer' && userData.currentRole === 'actor') {
+        await this.analyticsService.startProfileView(profileData.uid);
+      }
 
       // Check block status
       this.checkBlockStatus();
@@ -2049,24 +2075,9 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Track profile view analytics
-   * Only tracks if current user is a producer viewing an actor's profile
+   * Track profile view analytics - DEPRECATED
+   * Profile views are now tracked via startProfileView/endProfileView in ngOnInit/ngOnDestroy
    */
-  private async trackProfileView(actorId: string) {
-    const currentUser = this.auth.getCurrentUser();
-    if (!currentUser) return;
-
-    // Don't track if viewing own profile
-    if (currentUser.uid === actorId) return;
-
-    // Only track if current user is a producer viewing an actor
-    const currentUserRole = this.currentUserRole();
-    const viewedUserRole = this.userRole();
-
-    if (currentUserRole === 'producer' && viewedUserRole === 'actor') {
-      await this.analyticsService.trackProfileView(actorId, currentUser.uid);
-    }
-  }
 
   private async loadUserProfile() {
     const user = this.auth.getCurrentUser();
@@ -2274,62 +2285,49 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Track video view event when a producer watches a video
+   * Video event handlers for analytics tracking
    */
-  private async trackVideoView(
-    videoUrl: string,
-    videoFileName: string
-  ): Promise<void> {
-    const targetId = this.targetUserId();
-    const currentUser = this.auth.getCurrentUser();
-
-    // Only track if viewing another user's profile and current user is a producer
-    if (!targetId || !currentUser || this.isViewingOwnProfile()) {
+  async onVideoPlay() {
+    // Only track if viewing someone else's profile and user is a producer
+    if (!this.currentVideoId || !this.currentActorId || this.isViewingOwnProfile()) {
       return;
     }
 
-    // Get current user's role - only track for producers
-    try {
-      const userDoc = await getDoc(
-        doc(this.firestore, 'users', currentUser.uid)
-      );
-      if (!userDoc.exists() || userDoc.data()['currentRole'] !== 'producer') {
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking user role:', error);
+    // Check if current user is a producer
+    if (this.currentUserRole() !== 'producer') {
       return;
     }
 
-    // Fetch video metadata to get title and tags
-    try {
-      const uploadsRef = collection(
-        this.firestore,
-        'uploads',
-        targetId,
-        'userUploads'
-      );
-      const q = query(
-        uploadsRef,
-        where('fileName', '==', videoFileName),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
+    // Start tracking this video session
+    await this.analyticsService.startVideoTracking(
+      this.currentActorId,
+      this.currentVideoId,
+      this.currentActorId
+    );
+  }
 
-      if (!snapshot.empty) {
-        const videoData = snapshot.docs[0].data();
-        const metadata = videoData['metadata'] || {};
+  onVideoPause() {
+    // Video pause doesn't need special handling - the service buffers updates
+  }
 
-        await this.analyticsService.trackVideoView(
-          targetId,
-          currentUser.uid,
-          videoFileName,
-          metadata['description'] || 'Untitled Video',
-          metadata['tags'] || []
-        );
-      }
-    } catch (error) {
-      console.error('Error tracking video view:', error);
+  onVideoTimeUpdate(event: Event) {
+    const video = event.target as HTMLVideoElement;
+    if (!this.currentVideoId || !this.currentActorId || !video) {
+      return;
+    }
+
+    // Update the current playback position
+    this.analyticsService.updateVideoProgress(
+      this.currentVideoId,
+      this.currentActorId,
+      video.currentTime
+    );
+  }
+
+  async onVideoEnded() {
+    // End the tracking session when video completes
+    if (this.currentVideoId && this.currentActorId) {
+      await this.analyticsService.endVideoTracking(this.currentVideoId, this.currentActorId);
     }
   }
 
@@ -2368,39 +2366,82 @@ export class ProfileComponent implements OnInit {
 
     this.isPreviewModalOpen.set(true);
 
-    // Track video view if it's a video
+    // Prepare video tracking if it's a video (actual tracking starts on play event)
     if (type === 'video') {
       const fileName = this.extractFileNameFromUrl(url);
       if (fileName) {
-        this.trackVideoView(url, fileName);
+        this.currentVideoId = fileName;
+        // Set actor ID for tracking (from the profile being viewed)
+        this.currentActorId = this.targetUserId() || null;
       }
     }
   }
 
-  closePreviewModal() {
+  async closePreviewModal() {
+    // End video tracking if a video was playing
+    if (this.currentVideoId && this.currentActorId) {
+      await this.analyticsService.endVideoTracking(this.currentVideoId, this.currentActorId);
+      this.currentVideoId = null;
+      this.currentActorId = null;
+    }
+
     this.isPreviewModalOpen.set(false);
     this.previewMediaUrl.set(null);
     this.currentMediaIndex.set(0);
     this.isProfilePicIsolationMode.set(false);
   }
 
-  goToPreviousMedia() {
+  async goToPreviousMedia() {
     if (this.canGoToPrevious()) {
+      // End current video tracking if switching from a video
+      if (this.previewMediaType() === 'video' && this.currentVideoId && this.currentActorId) {
+        await this.analyticsService.endVideoTracking(this.currentVideoId, this.currentActorId);
+        this.currentVideoId = null;
+        this.currentActorId = null;
+      }
+
       this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() - 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
-      this.previewMediaUrl.set(mediaList[newIndex]);
+      const newUrl = mediaList[newIndex];
+      this.previewMediaUrl.set(newUrl);
+
+      // Prepare video tracking if navigating to a video
+      if (this.previewMediaType() === 'video') {
+        const fileName = this.extractFileNameFromUrl(newUrl);
+        if (fileName) {
+          this.currentVideoId = fileName;
+          this.currentActorId = this.targetUserId() || null;
+        }
+      }
     }
   }
 
-  goToNextMedia() {
+  async goToNextMedia() {
     if (this.canGoToNext()) {
+      // End current video tracking if switching from a video
+      if (this.previewMediaType() === 'video' && this.currentVideoId && this.currentActorId) {
+        await this.analyticsService.endVideoTracking(this.currentVideoId, this.currentActorId);
+        this.currentVideoId = null;
+        this.currentActorId = null;
+      }
+
       this.isMediaLoading.set(true);
       const newIndex = this.currentMediaIndex() + 1;
       this.currentMediaIndex.set(newIndex);
       const mediaList = this.currentMediaList();
-      this.previewMediaUrl.set(mediaList[newIndex]);
+      const newUrl = mediaList[newIndex];
+      this.previewMediaUrl.set(newUrl);
+
+      // Prepare video tracking if navigating to a video
+      if (this.previewMediaType() === 'video') {
+        const fileName = this.extractFileNameFromUrl(newUrl);
+        if (fileName) {
+          this.currentVideoId = fileName;
+          this.currentActorId = this.targetUserId() || null;
+        }
+      }
     }
   }
 

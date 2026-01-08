@@ -880,7 +880,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
-  private currentUserRole: string | null = null;
+  currentUserRole = signal<string | null>(null);
   private wishlistUnsubscribe: Unsubscribe | null = null;
 
   // Expose constants for template
@@ -1205,10 +1205,20 @@ export class SearchComponent implements OnInit, OnDestroy {
   totalResultsCount = computed(() => this.filteredActors().length);
 
   constructor() {
-    // Set up effect to track search impressions when filtered results change
+    // Set up effect to track search impressions when displayed results change
     effect(() => {
-      const results = this.filteredActors();
-      // Results are updated, no tracking needed for search impressions
+      const displayed = this.displayedActors();
+
+      // Only track if user is a producer and there are results
+      if (this.currentUserRole() === 'producer' && displayed.length > 0) {
+        // Extract actor IDs and track search impressions (first 20 displayed)
+        const actorIds = displayed.slice(0, 20).map(actor => actor.uid);
+
+        // Track asynchronously (fire and forget)
+        this.analyticsService.trackSearchImpressions(actorIds).catch(err => {
+          console.error('Error tracking search impressions:', err);
+        });
+      }
     });
   }
 
@@ -1221,7 +1231,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       try {
         const userDoc = await getDoc(doc(this.firestore, 'users', this.currentUserId));
         if (userDoc.exists()) {
-          this.currentUserRole = userDoc.data()['currentRole'] || null;
+          this.currentUserRole.set(userDoc.data()['currentRole'] || null);
         }
       } catch (error) {
         this.logger.log('Error fetching user role:', error);
@@ -1424,8 +1434,8 @@ export class SearchComponent implements OnInit, OnDestroy {
       profileImageUrl: actor.actorProfileImageUrl,
       carouselImages: actor.carouselImagesUrl || [],
       voiceIntroUrl: actor.voiceIntro,
-      profileViewCount: actor.profileViewCount || 0,
-      wishlistCount: actor.wishListCount || 0
+      profileViewCount: 0, // Analytics moved to separate collection
+      wishlistCount: 0 // Analytics moved to separate collection
     };
     
     this.logger.log('Transformed actor:', result.stageName, result);
@@ -2043,31 +2053,41 @@ export class SearchComponent implements OnInit, OnDestroy {
    * Toggle actor in wishlist and persist to Firestore
    */
   async toggleWishlist(actor: ActorSearchResult): Promise<void> {
+    if (!this.currentUserId) {
+      this.logger.error('No current user ID - cannot toggle wishlist');
+      return;
+    }
+
     const currentWishlist = this.wishlist();
     const index = currentWishlist.findIndex(a => a.uid === actor.uid);
 
-    if (index > -1) {
-      // Remove from wishlist
-      this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
-      this.logger.log(`Removed ${actor.stageName} from wishlist`);
+    try {
+      if (index > -1) {
+        // Remove from wishlist
+        this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
 
-      // Track analytics for wishlist removal
-      if (this.currentUserId) {
-        await this.analyticsService.trackWishlistRemove(actor.uid, this.currentUserId);
-      }
-    } else {
-      // Add to wishlist
-      this.wishlist.set([...currentWishlist, actor]);
-      this.logger.log(`Added ${actor.stageName} to wishlist`);
+        // Remove from wishlists collection (new analytics system)
+        await this.analyticsService.removeFromWishlist(actor.uid, this.currentUserId);
 
-      // Track analytics for wishlist addition
-      if (this.currentUserId) {
-        await this.analyticsService.trackWishlistAdd(actor.uid, this.currentUserId);
+        this.logger.log(`Removed ${actor.stageName} from wishlist`);
+      } else {
+        // Add to wishlist
+        this.wishlist.set([...currentWishlist, actor]);
+
+        // Add to wishlists collection (new analytics system)
+        await this.analyticsService.addToWishlist(actor.uid, this.currentUserId);
+
+        this.logger.log(`Added ${actor.stageName} to wishlist`);
       }
+
+      // NOTE: saveWishlist() is kept for backward compatibility with producer profile wishlist array
+      // The new system uses the wishlists collection managed by analyticsService
+      await this.saveWishlist();
+    } catch (error) {
+      this.logger.error('Error toggling wishlist:', error);
+      // Revert local state on error
+      this.wishlist.set(currentWishlist);
     }
-
-    // Persist to Firestore
-    await this.saveWishlist();
   }
 
   isInWishlist(actor: ActorSearchResult): boolean {

@@ -4,7 +4,6 @@ import {
   OnInit,
   signal,
   computed,
-  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,7 +26,7 @@ import {
 } from '@angular/fire/firestore';
 import { UserDoc, UserAnalytics } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
-import { filter, take, Subscription } from 'rxjs';
+import { filter, take } from 'rxjs';
 import {
   SettingsSidebarComponent,
   SettingsTab,
@@ -58,7 +57,7 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
   templateUrl: './settings.component.html',
   styles: [],
 })
-export class SettingsComponent implements OnInit, OnDestroy {
+export class SettingsComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
   private profileService = inject(ProfileService);
@@ -68,7 +67,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private userService = inject(UserService);
   private toastService = inject(ToastService);
   private dataExportService = inject(DataExportService);
-  private analyticsSubscription: Subscription | null = null;
 
   // User role signals
   userRole = signal<string>('actor');
@@ -99,15 +97,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
     phone: '',
   });
   editingFields = signal<Set<string>>(new Set());
-
-  // Real analytics data
-  analyticsData = signal<{
-    profileViewCount: number;
-    wishListCount: number;
-    actorAnalytics: any[];
-    videoAnalytics: any[];
-    visibilityScore: number;
-  } | null>(null);
 
   // Privacy settings signals
   ghostMode = signal<boolean>(false);
@@ -214,25 +203,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       .subscribe(async () => {
         await this.loadUserData();
         await this.profileService.loadProfileData();
-
-        // Load analytics data if user is an actor
-        const user = this.auth.getCurrentUser();
-        if (user && this.isActor()) {
-          // Subscribe to profile analytics (real-time updates)
-          this.analyticsSubscription = this.analyticsService
-            .getProfileAnalyticsRealtime(user.uid)
-            .subscribe((analytics) => {
-              this.analyticsData.set(analytics);
-            });
-        }
       });
-  }
-
-  ngOnDestroy() {
-    // Clean up analytics subscription
-    if (this.analyticsSubscription) {
-      this.analyticsSubscription.unsubscribe();
-    }
   }
 
   setActiveTab(tab: SettingsTab) {
