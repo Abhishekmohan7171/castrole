@@ -31,8 +31,42 @@ interface AnalyticsViewModel {
   imports: [CommonModule],
   template: `
     @if (isSubscribed()) {
-    <div class="space-y-8">
-      <!-- Profile Overview -->
+      @if (isLoading()) {
+        <!-- Loading State -->
+        <div class="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+          <!-- Spinner -->
+          <div class="relative">
+            <svg
+              class="w-12 h-12 text-purple-400 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+
+          <!-- Rotating Message -->
+          <div class="text-sm font-medium text-purple-300 animate-pulse">
+            {{ getCurrentLoadingMessage() }}
+          </div>
+        </div>
+      } @else {
+        <!-- Analytics Content -->
+        <div class="space-y-8">
+          <!-- Profile Overview -->
       <div class="space-y-4">
         <h3 class="text-sm font-medium text-purple-200">Profile Overview</h3>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -179,7 +213,8 @@ interface AnalyticsViewModel {
           }
         </div>
       </div>
-    </div>
+        </div>
+      }
     } @else {
     <div class="py-16">
       <div
@@ -238,7 +273,27 @@ export class AnalyticsSectionComponent implements OnInit {
     dailyData: [],
   });
 
+  // Loading state
+  isLoading = signal<boolean>(true);
+  currentMessageIndex = signal<number>(0);
+  private messageInterval: any = null;
+
+  // Loading messages
+  private readonly loadingMessages = [
+    "Crunching the numbers...",
+    "Calculating your star power...",
+    "Analyzing your reach...",
+    "Tallying up those profile views...",
+    "Counting all those video watches...",
+    "Seeing who wishlisted you...",
+    "Checking your search appearances...",
+    "Computing your visibility score...",
+    "Reviewing your top performances...",
+    "Mapping your growth trends...",
+  ];
+
   async ngOnInit() {
+    this.startMessageRotation();
     await this.loadAnalytics();
   }
 
@@ -295,9 +350,43 @@ export class AnalyticsSectionComponent implements OnInit {
         dailyData,
       });
 
+      // Set loading to false
+      this.isLoading.set(false);
+
     } catch (error) {
       console.error('Error loading analytics:', error);
+      // Still set loading to false on error
+      this.isLoading.set(false);
     }
+  }
+
+  private startMessageRotation(): void {
+    if (this.messageInterval) return;
+
+    this.messageInterval = setInterval(() => {
+      if (!this.isLoading()) {
+        this.stopMessageRotation();
+        return;
+      }
+
+      const nextIndex = (this.currentMessageIndex() + 1) % this.loadingMessages.length;
+      this.currentMessageIndex.set(nextIndex);
+    }, 2000);
+  }
+
+  private stopMessageRotation(): void {
+    if (this.messageInterval) {
+      clearInterval(this.messageInterval);
+      this.messageInterval = null;
+    }
+  }
+
+  getCurrentLoadingMessage(): string {
+    return this.loadingMessages[this.currentMessageIndex()];
+  }
+
+  ngOnDestroy() {
+    this.stopMessageRotation();
   }
 
   private async loadTopVideo(userId: string): Promise<{
