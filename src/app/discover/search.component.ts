@@ -27,6 +27,7 @@ interface ActorSearchResult {
   weight?: string;
   skills?: string[];
   languages?: string[];
+  characterTypes?: string[]; // Extracted from video/image tags
   profileImageUrl?: string;
   carouselImages?: string[];
   voiceIntroUrl?: string;
@@ -1185,6 +1186,26 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.logger.log(`Location filter (${currentFilters.location}): ${beforeCount} → ${actors.length} actors`);
     }
 
+    // Apply character types filter
+    if (currentFilters.characterTypes.length > 0) {
+      const beforeCount = actors.length;
+      actors = actors.filter(actor => {
+        // Actor must have at least one of the selected character types
+        if (!actor.characterTypes || actor.characterTypes.length === 0) {
+          this.logger.log(`  Actor ${actor.stageName} has NO character types, filtering out`);
+          return false;
+        }
+        const hasMatch = currentFilters.characterTypes.some(selectedType => 
+          actor.characterTypes!.some(actorType => 
+            actorType.toLowerCase() === selectedType.toLowerCase()
+          )
+        );
+        this.logger.log(`  Actor ${actor.stageName} has types [${actor.characterTypes.join(', ')}], match: ${hasMatch}`);
+        return hasMatch;
+      });
+      this.logger.log(`Character types filter (${currentFilters.characterTypes.join(', ')}): ${beforeCount} → ${actors.length} actors`);
+    }
+
     this.logger.log(`Filtered results: ${actors.length} actors found`);
     return actors;
   });
@@ -1352,9 +1373,55 @@ export class SearchComponent implements OnInit, OnDestroy {
         const profilesQuery = query(profilesRef, where('uid', 'in', batch));
         const profileDocs = await getDocs(profilesQuery);
         
+        // Fetch character types from uploads (both videos and images are in the same collection)
+        // Path: uploads/{userId}/userUploads/{uploadId}
+        // Tags are stored in: metadata.tags (for videos) or tags (for images)
+        const actorCharacterTypes = new Map<string, Set<string>>();
+        
+        for (const actorUid of batch) {
+          // Fetch all uploads (videos and images) for this actor
+          const uploadsRef = collection(this.firestore, `uploads/${actorUid}/userUploads`);
+          const uploadDocs = await getDocs(uploadsRef);
+          
+          this.logger.log(`Actor ${actorUid}: Found ${uploadDocs.size} uploads`);
+          
+          // Extract tags from all uploads
+          uploadDocs.forEach((uploadDoc) => {
+            const uploadData = uploadDoc.data();
+            
+            // Tags can be in metadata.tags (videos) or tags (images)
+            const metadata = uploadData['metadata'] as any;
+            let tags: string[] | undefined;
+            
+            if (metadata && Array.isArray(metadata['tags'])) {
+              tags = metadata['tags'];
+            } else if (Array.isArray(uploadData['tags'])) {
+              tags = uploadData['tags'];
+            }
+            
+            if (tags && tags.length > 0) {
+              if (!actorCharacterTypes.has(actorUid)) {
+                actorCharacterTypes.set(actorUid, new Set<string>());
+              }
+              tags.forEach(tag => {
+                if (typeof tag === 'string' && tag.trim().length > 0) {
+                  actorCharacterTypes.get(actorUid)!.add(tag.toLowerCase());
+                  this.logger.log(`  Added character type "${tag.toLowerCase()}" for actor ${actorUid}`);
+                }
+              });
+            }
+          });
+        }
+        
+        this.logger.log('Character types map for batch:', Array.from(actorCharacterTypes.entries()).map(([uid, types]) => ({
+          uid,
+          types: Array.from(types)
+        })));
+        
         profileDocs.forEach((doc) => {
           const profile = doc.data() as Profile;
-          const actorResult = this.transformProfileToSearchResult(profile);
+          const characterTypes = Array.from(actorCharacterTypes.get(profile.uid) || []);
+          const actorResult = this.transformProfileToSearchResult(profile, characterTypes);
           if (actorResult) {
             actors.push(actorResult);
           }
@@ -1392,7 +1459,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   /**
    * Transform Profile document to ActorSearchResult
    */
-  private transformProfileToSearchResult(profile: Profile): ActorSearchResult | null {
+  private transformProfileToSearchResult(profile: Profile, characterTypes: string[] = []): ActorSearchResult | null {
     if (!profile.actorProfile) {
       this.logger.log('Profile missing actorProfile:', profile.uid);
       return null;
@@ -1443,6 +1510,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       weight: actor.weight,
       skills: extractSkills(actor.skills),
       languages: extractLanguages(actor.languages),
+      characterTypes: characterTypes, // Character types from video/image tags
       profileImageUrl: actor.actorProfileImageUrl,
       carouselImages: actor.carouselImagesUrl || [],
       voiceIntroUrl: actor.voiceIntro,
@@ -1450,7 +1518,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       wishlistCount: actor.wishListCount || 0
     };
     
-    this.logger.log('Transformed actor:', result.stageName, result);
+    this.logger.log(`Transformed actor: ${result.stageName}, characterTypes:`, result.characterTypes);
     return result;
   }
 
