@@ -1,320 +1,693 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, OnDestroy } from '@angular/core';
 import {
   Firestore,
   collection,
   doc,
   getDoc,
-  addDoc,
+  getDocs,
   setDoc,
-  updateDoc,
+  deleteDoc,
+  writeBatch,
   increment,
-  serverTimestamp,
-  docData,
+  Timestamp,
+  query,
+  where,
+  getCountFromServer,
 } from '@angular/fire/firestore';
-import { Observable, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-import { AnalyticsEvent, UserAnalytics, SearchImpressionMetadata } from '../../assets/interfaces/interfaces';
+import {
+  UserAnalyticsDoc,
+  DailyAnalyticsDoc,
+  WishlistDoc,
+  AnalyticsIncrement,
+  VideoTrackingSession,
+} from '../../assets/interfaces/analytics.interfaces';
 
 @Injectable({
   providedIn: 'root',
 })
-export class AnalyticsService {
+export class AnalyticsService implements OnDestroy {
   private firestore = inject(Firestore);
 
+  // Profile view tracking
+  private profileViewStartTime: number | null = null;
+  private currentProfileActorId: string | null = null;
+
+  // Video tracking sessions (keyed by videoPath)
+  private videoSessions = new Map<string, VideoTrackingSession>();
+  private videoFlushInterval: any = null;
+
+  // Constants
+  private readonly MIN_PROFILE_VIEW_MS = 1000; // 1 second minimum
+  private readonly MAX_PROFILE_VIEW_MS = 600000; // 10 minutes maximum
+  private readonly VIDEO_VIEW_THRESHOLD_MS = 3000; // Count view after 3 seconds
+  private readonly VIDEO_FLUSH_INTERVAL_MS = 20000; // Flush every 20 seconds
+  private readonly MAX_WATCH_DELTA_MS = 30000; // Max 30s delta between updates
+
+  constructor() {
+    // Start video flush timer
+    this.startVideoFlushTimer();
+  }
+
+  ngOnDestroy() {
+    // Cleanup: flush all pending video sessions
+    this.flushAllVideoSessions();
+    if (this.videoFlushInterval) {
+      clearInterval(this.videoFlushInterval);
+    }
+  }
+
+  // ==================== HELPER METHODS ====================
+
   /**
-   * Check if user has ghost mode enabled
+   * Get today's date ID in yyyyMMdd format (local timezone)
    */
-  async checkGhostMode(userId: string): Promise<boolean> {
+  private getTodayId(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+
+  /**
+   * Check if actor has ghost mode enabled
+   */
+  private async checkGhostMode(actorId: string): Promise<boolean> {
     try {
-      const userDoc = await getDoc(doc(this.firestore, 'users', userId));
+      const userDoc = await getDoc(doc(this.firestore, 'users', actorId));
+      if (!userDoc.exists()) return false;
       return userDoc.data()?.['ghost'] === true;
     } catch (error) {
       console.error('Error checking ghost mode:', error);
-      return false; // Default to not ghost mode on error
+      return false;
     }
   }
 
   /**
-   * Track profile view event
-   * @param actorId The actor whose profile is being viewed
-   * @param producerId The producer viewing the profile
-   * @param duration Optional view duration in seconds
+   * Update both lifetime and daily analytics atomically using writeBatch
+   * @param actorId Actor whose analytics to update
+   * @param increments Fields to increment
    */
-  async trackProfileView(
+  private async updateActorAnalytics(
     actorId: string,
-    producerId: string,
-    duration?: number
+    increments: AnalyticsIncrement
   ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping analytics tracking');
-      return;
-    }
-
     try {
-      // Create analytics event
-      const event: AnalyticsEvent = {
-        eventType: 'profile_view',
+      const batch = writeBatch(this.firestore);
+      const todayId = this.getTodayId();
+
+      // Lifetime document
+      const lifetimeRef = doc(this.firestore, 'user_analytics', actorId);
+
+      // Daily document
+      const dailyRef = doc(
+        this.firestore,
+        'user_analytics',
         actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: duration ? { duration } : undefined,
-      };
+        'daily',
+        todayId
+      );
 
-      // Add to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
+      // Build increment object
+      const incrementData: any = { updatedAt: Timestamp.now() };
 
-      // Update aggregated analytics
-      const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-      const analyticsDoc = await getDoc(analyticsRef);
-
-      if (analyticsDoc.exists()) {
-        // Document exists - increment counters
-        const updateData: any = {
-          'profileViews.total': increment(1),
-          'profileViews.last30Days': increment(1),
-          lastUpdated: serverTimestamp(),
-        };
-
-        // Update average duration if provided
-        if (duration) {
-          const currentData = analyticsDoc.data() as UserAnalytics;
-          const currentTotal = currentData.profileViews.total;
-          const currentAvg = currentData.profileViews.avgDuration || 0;
-          const newAvg = (currentAvg * currentTotal + duration) / (currentTotal + 1);
-          updateData['profileViews.avgDuration'] = newAvg;
-        }
-
-        await updateDoc(analyticsRef, updateData);
-      } else {
-        // Document doesn't exist - create it
-        const newAnalytics: UserAnalytics = {
-          actorId,
-          profileViews: {
-            total: 1,
-            last30Days: 1,
-            avgDuration: duration || 0,
-          },
-          wishlistCount: 0,
-          visibilityScore: 0,
-          lastUpdated: serverTimestamp() as any,
-        };
-        await setDoc(analyticsRef, newAnalytics);
+      if (increments.profileViews) {
+        incrementData.profileViews = increment(increments.profileViews);
+      }
+      if (increments.totalProfileViewMs) {
+        incrementData.totalProfileViewMs = increment(
+          increments.totalProfileViewMs
+        );
+      }
+      if (increments.searchAppearances) {
+        incrementData.searchAppearances = increment(
+          increments.searchAppearances
+        );
+      }
+      if (increments.totalVideoViews) {
+        incrementData.totalVideoViews = increment(increments.totalVideoViews);
+      }
+      if (increments.totalWatchMs) {
+        incrementData.totalWatchMs = increment(increments.totalWatchMs);
       }
 
-      console.log('✓ Profile view tracked for actor:', actorId);
-    } catch (error) {
-      console.error('Error tracking profile view:', error);
-    }
-  }
+      // Check if documents exist
+      const lifetimeSnap = await getDoc(lifetimeRef);
+      const dailySnap = await getDoc(dailyRef);
 
-  /**
-   * Track wishlist addition event
-   * @param actorId The actor being added to wishlist
-   * @param producerId The producer adding to wishlist
-   */
-  async trackWishlistAdd(actorId: string, producerId: string): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping analytics tracking');
-      return;
-    }
-
-    try {
-      // Create analytics event
-      const event: AnalyticsEvent = {
-        eventType: 'wishlist_add',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-      };
-
-      // Add to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
-
-      // Update aggregated analytics
-      const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-      const analyticsDoc = await getDoc(analyticsRef);
-
-      if (analyticsDoc.exists()) {
-        // Document exists - increment wishlist counter
-        await updateDoc(analyticsRef, {
-          wishlistCount: increment(1),
-          lastUpdated: serverTimestamp(),
-        });
-      } else {
-        // Document doesn't exist - create it
-        const newAnalytics: UserAnalytics = {
+      if (!lifetimeSnap.exists()) {
+        // Initialize lifetime document
+        const initData: UserAnalyticsDoc = {
           actorId,
-          profileViews: {
-            total: 0,
-            last30Days: 0,
-            avgDuration: 0,
-          },
-          wishlistCount: 1,
-          visibilityScore: 0,
-          lastUpdated: serverTimestamp() as any,
+          profileViews: increments.profileViews || 0,
+          totalProfileViewMs: increments.totalProfileViewMs || 0,
+          searchAppearances: increments.searchAppearances || 0,
+          totalVideoViews: increments.totalVideoViews || 0,
+          totalWatchMs: increments.totalWatchMs || 0,
+          updatedAt: Timestamp.now(),
         };
-        await setDoc(analyticsRef, newAnalytics);
+        batch.set(lifetimeRef, initData);
+      } else {
+        batch.update(lifetimeRef, incrementData);
       }
 
-      console.log('✓ Wishlist addition tracked for actor:', actorId);
+      if (!dailySnap.exists()) {
+        // Initialize daily document
+        const initData: DailyAnalyticsDoc = {
+          date: todayId,
+          profileViews: increments.profileViews || 0,
+          totalProfileViewMs: increments.totalProfileViewMs || 0,
+          searchAppearances: increments.searchAppearances || 0,
+          totalVideoViews: increments.totalVideoViews || 0,
+          totalWatchMs: increments.totalWatchMs || 0,
+          updatedAt: Timestamp.now(),
+        };
+        batch.set(dailyRef, initData);
+      } else {
+        batch.update(dailyRef, incrementData);
+      }
+
+      await batch.commit();
+      console.log('✓ Analytics updated:', actorId, increments);
     } catch (error) {
-      console.error('Error tracking wishlist addition:', error);
+      console.error('Error updating analytics:', error);
+      // Non-fatal - don't throw
     }
   }
 
-  /**
-   * Get user analytics for an actor
-   * @param actorId The actor's user ID
-   * @returns Observable of UserAnalytics or null if no data exists
-   */
-  getUserAnalytics(actorId: string): Observable<UserAnalytics | null> {
-    const analyticsRef = doc(this.firestore, 'user_analytics', actorId);
-    return docData(analyticsRef, { idField: 'id' }).pipe(
-      map((data) => {
-        if (data) {
-          return data as UserAnalytics;
-        }
-        return null;
-      }),
-      catchError((error) => {
-        console.error('Error fetching user analytics:', error);
-        return of(null);
-      })
-    );
-  }
+  // ==================== PROFILE VIEW TRACKING ====================
 
   /**
-   * Track search impression event
-   * Called when actor profile appears in producer's search results
-   * @param actorId The actor whose profile appeared in search
-   * @param producerId The producer performing the search
-   * @param searchFilters Applied filters at time of impression
-   * @param visibleVideos Array of video fileNames visible in the search result
+   * Start tracking profile view duration
+   * Call when user lands on profile page
+   * @param actorId Actor whose profile is being viewed
    */
-  async trackSearchImpression(
-    actorId: string,
-    producerId: string,
-    searchFilters: SearchImpressionMetadata,
-    visibleVideos: string[]
-  ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping search impression tracking');
+  async startProfileView(actorId: string): Promise<void> {
+    // Check ghost mode
+    const isGhost = await this.checkGhostMode(actorId);
+    if (isGhost) {
+      console.log('Ghost mode enabled - skipping profile view tracking');
       return;
     }
 
-    try {
-      const event: AnalyticsEvent = {
-        eventType: 'search_impression',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: {
-          searchFilters,
-          visibleVideos,
-        },
-      };
+    this.currentProfileActorId = actorId;
+    this.profileViewStartTime = Date.now();
 
-      // Log event to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
-
-      console.log('✓ Search impression tracked for actor:', actorId);
-    } catch (error) {
-      console.error('Error tracking search impression:', error);
-    }
+    console.log('Started profile view tracking:', actorId);
   }
 
   /**
-   * Track video view event
-   * Called when a video is played (anywhere in the app)
-   * @param actorId The actor who owns the video
-   * @param producerId The producer viewing the video
-   * @param videoId Video file name (unique identifier)
-   * @param videoTitle Video description/title
-   * @param videoTags Tags associated with the video
-   * @param watchDuration How long the video was watched (seconds)
+   * End tracking profile view duration and record analytics
+   * Call when user leaves profile page (ngOnDestroy, route change, etc.)
    */
-  async trackVideoView(
+  async endProfileView(): Promise<void> {
+    if (!this.currentProfileActorId || !this.profileViewStartTime) {
+      return;
+    }
+
+    const durationMs = Date.now() - this.profileViewStartTime;
+
+    // Only count views >= 1 second, cap at 10 minutes
+    if (durationMs < this.MIN_PROFILE_VIEW_MS) {
+      console.log('Profile view too short, not tracked');
+      this.resetProfileView();
+      return;
+    }
+
+    const cappedDurationMs = Math.min(durationMs, this.MAX_PROFILE_VIEW_MS);
+
+    // Update analytics
+    await this.updateActorAnalytics(this.currentProfileActorId, {
+      profileViews: 1,
+      totalProfileViewMs: cappedDurationMs,
+    });
+
+    console.log(`Profile view tracked: ${cappedDurationMs}ms`);
+    this.resetProfileView();
+  }
+
+  private resetProfileView() {
+    this.currentProfileActorId = null;
+    this.profileViewStartTime = null;
+  }
+
+  // ==================== SEARCH IMPRESSION TRACKING ====================
+
+  /**
+   * Track search impressions for actors appearing in search results
+   * Call when search results are displayed (first 20 actors only)
+   * @param actorIds Array of actor IDs displayed in search results
+   */
+  async trackSearchImpressions(actorIds: string[]): Promise<void> {
+    if (!actorIds || actorIds.length === 0) return;
+
+    // Limit to first 20 displayed
+    const displayedActors = actorIds.slice(0, 20);
+
+    try {
+      // Batch update: chunk if more than 200 actors (Firestore limit is 500 ops)
+      // Each actor requires 2 operations (lifetime + daily), so 200 actors = 400 ops
+      const CHUNK_SIZE = 200;
+
+      for (let i = 0; i < displayedActors.length; i += CHUNK_SIZE) {
+        const chunk = displayedActors.slice(i, i + CHUNK_SIZE);
+
+        // Process chunk in parallel
+        await Promise.all(
+          chunk.map((actorId) =>
+            this.updateActorAnalytics(actorId, { searchAppearances: 1 })
+          )
+        );
+      }
+
+      console.log(
+        `✓ Search impressions tracked for ${displayedActors.length} actors`
+      );
+    } catch (error) {
+      console.error('Error tracking search impressions:', error);
+    }
+  }
+
+  // ==================== VIDEO VIEW TRACKING ====================
+
+  private startVideoFlushTimer() {
+    this.videoFlushInterval = setInterval(() => {
+      this.flushAllVideoSessions();
+    }, this.VIDEO_FLUSH_INTERVAL_MS);
+  }
+
+  /**
+   * Start tracking video view
+   * Call when video starts playing
+   * @param actorId Actor who owns the video
+   * @param videoId Video document ID
+   * @param userId User ID (for constructing path: uploads/{userId}/userUploads/{videoId})
+   */
+  async startVideoTracking(
     actorId: string,
-    producerId: string,
     videoId: string,
-    videoTitle: string,
-    videoTags: string[],
-    watchDuration?: number
+    userId: string
   ): Promise<void> {
-    // Check if actor has ghost mode enabled
-    const isGhostMode = await this.checkGhostMode(actorId);
-    if (isGhostMode) {
-      console.log('Ghost mode enabled - skipping video view tracking');
+    console.log('[AnalyticsService] startVideoTracking called', {
+      actorId,
+      videoId,
+      userId,
+    });
+
+    // Check ghost mode
+    const isGhost = await this.checkGhostMode(actorId);
+    if (isGhost) {
+      console.log(
+        '[AnalyticsService] Ghost mode enabled - skipping video tracking'
+      );
+      return;
+    }
+
+    const videoPath = `uploads/${userId}/userUploads/${videoId}`;
+    console.log('[AnalyticsService] Video path constructed:', videoPath);
+
+    if (this.videoSessions.has(videoPath)) {
+      console.log(
+        '[AnalyticsService] Video session already active:',
+        videoPath
+      );
+      return;
+    }
+
+    const session: VideoTrackingSession = {
+      actorId,
+      videoId,
+      videoPath,
+      lastPosition: 0,
+      accumulatedWatchMs: 0,
+      lastUpdateTime: Date.now(),
+      viewCountIncremented: false,
+    };
+
+    this.videoSessions.set(videoPath, session);
+    console.log('[AnalyticsService] ✓ Started video tracking session:', {
+      videoPath,
+      session,
+    });
+  }
+
+  /**
+   * Update video tracking on timeupdate event
+   * Call periodically (every few seconds) from video player
+   * @param videoId Video document ID
+   * @param userId User ID
+   * @param currentTime Current playback position in seconds
+   */
+  updateVideoProgress(
+    videoId: string,
+    userId: string,
+    currentTime: number
+  ): void {
+    const videoPath = `uploads/${userId}/userUploads/${videoId}`;
+    const session = this.videoSessions.get(videoPath);
+
+    if (!session) {
+      console.warn(
+        '[AnalyticsService] No active video session for:',
+        videoPath
+      );
+      return;
+    }
+
+    const now = Date.now();
+
+    // Calculate watch time delta (clamp to max 30s to ignore seeks)
+    const positionDelta = Math.abs(currentTime - session.lastPosition);
+    const watchDelta = Math.min(positionDelta * 1000, this.MAX_WATCH_DELTA_MS);
+
+    session.accumulatedWatchMs += watchDelta;
+    session.lastPosition = currentTime;
+    session.lastUpdateTime = now;
+
+    // Check if we should count this as a view (after 3 seconds)
+    if (
+      !session.viewCountIncremented &&
+      session.accumulatedWatchMs >= this.VIDEO_VIEW_THRESHOLD_MS
+    ) {
+      session.viewCountIncremented = true;
+      console.log(
+        '[AnalyticsService] ✓ View threshold reached for:',
+        videoPath,
+        {
+          accumulatedWatchMs: session.accumulatedWatchMs,
+        }
+      );
+    }
+  }
+
+  /**
+   * End video tracking
+   * Call when video ends, pauses, or user navigates away
+   * @param videoId Video document ID
+   * @param userId User ID
+   */
+  async endVideoTracking(videoId: string, userId: string): Promise<void> {
+    const videoPath = `uploads/${userId}/userUploads/${videoId}`;
+    console.log('[AnalyticsService] endVideoTracking called for:', videoPath);
+    await this.flushVideoSession(videoPath);
+  }
+
+  /**
+   * Flush a single video session to Firestore
+   */
+  private async flushVideoSession(videoPath: string): Promise<void> {
+    console.log('[AnalyticsService] flushVideoSession called for:', videoPath);
+    const session = this.videoSessions.get(videoPath);
+    if (!session) {
+      console.log('[AnalyticsService] No session found for:', videoPath);
+      return;
+    }
+
+    console.log('[AnalyticsService] Session data:', {
+      accumulatedWatchMs: session.accumulatedWatchMs,
+      viewCountIncremented: session.viewCountIncremented,
+      videoPath: session.videoPath,
+    });
+
+    // Only flush if there's accumulated data
+    if (session.accumulatedWatchMs === 0 && !session.viewCountIncremented) {
+      console.log('[AnalyticsService] No data to flush, deleting session');
+      this.videoSessions.delete(videoPath);
       return;
     }
 
     try {
-      const event: AnalyticsEvent = {
-        eventType: 'video_view',
-        actorId,
-        producerId,
-        timestamp: serverTimestamp() as any,
-        metadata: {
-          videoId,
-          videoFileName: videoId,
-          videoTitle,
-          videoTags,
-          watchDuration,
-        },
-      };
+      const batch = writeBatch(this.firestore);
 
-      // Log event to analytics_events collection
-      await addDoc(collection(this.firestore, 'analytics_events'), event);
+      // 1. Update video document in uploads collection
+      const videoRef = doc(this.firestore, session.videoPath);
+      console.log('[AnalyticsService] Video doc path:', session.videoPath);
 
-      console.log('✓ Video view tracked:', videoId);
+      const videoUpdates: any = {};
+      if (session.viewCountIncremented) {
+        videoUpdates['metadata.viewCount'] = increment(1);
+      }
+      if (session.accumulatedWatchMs > 0) {
+        videoUpdates['metadata.totalWatchMs'] = increment(
+          session.accumulatedWatchMs
+        );
+      }
+
+      console.log('[AnalyticsService] Video updates to apply:', videoUpdates);
+
+      if (Object.keys(videoUpdates).length > 0) {
+        batch.update(videoRef, videoUpdates);
+      }
+
+      // Commit batch
+      console.log('[AnalyticsService] Committing batch to Firestore...');
+      await batch.commit();
+      console.log('[AnalyticsService] ✓ Batch committed successfully');
+
+      // 2. Update actor analytics (separate operation after batch)
+      const increments: AnalyticsIncrement = {};
+      if (session.viewCountIncremented) {
+        increments.totalVideoViews = 1;
+      }
+      if (session.accumulatedWatchMs > 0) {
+        increments.totalWatchMs = session.accumulatedWatchMs;
+      }
+
+      if (Object.keys(increments).length > 0) {
+        console.log('[AnalyticsService] Updating actor analytics:', increments);
+        await this.updateActorAnalytics(session.actorId, increments);
+      }
+
+      console.log(
+        '[AnalyticsService] ✓ Video session flushed:',
+        session.videoPath,
+        {
+          viewCounted: session.viewCountIncremented,
+          watchMs: session.accumulatedWatchMs,
+        }
+      );
     } catch (error) {
-      console.error('Error tracking video view:', error);
+      console.error(
+        '[AnalyticsService] ❌ Error flushing video session:',
+        error
+      );
+      console.error('[AnalyticsService] Error details:', {
+        videoPath: session.videoPath,
+        error: error,
+      });
+    } finally {
+      this.videoSessions.delete(videoPath);
     }
   }
 
   /**
-   * Get video analytics for an actor
-   * @param actorId The actor's user ID
-   * @returns Observable of video analytics data
+   * Flush all active video sessions
    */
-  getVideoAnalytics(actorId: string): Observable<any | null> {
-    const videoAnalyticsRef = doc(
-      this.firestore,
-      'video_analytics',
-      `${actorId}_videos`
-    );
-    return docData(videoAnalyticsRef, { idField: 'id' }).pipe(
-      map((data) => data || null),
-      catchError((error) => {
-        console.error('Error fetching video analytics:', error);
-        return of(null);
-      })
-    );
+  private async flushAllVideoSessions(): Promise<void> {
+    const sessions = Array.from(this.videoSessions.keys());
+
+    for (const videoPath of sessions) {
+      await this.flushVideoSession(videoPath);
+    }
+  }
+
+  // ==================== WISHLIST TRACKING ====================
+
+  /**
+   * Add actor to producer's wishlist
+   * @param actorId Actor being wishlisted
+   * @param producerId Producer adding to wishlist
+   */
+  async addToWishlist(actorId: string, producerId: string): Promise<void> {
+    try {
+      const wishlistId = `${producerId}_${actorId}`;
+      const wishlistRef = doc(this.firestore, 'wishlists', wishlistId);
+
+      const wishlistDoc: WishlistDoc = {
+        producerId,
+        actorId,
+        addedAt: Timestamp.now(),
+      };
+
+      await setDoc(wishlistRef, wishlistDoc);
+      console.log('✓ Added to wishlist:', wishlistId);
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get tag analytics for an actor
-   * @param actorId The actor's user ID
-   * @returns Observable of tag analytics data
+   * Remove actor from producer's wishlist
+   * @param actorId Actor being removed from wishlist
+   * @param producerId Producer removing from wishlist
    */
-  getTagAnalytics(actorId: string): Observable<any | null> {
-    const tagAnalyticsRef = doc(
-      this.firestore,
-      'tag_analytics',
-      `${actorId}_tags`
+  async removeFromWishlist(actorId: string, producerId: string): Promise<void> {
+    try {
+      const wishlistId = `${producerId}_${actorId}`;
+      const wishlistRef = doc(this.firestore, 'wishlists', wishlistId);
+
+      await deleteDoc(wishlistRef);
+      console.log('✓ Removed from wishlist:', wishlistId);
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get wishlist count for an actor
+   * @param actorId Actor whose wishlist count to get
+   * @returns Wishlist count
+   */
+  async getWishlistCount(actorId: string): Promise<number> {
+    try {
+      const q = query(
+        collection(this.firestore, 'wishlists'),
+        where('actorId', '==', actorId)
+      );
+
+      const snapshot = await getCountFromServer(q);
+      return snapshot.data().count;
+    } catch (error) {
+      console.error('Error getting wishlist count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if producer has wishlisted an actor
+   * @param actorId Actor to check
+   * @param producerId Producer to check
+   * @returns True if in wishlist
+   */
+  async isInWishlist(actorId: string, producerId: string): Promise<boolean> {
+    try {
+      const wishlistId = `${producerId}_${actorId}`;
+      const wishlistRef = doc(this.firestore, 'wishlists', wishlistId);
+      const snapshot = await getDoc(wishlistRef);
+      return snapshot.exists();
+    } catch (error) {
+      console.error('Error checking wishlist:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get all actors in producer's wishlist
+   * @param producerId Producer whose wishlist to get
+   * @returns Array of actor IDs
+   */
+  async getProducerWishlist(producerId: string): Promise<string[]> {
+    try {
+      const q = query(
+        collection(this.firestore, 'wishlists'),
+        where('producerId', '==', producerId)
+      );
+
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((doc) => doc.data()['actorId'] as string);
+    } catch (error) {
+      console.error('Error getting producer wishlist:', error);
+      return [];
+    }
+  }
+
+  // ==================== ANALYTICS RETRIEVAL ====================
+
+  /**
+   * Get lifetime analytics for an actor
+   * @param actorId Actor whose analytics to retrieve
+   * @returns Lifetime analytics or null
+   */
+  async getLifetimeAnalytics(
+    actorId: string
+  ): Promise<UserAnalyticsDoc | null> {
+    try {
+      const docRef = doc(this.firestore, 'user_analytics', actorId);
+      const snapshot = await getDoc(docRef);
+
+      if (!snapshot.exists()) {
+        return null;
+      }
+
+      return snapshot.data() as UserAnalyticsDoc;
+    } catch (error) {
+      console.error('Error fetching lifetime analytics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get daily analytics for a specific date range
+   * @param actorId Actor whose analytics to retrieve
+   * @param startDate Start date (yyyyMMdd)
+   * @param endDate End date (yyyyMMdd)
+   * @returns Array of daily analytics
+   */
+  async getDailyAnalytics(
+    actorId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<DailyAnalyticsDoc[]> {
+    try {
+      const dailyCollectionRef = collection(
+        this.firestore,
+        'user_analytics',
+        actorId,
+        'daily'
+      );
+
+      const results: DailyAnalyticsDoc[] = [];
+
+      // Generate date range
+      const dates = this.generateDateRange(startDate, endDate);
+
+      for (const date of dates) {
+        const docRef = doc(dailyCollectionRef, date);
+        const snapshot = await getDoc(docRef);
+
+        if (snapshot.exists()) {
+          results.push(snapshot.data() as DailyAnalyticsDoc);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error fetching daily analytics:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate array of date strings between start and end (inclusive)
+   */
+  private generateDateRange(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+
+    const start = new Date(
+      parseInt(startDate.substring(0, 4)),
+      parseInt(startDate.substring(4, 6)) - 1,
+      parseInt(startDate.substring(6, 8))
     );
-    return docData(tagAnalyticsRef, { idField: 'id' }).pipe(
-      map((data) => data || null),
-      catchError((error) => {
-        console.error('Error fetching tag analytics:', error);
-        return of(null);
-      })
+
+    const end = new Date(
+      parseInt(endDate.substring(0, 4)),
+      parseInt(endDate.substring(4, 6)) - 1,
+      parseInt(endDate.substring(6, 8))
     );
+
+    const current = new Date(start);
+
+    while (current <= end) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      dates.push(`${year}${month}${day}`);
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
   }
 }

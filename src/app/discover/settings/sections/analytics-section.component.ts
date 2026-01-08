@@ -1,6 +1,29 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, input, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
+import { AnalyticsService } from '../../../services/analytics.service';
+import { AuthService } from '../../../services/auth.service';
+import { Firestore, collection, query, where, getDocs, orderBy, limit } from '@angular/fire/firestore';
+import {
+  UserAnalyticsDoc,
+  DailyAnalyticsDoc,
+} from '../../../../assets/interfaces/analytics.interfaces';
+import { MediaUpload } from '../../../../assets/interfaces/interfaces';
+
+interface AnalyticsViewModel {
+  profileViews: number;
+  avgProfileViewDuration: string;
+  searchAppearances: number;
+  totalVideoViews: number;
+  avgVideoWatchTime: string;
+  wishlistCount: number;
+  visibilityScore: number;
+  topVideo: {
+    title: string;
+    views: number;
+    avgWatchTime: string;
+  } | null;
+  dailyData: DailyAnalyticsDoc[];
+}
 
 @Component({
   selector: 'app-analytics-section',
@@ -8,8 +31,42 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
   imports: [CommonModule],
   template: `
     @if (isSubscribed()) {
-    <div class="space-y-8">
-      <!-- Profile Overview -->
+      @if (isLoading()) {
+        <!-- Loading State -->
+        <div class="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+          <!-- Spinner -->
+          <div class="relative">
+            <svg
+              class="w-12 h-12 text-purple-400 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+
+          <!-- Rotating Message -->
+          <div class="text-sm font-medium text-purple-300 animate-pulse">
+            {{ getCurrentLoadingMessage() }}
+          </div>
+        </div>
+      } @else {
+        <!-- Analytics Content -->
+        <div class="space-y-8">
+          <!-- Profile Overview -->
       <div class="space-y-4">
         <h3 class="text-sm font-medium text-purple-200">Profile Overview</h3>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -20,16 +77,7 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
             <div class="text-xs text-purple-300/60 mb-1">Profile Views</div>
             <div class="text-xs text-purple-300/60 mb-2">by Producers</div>
             <div class="text-2xl font-bold text-purple-100">
-              {{ (getProfileOverview().profileViews || 0).toLocaleString() }}
-            </div>
-          </div>
-          <!-- Wishlist Count -->
-          <div
-            class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20"
-          >
-            <div class="text-xs text-purple-300/60 mb-1">Wishlist Count</div>
-            <div class="text-2xl font-bold text-purple-100 mt-4">
-              {{ getProfileOverview().wishlistCount || 0 }}
+              {{ analytics().profileViews.toLocaleString() }}
             </div>
           </div>
           <!-- Avg Time on Profile -->
@@ -39,7 +87,16 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
             <div class="text-xs text-purple-300/60 mb-1">Avg. Time</div>
             <div class="text-xs text-purple-300/60 mb-2">on Profile</div>
             <div class="text-2xl font-bold text-purple-100">
-              {{ getProfileOverview().avgTimeOnProfile || 'N/A' }}
+              {{ analytics().avgProfileViewDuration }}
+            </div>
+          </div>
+          <!-- Wishlist Count -->
+          <div
+            class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20"
+          >
+            <div class="text-xs text-purple-300/60 mb-1">Wishlist Count</div>
+            <div class="text-2xl font-bold text-purple-100 mt-4">
+              {{ analytics().wishlistCount }}
             </div>
           </div>
           <!-- Visibility Score -->
@@ -59,9 +116,7 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
                 />
                 <path
                   class="stroke-purple-400"
-                  [attr.stroke-dasharray]="
-                    (getProfileOverview().visibilityScore || 0) + ', 100'
-                  "
+                  [attr.stroke-dasharray]="analytics().visibilityScore + ', 100'"
                   d="M18 2.0845
                       a 15.9155 15.9155 0 0 1 0 31.831
                       a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -78,7 +133,7 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
                   SCORE
                 </div>
                 <div class="text-xl font-bold text-purple-100">
-                  {{ getProfileOverview().visibilityScore || 0 }}
+                  {{ analytics().visibilityScore }}
                 </div>
               </div>
             </div>
@@ -96,7 +151,7 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
           <div class="flex items-start justify-between mb-4">
             <div>
               <div class="text-2xl font-bold text-purple-100">
-                {{ getSearchAppearances().count }}
+                {{ analytics().searchAppearances.toLocaleString() }}
               </div>
               <div class="text-xs text-purple-300/60">
                 Times your profile appeared in producer searches
@@ -112,93 +167,54 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
           </div>
-          <!-- Videos they saw -->
-          <div class="space-y-2">
-            @for (video of getSearchAppearances().videos; track video.title) {
-            <div
-              class="flex items-center gap-3 p-2 bg-purple-900/20 rounded-lg"
-            >
-              <div
-                class="w-8 h-8 bg-purple-800/50 rounded-lg flex items-center justify-center"
-              >
-                <svg
-                  class="w-4 h-4 text-purple-300"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <span class="text-sm text-purple-200">{{ video.title }}</span>
-            </div>
-            }
-          </div>
         </div>
       </div>
 
-      <!-- Top Performing Video -->
+      <!-- Video Analytics -->
       <div class="space-y-4">
-        <h3 class="text-sm font-medium text-purple-200">
-          Top Performing Video
-        </h3>
+        <h3 class="text-sm font-medium text-purple-200">Video Performance</h3>
         <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
-          <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <div class="text-sm font-medium text-purple-100 mb-1">
-                {{ getTopPerformingVideo().title }}
-              </div>
-              <div class="text-xs text-purple-300/60">
-                {{ getTopPerformingVideo().views }}
+              <div class="text-xs text-purple-300/60 mb-1">Total Video Views</div>
+              <div class="text-2xl font-bold text-purple-100">
+                {{ analytics().totalVideoViews.toLocaleString() }}
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <div class="text-xs text-purple-300/60">Views</div>
-                <div class="text-sm font-medium text-purple-100">
-                  {{ getTopPerformingVideo().views }}
-                </div>
-              </div>
-              <div>
-                <div class="text-xs text-purple-300/60">Average</div>
-                <div class="text-xs text-purple-300/60">Watch Time</div>
-                <div class="text-sm font-medium text-purple-100">
-                  {{ getTopPerformingVideo().avgWatchTime }}
-                </div>
+            <div>
+              <div class="text-xs text-purple-300/60 mb-1">Avg. Watch Time</div>
+              <div class="text-2xl font-bold text-purple-100">
+                {{ analytics().avgVideoWatchTime }}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Tag Insights -->
-      <div class="space-y-4">
-        <h3 class="text-sm font-medium text-purple-200">Tag Insights</h3>
-        <div
-          class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20 space-y-3"
-        >
-          @for (tag of getTagInsights(); track tag.tag) {
-          <div class="space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-purple-200">{{ tag.tag }}</span>
-              <span class="text-xs text-purple-300/60"
-                >{{ tag.percentage }}%</span
-              >
-            </div>
-            <div class="w-full bg-purple-900/30 rounded-full h-2">
-              <div
-                class="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                [style.width.%]="tag.percentage"
-              ></div>
+          @if (analytics().topVideo) {
+          <div class="border-t border-purple-900/30 pt-4">
+            <div class="text-xs text-purple-300/60 mb-2">Top Performing Video</div>
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="text-sm font-medium text-purple-100 mb-1">
+                  {{ analytics().topVideo!.title }}
+                </div>
+                <div class="text-xs text-purple-300/60">
+                  {{ analytics().topVideo!.views }} views
+                </div>
+              </div>
+              <div class="text-sm text-purple-300">
+                {{ analytics().topVideo!.avgWatchTime }}
+              </div>
             </div>
           </div>
           }
         </div>
       </div>
-    </div>
+        </div>
+      }
     } @else {
     <div class="py-16">
       <div
@@ -235,108 +251,270 @@ import { UserAnalytics } from '../../../../assets/interfaces/interfaces';
     }
   `,
 })
-export class AnalyticsSectionComponent {
+export class AnalyticsSectionComponent implements OnInit {
+  private analyticsService = inject(AnalyticsService);
+  private authService = inject(AuthService);
+  private firestore = inject(Firestore);
+
+  // Inputs
   isSubscribed = input.required<boolean>();
-  analyticsData = input.required<UserAnalytics | null>();
-  videoAnalytics = input<any | null>();
-  tagAnalytics = input<any | null>();
   upgradeSubscription = input.required<() => void>();
+
+  // State
+  analytics = signal<AnalyticsViewModel>({
+    profileViews: 0,
+    avgProfileViewDuration: 'N/A',
+    searchAppearances: 0,
+    totalVideoViews: 0,
+    avgVideoWatchTime: 'N/A',
+    wishlistCount: 0,
+    visibilityScore: 0,
+    topVideo: null,
+    dailyData: [],
+  });
+
+  // Loading state
+  isLoading = signal<boolean>(true);
+  currentMessageIndex = signal<number>(0);
+  private messageInterval: any = null;
+
+  // Loading messages
+  private readonly loadingMessages = [
+    "Crunching the numbers...",
+    "Calculating your star power...",
+    "Analyzing your reach...",
+    "Tallying up those profile views...",
+    "Counting all those video watches...",
+    "Seeing who wishlisted you...",
+    "Checking your search appearances...",
+    "Computing your visibility score...",
+    "Reviewing your top performances...",
+    "Mapping your growth trends...",
+  ];
+
+  async ngOnInit() {
+    this.startMessageRotation();
+    await this.loadAnalytics();
+  }
+
+  private async loadAnalytics() {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return;
+
+    try {
+      // 1. Load lifetime analytics
+      const lifetimeData = await this.analyticsService.getLifetimeAnalytics(currentUser.uid);
+
+      // 2. Load wishlist count
+      const wishlistCount = await this.analyticsService.getWishlistCount(currentUser.uid);
+
+      // 3. Load last 30 days of daily data (for trends)
+      const endDate = this.getTodayId();
+      const startDate = this.getDateIdDaysAgo(30);
+      const dailyData = await this.analyticsService.getDailyAnalytics(
+        currentUser.uid,
+        startDate,
+        endDate
+      );
+
+      // 4. Load video analytics (top video)
+      const topVideo = await this.loadTopVideo(currentUser.uid);
+
+      // 5. Calculate derived metrics
+      const avgProfileViewDuration = lifetimeData?.totalProfileViewMs && lifetimeData?.profileViews
+        ? this.formatDuration(lifetimeData.totalProfileViewMs / lifetimeData.profileViews / 1000)
+        : 'N/A';
+
+      const avgVideoWatchTime = lifetimeData?.totalWatchMs && lifetimeData?.totalVideoViews
+        ? this.formatDuration(lifetimeData.totalWatchMs / lifetimeData.totalVideoViews / 1000)
+        : 'N/A';
+
+      const visibilityScore = this.calculateVisibilityScore(
+        lifetimeData?.profileViews || 0,
+        wishlistCount,
+        lifetimeData?.searchAppearances || 0,
+        lifetimeData?.totalVideoViews || 0,
+        lifetimeData?.totalWatchMs || 0
+      );
+
+      // 6. Update signal
+      this.analytics.set({
+        profileViews: lifetimeData?.profileViews || 0,
+        avgProfileViewDuration,
+        searchAppearances: lifetimeData?.searchAppearances || 0,
+        totalVideoViews: lifetimeData?.totalVideoViews || 0,
+        avgVideoWatchTime,
+        wishlistCount,
+        visibilityScore,
+        topVideo,
+        dailyData,
+      });
+
+      // Set loading to false
+      this.isLoading.set(false);
+
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      // Still set loading to false on error
+      this.isLoading.set(false);
+    }
+  }
+
+  private startMessageRotation(): void {
+    if (this.messageInterval) return;
+
+    this.messageInterval = setInterval(() => {
+      if (!this.isLoading()) {
+        this.stopMessageRotation();
+        return;
+      }
+
+      const nextIndex = (this.currentMessageIndex() + 1) % this.loadingMessages.length;
+      this.currentMessageIndex.set(nextIndex);
+    }, 2000);
+  }
+
+  private stopMessageRotation(): void {
+    if (this.messageInterval) {
+      clearInterval(this.messageInterval);
+      this.messageInterval = null;
+    }
+  }
+
+  getCurrentLoadingMessage(): string {
+    return this.loadingMessages[this.currentMessageIndex()];
+  }
+
+  ngOnDestroy() {
+    this.stopMessageRotation();
+  }
+
+  private async loadTopVideo(userId: string): Promise<{
+    title: string;
+    views: number;
+    avgWatchTime: string;
+  } | null> {
+    try {
+      // Query uploads/{userId}/userUploads for videos
+      const videosRef = collection(this.firestore, `uploads/${userId}/userUploads`);
+      const q = query(videosRef, where('fileType', '==', 'video'));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) return null;
+
+      // Find video with most views
+      let topVideo: any = null;
+      let maxViews = 0;
+
+      snapshot.forEach(doc => {
+        const data = doc.data() as MediaUpload;
+        // Type guard to ensure we're working with video metadata
+        if (data.fileType === 'video' && data.metadata) {
+          const metadata = data.metadata as any; // Use any to access analytics fields
+          const viewCount = metadata.viewCount || 0;
+
+          if (viewCount > maxViews) {
+            maxViews = viewCount;
+            topVideo = {
+              title: metadata.description || 'Untitled',
+              views: viewCount,
+              totalWatchMs: metadata.totalWatchMs || 0,
+            };
+          }
+        }
+      });
+
+      if (!topVideo) return null;
+
+      const avgWatchTime = topVideo.views > 0
+        ? this.formatDuration(topVideo.totalWatchMs / topVideo.views / 1000)
+        : 'N/A';
+
+      return {
+        title: topVideo.title,
+        views: topVideo.views,
+        avgWatchTime,
+      };
+    } catch (error) {
+      console.error('Error loading top video:', error);
+      return null;
+    }
+  }
+
+  private calculateVisibilityScore(
+    profileViews: number,
+    wishlistCount: number,
+    searchAppearances: number,
+    totalVideoViews: number,
+    totalWatchMs: number
+  ): number {
+    /**
+     * Enhanced visibility score formula with video metrics
+     * Weights:
+     * - Profile views: 1x (baseline engagement)
+     * - Wishlist count: 3x (strong interest signal)
+     * - Search appearances: 0.5x (exposure metric)
+     * - Video views: 2x (content engagement)
+     * - Avg watch time: bonus multiplier (quality metric)
+     */
+
+    // Base engagement score
+    const baseScore = profileViews + (wishlistCount * 3) + (searchAppearances * 0.5) + (totalVideoViews * 2);
+
+    // Calculate average watch time in seconds (if there are video views)
+    const avgWatchTimeSec = totalVideoViews > 0 ? (totalWatchMs / totalVideoViews / 1000) : 0;
+
+    // Bonus multiplier based on average watch time
+    // 0-10s: 1.0x, 10-30s: 1.1x, 30-60s: 1.2x, 60s+: 1.3x
+    let watchTimeMultiplier = 1.0;
+    if (avgWatchTimeSec >= 60) {
+      watchTimeMultiplier = 1.3;
+    } else if (avgWatchTimeSec >= 30) {
+      watchTimeMultiplier = 1.2;
+    } else if (avgWatchTimeSec >= 10) {
+      watchTimeMultiplier = 1.1;
+    }
+
+    const rawScore = baseScore * watchTimeMultiplier;
+
+    // Normalize to 0-100 scale (adjust divisor based on your needs)
+    return Math.min(Math.round(rawScore / 10), 100);
+  }
+
+  private formatDuration(seconds: number): string {
+    if (!seconds || seconds === 0) return 'N/A';
+
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return `${minutes}m ${secs}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}m`;
+    }
+  }
+
+  private getTodayId(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+
+  private getDateIdDaysAgo(days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
 
   onUpgradeSubscription() {
     this.upgradeSubscription()();
-  }
-
-  // Helper to format seconds to readable time
-  formatDuration(seconds: number): string {
-    if (!seconds || seconds === 0) return 'N/A';
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}m ${secs}s`;
-  }
-
-  // Safe access methods for analytics data
-  getProfileOverview() {
-    const data = this.analyticsData();
-    if (!data) {
-      return {
-        profileViews: 0,
-        wishlistCount: 0,
-        avgTimeOnProfile: 'N/A',
-        visibilityScore: 0,
-      };
-    }
-
-    return {
-      profileViews: data.profileViews.total || 0,
-      wishlistCount: data.wishlistCount || 0,
-      avgTimeOnProfile: this.formatDuration(data.profileViews.avgDuration),
-      visibilityScore: Math.round(data.visibilityScore || 0),
-    };
-  }
-
-  getSearchAppearances() {
-    const data = this.analyticsData();
-    if (!data || !data.searchImpressions) {
-      return {
-        count: 0,
-        videos: [] as Array<{ title: string; thumbnail: string }>
-      };
-    }
-
-    const visibleVideos = data.searchImpressions.visibleVideosFrequency || {};
-    const sortedVideos = Object.entries(visibleVideos)
-      .sort(([, countA], [, countB]) => (countB as number) - (countA as number))
-      .slice(0, 5)
-      .map(([fileName]) => ({
-        title: this.formatVideoTitle(fileName),
-        thumbnail: ''
-      }));
-
-    return {
-      count: data.searchImpressions.total || 0,
-      videos: sortedVideos
-    };
-  }
-
-  getTopPerformingVideo() {
-    const data = this.analyticsData();
-    if (!data || !data.topVideo) {
-      return {
-        title: 'No videos yet',
-        views: '0',
-        avgWatchTime: 'N/A',
-      };
-    }
-
-    return {
-      title: data.topVideo.videoTitle || 'Untitled Video',
-      views: data.topVideo.totalViews?.toString() || '0',
-      avgWatchTime: this.formatDuration(data.topVideo.avgWatchTime || 0),
-    };
-  }
-
-  getTagInsights() {
-    const tagData = this.tagAnalytics();
-    if (!tagData || !tagData.tags) {
-      return [] as Array<{ tag: string; percentage: number }>;
-    }
-
-    return Object.values(tagData.tags)
-      .sort((a: any, b: any) => b.percentageOfTotalViews - a.percentageOfTotalViews)
-      .slice(0, 10)
-      .map((tag: any) => ({
-        tag: tag.tag,
-        percentage: Math.round(tag.percentageOfTotalViews)
-      }));
-  }
-
-  // Helper to format video titles from filenames
-  private formatVideoTitle(fileName: string): string {
-    // Remove file extension
-    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
-    // Replace underscores/hyphens with spaces
-    const formatted = nameWithoutExt.replace(/[_-]/g, ' ');
-    // Capitalize first letter
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   }
 }

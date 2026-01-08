@@ -27,8 +27,7 @@ export interface ProducerProfile {
   isSubscribed?: boolean; // Default false
   isBadgedVerified?: boolean; // 1- isPaidMember, 2- KYC (complete questionnaire + work entries)
 
-  // Wishlist
-  wishList?: string[]; // List of actor UIDs
+  // NOTE: Wishlist is now stored in wishlists collection, not in producer profile
 }
 
 export interface ActorProfile {
@@ -44,11 +43,6 @@ export interface ActorProfile {
   listEducation?: Education[];
   actorWorks?: Work[]; // Get the last from the list for recent work
   notifications?: Notification[];
-
-  // Related to analytics
-  actorAnalytics?: ActorAnalytics[];
-  profileViewCount?: number; // Based on actor analytics list count
-  wishListCount?: number; // Based on actor analytics list with isWishlist true
 
   // Payment related
   isSubscribed?: boolean; // Default false
@@ -95,9 +89,24 @@ export interface Social {
   addLinkUrl?: string;
 }
 
-export interface ActorAnalytics {
-  producerId: string; // Producer -> select actor profile, producer -> when watches videos
-  watchTime?: number;
-  isWishList?: boolean;
-  keywordsMatched?: string[];
-}
+// DEPRECATED: Analytics are now stored in separate user_analytics collection
+// These interfaces are kept temporarily for backward compatibility but should not be used
+// export interface ActorAnalytics {
+//   producerId: string;
+//   lastViewedAt: any;
+//   totalViews: number;
+//   isWishlist: boolean;
+//   videosWatched?: string[];
+//   firstViewedAt?: any;
+//   watchTime?: number;
+//   keywordsMatched?: string[];
+// }
+
+// DEPRECATED: Video analytics are now stored in uploads/{userId}/userUploads/{videoId}.metadata
+// export interface VideoAnalytics {
+//   videoId: string;
+//   videoTitle: string;
+//   viewCount: number;
+//   lastViewedAt?: any;
+//   lastViewedBy?: string;
+// }

@@ -229,9 +229,6 @@ export class AuthService {
       listEducation: [],
       actorWorks: [],
       notifications: [],
-      actorAnalytics: [],
-      profileViewCount: 0,
-      wishListCount: 0,
       isSubscribed: false,
     };
 
@@ -260,7 +257,6 @@ export class AuthService {
       notifications: [],
       isSubscribed: false,
       isBadgedVerified: false,
-      wishList: [],
     };
 
     const profile: Profile = {
@@ -306,9 +302,6 @@ export class AuthService {
         listEducation: [],
         actorWorks: [],
         notifications: [],
-        actorAnalytics: [],
-        profileViewCount: 0,
-        wishListCount: 0,
         isSubscribed: false,
       };
 
@@ -334,7 +327,6 @@ export class AuthService {
         notifications: [],
         isSubscribed: false,
         isBadgedVerified: false,
-        wishList: [],
       };
 
       // Merge with existing profile

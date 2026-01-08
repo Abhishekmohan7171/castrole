@@ -157,9 +157,6 @@
           } @case ('analytics') {
           <app-analytics-section
             [isSubscribed]="isSubscribed()"
-            [analyticsData]="analyticsData()"
-            [videoAnalytics]="videoAnalytics()"
-            [tagAnalytics]="tagAnalytics()"
             [upgradeSubscription]="upgradeToYearlyFromAnalyticsHandler"
           />
           } @case ('support') {

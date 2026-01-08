@@ -881,10 +881,8 @@ export class SearchComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private saveSubject = new Subject<void>();
   private currentUserId: string | null = null;
-  private currentUserRole: string | null = null;
+  currentUserRole = signal<string | null>(null);
   private wishlistUnsubscribe: Unsubscribe | null = null;
-  private trackingSubject = new Subject<ActorSearchResult[]>();
-  private lastTrackedResults: Set<string> = new Set();
 
   // Expose constants for template
   readonly characterTypes = CHARACTER_TYPES;
@@ -1228,12 +1226,19 @@ export class SearchComponent implements OnInit, OnDestroy {
   totalResultsCount = computed(() => this.filteredActors().length);
 
   constructor() {
-    // Set up effect to track search impressions when filtered results change
+    // Set up effect to track search impressions when displayed results change
     effect(() => {
-      const results = this.filteredActors();
-      // Emit results to trackingSubject for debounced tracking
-      if (results.length > 0) {
-        this.trackingSubject.next(results);
+      const displayed = this.displayedActors();
+
+      // Only track if user is a producer and there are results
+      if (this.currentUserRole() === 'producer' && displayed.length > 0) {
+        // Extract actor IDs and track search impressions (first 20 displayed)
+        const actorIds = displayed.slice(0, 20).map(actor => actor.uid);
+
+        // Track asynchronously (fire and forget)
+        this.analyticsService.trackSearchImpressions(actorIds).catch(err => {
+          console.error('Error tracking search impressions:', err);
+        });
       }
     });
   }
@@ -1247,7 +1252,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       try {
         const userDoc = await getDoc(doc(this.firestore, 'users', this.currentUserId));
         if (userDoc.exists()) {
-          this.currentUserRole = userDoc.data()['currentRole'] || null;
+          this.currentUserRole.set(userDoc.data()['currentRole'] || null);
         }
       } catch (error) {
         this.logger.log('Error fetching user role:', error);
@@ -1273,9 +1278,6 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Setup auto-save for filter changes
     this.setupAutoSave();
 
-    // Setup debounced search impression tracking
-    this.setupImpressionTracking();
-
     // Load actors in background but don't display until search
     // Wishlist will be loaded after actors are loaded
     this.loadActors();
@@ -1292,19 +1294,6 @@ export class SearchComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(() => {
       this.persistFilters();
-    });
-  }
-
-  /**
-   * Setup debounced search impression tracking
-   * Tracks impressions after 1000ms of inactivity to avoid excessive writes
-   */
-  private setupImpressionTracking(): void {
-    this.trackingSubject.pipe(
-      debounceTime(1000),
-      takeUntil(this.destroy$)
-    ).subscribe((actors) => {
-      this.trackSearchImpressions(actors);
     });
   }
 
@@ -1333,7 +1322,6 @@ export class SearchComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.searchSubject.complete();
     this.saveSubject.complete();
-    this.trackingSubject.complete();
 
     // Unsubscribe from wishlist listener
     if (this.wishlistUnsubscribe) {
@@ -1514,8 +1502,8 @@ export class SearchComponent implements OnInit, OnDestroy {
       profileImageUrl: actor.actorProfileImageUrl,
       carouselImages: actor.carouselImagesUrl || [],
       voiceIntroUrl: actor.voiceIntro,
-      profileViewCount: actor.profileViewCount || 0,
-      wishlistCount: actor.wishListCount || 0
+      profileViewCount: 0, // Analytics moved to separate collection
+      wishlistCount: 0 // Analytics moved to separate collection
     };
     
     this.logger.log(`Transformed actor: ${result.stageName}, characterTypes:`, result.characterTypes);
@@ -2133,84 +2121,47 @@ export class SearchComponent implements OnInit, OnDestroy {
    * Toggle actor in wishlist and persist to Firestore
    */
   async toggleWishlist(actor: ActorSearchResult): Promise<void> {
+    if (!this.currentUserId) {
+      this.logger.error('No current user ID - cannot toggle wishlist');
+      return;
+    }
+
     const currentWishlist = this.wishlist();
     const index = currentWishlist.findIndex(a => a.uid === actor.uid);
 
-    if (index > -1) {
-      // Remove from wishlist
-      this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
-      this.logger.log(`Removed ${actor.stageName} from wishlist`);
-    } else {
-      // Add to wishlist
-      this.wishlist.set([...currentWishlist, actor]);
-      this.logger.log(`Added ${actor.stageName} to wishlist`);
+    try {
+      if (index > -1) {
+        // Remove from wishlist
+        this.wishlist.set(currentWishlist.filter(a => a.uid !== actor.uid));
 
-      // Track analytics for wishlist addition
-      if (this.currentUserId) {
-        await this.analyticsService.trackWishlistAdd(actor.uid, this.currentUserId);
+        // Remove from wishlists collection (new analytics system)
+        await this.analyticsService.removeFromWishlist(actor.uid, this.currentUserId);
+
+        this.logger.log(`Removed ${actor.stageName} from wishlist`);
+      } else {
+        // Add to wishlist
+        this.wishlist.set([...currentWishlist, actor]);
+
+        // Add to wishlists collection (new analytics system)
+        await this.analyticsService.addToWishlist(actor.uid, this.currentUserId);
+
+        this.logger.log(`Added ${actor.stageName} to wishlist`);
       }
-    }
 
-    // Persist to Firestore
-    await this.saveWishlist();
+      // NOTE: saveWishlist() is kept for backward compatibility with producer profile wishlist array
+      // The new system uses the wishlists collection managed by analyticsService
+      await this.saveWishlist();
+    } catch (error) {
+      this.logger.error('Error toggling wishlist:', error);
+      // Revert local state on error
+      this.wishlist.set(currentWishlist);
+    }
   }
 
   isInWishlist(actor: ActorSearchResult): boolean {
     return this.wishlist().some(a => a.uid === actor.uid);
   }
 
-  /**
-   * Track search impressions for actors
-   * Called when actor profiles appear in producer search results
-   */
-  private async trackSearchImpressions(actors: ActorSearchResult[]): Promise<void> {
-    // Only track if user is logged in and is a producer
-    if (!this.currentUserId || this.currentUserRole !== 'producer') {
-      return;
-    }
-
-    // Avoid tracking the same results multiple times
-    const currentResultIds = new Set(actors.map(a => a.uid));
-    if (this.areSetsEqual(currentResultIds, this.lastTrackedResults)) {
-      return; // Same results, skip tracking
-    }
-    this.lastTrackedResults = currentResultIds;
-
-    // Batch track top 20 results to avoid excessive Firestore writes
-    const promises = actors.slice(0, 20).map(async (actor) => {
-      const visibleVideos = actor.carouselImages || [];
-      const currentFilters = this.filters();
-
-      const searchFilters: any = {
-        characterTypes: currentFilters.characterTypes.length > 0 ? currentFilters.characterTypes : undefined,
-        gender: currentFilters.gender !== 'any' ? currentFilters.gender : undefined,
-        languages: currentFilters.languages.length > 0 ? currentFilters.languages : undefined,
-        skills: currentFilters.skills.length > 0 ? currentFilters.skills : undefined,
-        location: currentFilters.location || undefined,
-      };
-
-      await this.analyticsService.trackSearchImpression(
-        actor.uid,
-        this.currentUserId!,
-        searchFilters,
-        visibleVideos
-      );
-    });
-
-    await Promise.allSettled(promises);
-    this.logger.log(`Tracked ${Math.min(actors.length, 20)} search impressions`);
-  }
-
-  /**
-   * Helper to compare two sets for equality
-   */
-  private areSetsEqual<T>(setA: Set<T>, setB: Set<T>): boolean {
-    if (setA.size !== setB.size) return false;
-    for (const item of setA) {
-      if (!setB.has(item)) return false;
-    }
-    return true;
-  }
 
   /**
    * Navigate to actor profile using stored slug-uid
