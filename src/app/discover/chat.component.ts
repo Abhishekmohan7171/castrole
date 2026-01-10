@@ -1448,8 +1448,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   async acceptRequest(c: Conversation) {
     if (!this.meUid) return;
     try {
+      // Get actor's name and photo from profile
+      const profileDoc = await getDoc(doc(this.firestore, 'profiles', this.meUid));
+      const actorName = profileDoc.exists() ? profileDoc.data()?.['actorProfile']?.['stageName'] : undefined;
+      const actorPhotoUrl = profileDoc.exists() ? profileDoc.data()?.['actorProfile']?.['actorProfileImageUrl'] : undefined;
+
       // Accept the chat request
-      await this.chat.acceptChatRequest(c.id, this.meUid);
+      await this.chat.acceptChatRequest(c.id, this.meUid, actorName, actorPhotoUrl);
 
       // Update the conversation object to reflect acceptance
       c.actorAccepted = true;
@@ -1489,7 +1494,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   async rejectRequest(c: Conversation) {
     if (!this.meUid) return;
     try {
-      await this.chat.rejectChatRequest(c.id, this.meUid);
+      // Get actor's name and photo from profile
+      const profileDoc = await getDoc(doc(this.firestore, 'profiles', this.meUid));
+      const actorName = profileDoc.exists() ? profileDoc.data()?.['actorProfile']?.['stageName'] : undefined;
+      const actorPhotoUrl = profileDoc.exists() ? profileDoc.data()?.['actorProfile']?.['actorProfileImageUrl'] : undefined;
+
+      await this.chat.rejectChatRequest(c.id, this.meUid, actorName, actorPhotoUrl);
       // Remove from the conversations list
       const convos = this.conversations();
       this.conversations.set(convos.filter(conv => conv.id !== c.id));

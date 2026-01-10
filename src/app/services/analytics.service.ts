@@ -547,6 +547,12 @@ export class AnalyticsService implements OnDestroy {
 
       // Create wishlist notification for actor
       try {
+        // Check if actor has premium subscription
+        const actorProfileDoc = await getDoc(doc(this.firestore, 'profiles', actorId));
+        const isPremium = actorProfileDoc.exists() 
+          ? actorProfileDoc.data()?.['actorProfile']?.['isSubscribed'] === true
+          : false;
+
         // Get producer info for notification
         const producerDoc = await getDoc(doc(this.firestore, 'users', producerId));
         const producerData = producerDoc.exists() ? producerDoc.data() : null;
@@ -562,7 +568,8 @@ export class AnalyticsService implements OnDestroy {
           actorId,
           producerId,
           producerName,
-          producerPhotoUrl
+          producerPhotoUrl,
+          isPremium
         );
       } catch (error) {
         console.error('Failed to create wishlist notification:', error);

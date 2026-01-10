@@ -519,30 +519,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                     )
                   );
 
-                  // Auto-trigger notification checks based on user role
-                  if (userData['currentRole'] === 'actor') {
-                    // Actor-specific checks
-                    this.notificationService.checkAndSendMonthlyAnalytics(user.uid).catch(err => 
-                      this.logger.error('Error checking monthly analytics:', err)
-                    );
-                    this.notificationService.checkProfileCompleteness(user.uid).catch(err => 
-                      this.logger.error('Error checking profile completeness:', err)
-                    );
-                    this.notificationService.checkSubscriptionExpiry(user.uid).catch(err => 
-                      this.logger.error('Error checking subscription expiry:', err)
-                    );
-                    this.notificationService.checkAndSendVisibilitySuggestion(user.uid).catch(err => 
-                      this.logger.error('Error checking visibility suggestion:', err)
-                    );
-                  } else if (userData['currentRole'] === 'producer') {
-                    // Producer-specific checks
-                    this.notificationService.checkWishlistMatches(user.uid).catch(err => 
-                      this.logger.error('Error checking wishlist matches:', err)
-                    );
-                    this.notificationService.checkDatabaseGrowth(user.uid).catch(err => 
-                      this.logger.error('Error checking database growth:', err)
-                    );
-                  }
+                  // Auto-trigger notification checks are disabled to prevent console errors
+                  // These should be triggered via scheduled jobs or manual admin actions instead
 
                   // Initialize chat notification count
                   if (userData['currentRole'] === 'actor') {

@@ -625,8 +625,16 @@ export class ChatService {
       const producerName = roomData['producerName'];
       const producerPhotoUrl = roomData['producerPhotoUrl'];
       
+      console.log('Creating connection accepted notifications:', {
+        producerId,
+        actorId,
+        actorName,
+        roomId
+      });
+      
       try {
         // Notify producer that actor accepted
+        console.log('Notifying producer:', producerId);
         await this.notificationService.createConnectionAcceptedNotification(
           producerId,
           actorId,
@@ -634,8 +642,10 @@ export class ChatService {
           roomId,
           actorPhotoUrl
         );
+        console.log('✓ Producer notification created');
         
         // Notify actor that connection is established
+        console.log('Notifying actor:', actorId);
         await this.notificationService.createConnectionEstablishedNotification(
           actorId,
           producerId,
@@ -643,9 +653,12 @@ export class ChatService {
           roomId,
           producerPhotoUrl
         );
+        console.log('✓ Actor notification created');
       } catch (error) {
         console.error('Failed to create connection accepted notifications:', error);
       }
+    } else {
+      console.error('No room data found for roomId:', roomId);
     }
     
     // Clear cache for this room
@@ -670,6 +683,12 @@ export class ChatService {
     if (roomData) {
       const producerId = roomData['producerId'];
       
+      console.log('Creating connection declined notification:', {
+        producerId,
+        actorId,
+        actorName
+      });
+      
       try {
         await this.notificationService.createConnectionDeclinedNotification(
           producerId,
@@ -677,9 +696,12 @@ export class ChatService {
           actorName || 'An actor',
           actorPhotoUrl
         );
+        console.log('✓ Producer declined notification created');
       } catch (error) {
         console.error('Failed to create connection declined notification:', error);
       }
+    } else {
+      console.error('No room data found for roomId:', roomId);
     }
     
     // Clear cache for this room

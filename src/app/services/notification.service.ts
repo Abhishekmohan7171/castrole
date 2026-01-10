@@ -171,6 +171,24 @@ export class NotificationService {
     try {
       const notifsRef = collection(this.db, `users/${params.recipientId}/notifications`);
       
+      console.log('Creating notification:', {
+        type: params.type,
+        recipientId: params.recipientId,
+        title: params.title,
+        message: params.message
+      });
+      
+      // Filter out undefined values from metadata to prevent Firestore errors
+      const cleanMetadata: Record<string, any> = {};
+      if (params.metadata) {
+        const metadata = params.metadata as Record<string, any>;
+        Object.keys(metadata).forEach(key => {
+          if (metadata[key] !== undefined) {
+            cleanMetadata[key] = metadata[key];
+          }
+        });
+      }
+      
       await addDoc(notifsRef, {
         userId: params.recipientId,
         type: params.type,
@@ -180,11 +198,13 @@ export class NotificationService {
         timestamp: serverTimestamp(),
         read: false,
         actionUrl: params.actionUrl,
-        metadata: params.metadata || {}
+        metadata: cleanMetadata
       });
 
+      console.log(`✓ Notification created: ${params.type} for user ${params.recipientId}`);
       this.logger.info(`Notification created: ${params.type} for user ${params.recipientId}`);
     } catch (error) {
+      console.error(`✗ Failed to create notification: ${params.type}`, error);
       this.logger.error(`Failed to create notification: ${params.type}`, error);
       throw error;
     }
@@ -300,25 +320,29 @@ export class NotificationService {
   }
 
   /**
-   * 5. Added to producer wishlist
+   * 5. Added to producer wishlist (Premium shows name, Free shows generic)
    */
   async createWishlistAddNotification(
     actorId: string,
     producerId: string,
     producerName: string,
-    producerPhotoUrl?: string
+    producerPhotoUrl?: string,
+    isPremium: boolean = false
   ): Promise<void> {
     await this.createNotification({
       recipientId: actorId,
       type: 'wishlist_add',
       category: 'analytics',
       title: 'Added to Wishlist',
-      message: `${producerName} added you to their wishlist`,
-      actionUrl: `/discover/profile`,
+      message: isPremium 
+        ? `${producerName} added you to their wishlist`
+        : 'A producer added you to their wishlist — Subscribe to see who',
+      actionUrl: isPremium ? `/discover/profile` : `/discover/settings/subscription`,
       metadata: {
         producerId,
-        producerName,
-        producerPhotoUrl
+        producerName: isPremium ? producerName : undefined,
+        producerPhotoUrl: isPremium ? producerPhotoUrl : undefined,
+        isPremium
       }
     });
   }
@@ -860,6 +884,7 @@ export class NotificationService {
         localStorage.setItem(lastSentKey, new Date().toISOString());
       }
     } catch (error) {
+      // Silently fail - don't break the app if this check fails
       this.logger.error('Error checking database growth:', error);
     }
   }

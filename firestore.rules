@@ -26,9 +26,10 @@ service cloud.firestore {
         // Users can update (mark as read) or delete their own notifications
         allow update, delete: if isOwner(userId);
         
-        // Any authenticated user can create notifications for other users
-        // This allows the system to send notifications
-        allow create: if isAuthenticated();
+        // CRITICAL: Any authenticated user can create notifications for ANY user
+        // This is required for actors to notify producers and vice versa
+        // The recipientId in the notification determines who can read it
+        allow create: if request.auth != null;
       }
     }
     
@@ -89,6 +90,31 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
       }
+    }
+    
+    // Discover collection (for feed and posts)
+    match /discover/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // User analytics (for notification system)
+    match /user_analytics/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+      
+      match /{allChildren=**} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Wishlists (for notification system)
+    match /wishlists/{wishlistId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
     }
     
     // Default deny all other collections
