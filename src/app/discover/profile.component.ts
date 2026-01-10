@@ -1991,7 +1991,26 @@ export class ProfileComponent implements OnInit {
             this.currentUserRole() === 'producer' &&
             userData.currentRole === 'actor'
           ) {
-            await this.analyticsService.startProfileView(profileData.uid);
+            const currentUser = this.auth.getCurrentUser();
+            if (currentUser) {
+              // Get current producer's info for notification
+              const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+              const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() as UserDoc : null;
+              const producerName = currentUserData?.name || 'A producer';
+              
+              // Get producer photo
+              const producerProfileDoc = await getDoc(doc(this.firestore, 'profiles', currentUser.uid));
+              const producerPhotoUrl = producerProfileDoc.exists() 
+                ? producerProfileDoc.data()?.['producerProfile']?.['producerProfileImageUrl']
+                : undefined;
+              
+              await this.analyticsService.startProfileView(
+                profileData.uid,
+                currentUser.uid,
+                producerName,
+                producerPhotoUrl
+              );
+            }
           }
         }
 
@@ -2038,7 +2057,26 @@ export class ProfileComponent implements OnInit {
         this.currentUserRole() === 'producer' &&
         userData.currentRole === 'actor'
       ) {
-        await this.analyticsService.startProfileView(profileData.uid);
+        const currentUser = this.auth.getCurrentUser();
+        if (currentUser) {
+          // Get current producer's info for notification
+          const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
+          const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() as UserDoc : null;
+          const producerName = currentUserData?.name || 'A producer';
+          
+          // Get producer photo
+          const producerProfileDoc = await getDoc(doc(this.firestore, 'profiles', currentUser.uid));
+          const producerPhotoUrl = producerProfileDoc.exists() 
+            ? producerProfileDoc.data()?.['producerProfile']?.['producerProfileImageUrl']
+            : undefined;
+          
+          await this.analyticsService.startProfileView(
+            profileData.uid,
+            currentUser.uid,
+            producerName,
+            producerPhotoUrl
+          );
+        }
       }
 
       // Check block status

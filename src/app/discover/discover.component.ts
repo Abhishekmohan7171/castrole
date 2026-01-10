@@ -27,6 +27,7 @@ import {
 import { AuthService } from '../services/auth.service';
 import { ChatService } from '../services/chat.service';
 import { LoggerService } from '../services/logger.service';
+import { NotificationService } from '../services/notification.service';
 import { Auth, onAuthStateChanged, User } from '@angular/fire/auth';
 import {
   Firestore,
@@ -464,7 +465,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     private auth: AuthService,
     private router: Router,
     private chatService: ChatService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private notificationService: NotificationService
   ) {
     // Initialize with empty observable
     this.chatNotificationCount$ = of(0);
@@ -504,6 +506,43 @@ export class DiscoverComponent implements OnInit, OnDestroy {
 
                   // Fetch profile photo
                   this.fetchProfilePhoto(user.uid);
+
+                  // Initialize real-time notifications
+                  this.subscriptions.add(
+                    this.notificationService.observeNotifications(user.uid).subscribe(
+                      (notifications) => {
+                        this.notifications.set(notifications);
+                      },
+                      (error) => {
+                        this.logger.error('Error loading notifications:', error);
+                      }
+                    )
+                  );
+
+                  // Auto-trigger notification checks based on user role
+                  if (userData['currentRole'] === 'actor') {
+                    // Actor-specific checks
+                    this.notificationService.checkAndSendMonthlyAnalytics(user.uid).catch(err => 
+                      this.logger.error('Error checking monthly analytics:', err)
+                    );
+                    this.notificationService.checkProfileCompleteness(user.uid).catch(err => 
+                      this.logger.error('Error checking profile completeness:', err)
+                    );
+                    this.notificationService.checkSubscriptionExpiry(user.uid).catch(err => 
+                      this.logger.error('Error checking subscription expiry:', err)
+                    );
+                    this.notificationService.checkAndSendVisibilitySuggestion(user.uid).catch(err => 
+                      this.logger.error('Error checking visibility suggestion:', err)
+                    );
+                  } else if (userData['currentRole'] === 'producer') {
+                    // Producer-specific checks
+                    this.notificationService.checkWishlistMatches(user.uid).catch(err => 
+                      this.logger.error('Error checking wishlist matches:', err)
+                    );
+                    this.notificationService.checkDatabaseGrowth(user.uid).catch(err => 
+                      this.logger.error('Error checking database growth:', err)
+                    );
+                  }
 
                   // Initialize chat notification count
                   if (userData['currentRole'] === 'actor') {
@@ -659,16 +698,11 @@ export class DiscoverComponent implements OnInit, OnDestroy {
 
   // Handle image loading errors
   onImageError(): void {
-    this.profilePhotoUrl.set(undefined);
   }
 
   // Notification drawer methods
   toggleNotificationDrawer(): void {
-    this.showNotificationDrawer.set(!this.showNotificationDrawer());
-    // Load mock notifications for demo (replace with real data later)
-    if (this.showNotificationDrawer() && this.notifications().length === 0) {
-      this.loadMockNotifications();
-    }
+    this.showNotificationDrawer.update((v) => !v);
   }
 
   closeNotificationDrawer(): void {
@@ -682,58 +716,30 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     }
   }
 
-  markNotificationAsRead(notification: Notification): void {
-    const updatedNotifications = this.notifications().map((n) =>
-      n.id === notification.id ? { ...n, read: true } : n
-    );
-    this.notifications.set(updatedNotifications);
+  async markNotificationAsRead(notification: Notification): Promise<void> {
+    if (!this.uid) return;
+    
+    try {
+      await this.notificationService.markAsRead(this.uid, notification.id);
+      
+      // Navigate if there's an action URL
+      if (notification.actionUrl) {
+        this.router.navigate([notification.actionUrl]);
+        this.closeNotificationDrawer();
+      }
+    } catch (error) {
+      this.logger.error('Error marking notification as read:', error);
+    }
   }
 
-  markAllNotificationsAsRead(): void {
-    const updatedNotifications = this.notifications().map((n) => ({
-      ...n,
-      read: true,
-    }));
-    this.notifications.set(updatedNotifications);
+  async markAllNotificationsAsRead(): Promise<void> {
+    if (!this.uid) return;
+    
+    try {
+      await this.notificationService.markAllAsRead(this.uid);
+    } catch (error) {
+      this.logger.error('Error marking all notifications as read:', error);
+    }
   }
 
-  // Load mock notifications (replace with real Firebase data)
-  private loadMockNotifications(): void {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'message',
-        title: 'New message from Producer',
-        message:
-          'Hey! I saw your profile and would love to discuss a project opportunity.',
-        timestamp: new Date(Date.now() - 5 * 60000),
-        read: false,
-      },
-      {
-        id: '2',
-        type: 'request',
-        title: 'New chat request',
-        message: 'John Doe wants to connect with you',
-        timestamp: new Date(Date.now() - 30 * 60000),
-        read: false,
-      },
-      {
-        id: '3',
-        type: 'system',
-        title: 'Profile updated',
-        message: 'Your profile has been successfully updated',
-        timestamp: new Date(Date.now() - 2 * 3600000),
-        read: true,
-      },
-      {
-        id: '4',
-        type: 'message',
-        title: 'Message from Sarah',
-        message: "Thanks for your interest! Let's schedule a call.",
-        timestamp: new Date(Date.now() - 24 * 3600000),
-        read: true,
-      },
-    ];
-    this.notifications.set(mockNotifications);
-  }
 }
