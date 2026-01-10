@@ -23,6 +23,7 @@ import {
 import { Observable, map, BehaviorSubject, of, shareReplay, tap, catchError, concatMap, delay, distinctUntilChanged } from 'rxjs';
 import { ChatMessage, ChatRoom,UserRole } from '../../assets/interfaces/interfaces';
 import { BlockService } from './block.service';
+import { NotificationService } from './notification.service';
 
 
 @Injectable({ providedIn: 'root' })
@@ -30,6 +31,7 @@ export class ChatService {
   private db = inject(Firestore);
   private auth = inject(Auth);
   private blockService = inject(BlockService);
+  private notificationService = inject(NotificationService);
 
   // Track typing state per room
   private typingState = new Map<string, BehaviorSubject<boolean>>();
@@ -71,7 +73,7 @@ export class ChatService {
   }
 
   // Producer initiates chat by sending first message (optional)
-  async producerStartChat(actorId: string, producerId: string, text?: string): Promise<string> {
+  async producerStartChat(actorId: string, producerId: string, text?: string, producerName?: string, producerPhotoUrl?: string): Promise<string> {
     // Check if either user has blocked the other before creating/accessing room
     const canInteract = await this.blockService.canUsersInteract(producerId, actorId);
     if (!canInteract) {
@@ -80,6 +82,19 @@ export class ChatService {
     }
 
     const roomId = await this.ensureRoom(actorId, producerId);
+
+    // Create connection request notification for actor
+    try {
+      await this.notificationService.createConnectionRequestNotification(
+        actorId,
+        producerId,
+        producerName || 'A producer',
+        roomId,
+        producerPhotoUrl
+      );
+    } catch (error) {
+      console.error('Failed to create connection request notification:', error);
+    }
 
     // Only send a message if text is provided
     if (text) {
@@ -90,7 +105,7 @@ export class ChatService {
   }
 
   // Send a message in a room
-  async sendMessage({ roomId, senderId, receiverId, text }: { roomId: string; senderId: string; receiverId: string; text: string }): Promise<void> {
+  async sendMessage({ roomId, senderId, receiverId, text, senderName, senderPhotoUrl }: { roomId: string; senderId: string; receiverId: string; text: string; senderName?: string; senderPhotoUrl?: string }): Promise<void> {
     // Check if either user has blocked the other
     const canInteract = await this.blockService.canUsersInteract(senderId, receiverId);
     if (!canInteract) {
@@ -123,6 +138,41 @@ export class ChatService {
       updatedAt: serverTimestamp(),
       [`unreadCount.${receiverId}`]: increment(1)
     });
+
+    // Create message notification for receiver
+    try {
+      // Get room to determine actor/producer roles
+      const roomSnap = await getDoc(roomRef);
+      const roomData = roomSnap.data();
+      
+      if (roomData) {
+        const isActorSender = roomData['actorId'] === senderId;
+        
+        if (isActorSender) {
+          // Actor sent message to producer
+          await this.notificationService.createActorMessageNotification(
+            receiverId,
+            senderId,
+            senderName || 'An actor',
+            roomId,
+            text,
+            senderPhotoUrl
+          );
+        } else {
+          // Producer sent message to actor
+          await this.notificationService.createNewMessageNotification(
+            receiverId,
+            senderId,
+            senderName || 'A producer',
+            roomId,
+            text,
+            senderPhotoUrl
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create message notification:', error);
+    }
 
     // Clear cache for this room since we have new messages
     this.clearRoomCache(roomId);
@@ -556,8 +606,12 @@ export class ChatService {
   }
 
   // Accept a chat request (for actors)
-  async acceptChatRequest(roomId: string, actorId: string): Promise<void> {
+  async acceptChatRequest(roomId: string, actorId: string, actorName?: string, actorPhotoUrl?: string): Promise<void> {
     const roomRef = doc(this.db, 'chatRooms', roomId);
+    
+    // Get room data to extract producer info
+    const roomSnap = await getDoc(roomRef);
+    const roomData = roomSnap.data();
     
     // Update the room to mark it as accepted
     await updateDoc(roomRef, {
@@ -565,19 +619,90 @@ export class ChatService {
       updatedAt: serverTimestamp()
     });
     
+    // Create notifications for both parties
+    if (roomData) {
+      const producerId = roomData['producerId'];
+      const producerName = roomData['producerName'];
+      const producerPhotoUrl = roomData['producerPhotoUrl'];
+      
+      console.log('Creating connection accepted notifications:', {
+        producerId,
+        actorId,
+        actorName,
+        roomId
+      });
+      
+      try {
+        // Notify producer that actor accepted
+        console.log('Notifying producer:', producerId);
+        await this.notificationService.createConnectionAcceptedNotification(
+          producerId,
+          actorId,
+          actorName || 'An actor',
+          roomId,
+          actorPhotoUrl
+        );
+        console.log('✓ Producer notification created');
+        
+        // Notify actor that connection is established
+        console.log('Notifying actor:', actorId);
+        await this.notificationService.createConnectionEstablishedNotification(
+          actorId,
+          producerId,
+          producerName || 'A producer',
+          roomId,
+          producerPhotoUrl
+        );
+        console.log('✓ Actor notification created');
+      } catch (error) {
+        console.error('Failed to create connection accepted notifications:', error);
+      }
+    } else {
+      console.error('No room data found for roomId:', roomId);
+    }
+    
     // Clear cache for this room
     this.clearRoomCache(roomId);
   }
 
   // Reject a chat request (for actors)
-  async rejectChatRequest(roomId: string, actorId: string): Promise<void> {
+  async rejectChatRequest(roomId: string, actorId: string, actorName?: string, actorPhotoUrl?: string): Promise<void> {
     const roomRef = doc(this.db, 'chatRooms', roomId);
+    
+    // Get room data to extract producer info
+    const roomSnap = await getDoc(roomRef);
+    const roomData = roomSnap.data();
     
     // Update the room to mark it as rejected
     await updateDoc(roomRef, {
       actorRejected: true,
       updatedAt: serverTimestamp()
     });
+    
+    // Create notification for producer
+    if (roomData) {
+      const producerId = roomData['producerId'];
+      
+      console.log('Creating connection declined notification:', {
+        producerId,
+        actorId,
+        actorName
+      });
+      
+      try {
+        await this.notificationService.createConnectionDeclinedNotification(
+          producerId,
+          actorId,
+          actorName || 'An actor',
+          actorPhotoUrl
+        );
+        console.log('✓ Producer declined notification created');
+      } catch (error) {
+        console.error('Failed to create connection declined notification:', error);
+      }
+    } else {
+      console.error('No room data found for roomId:', roomId);
+    }
     
     // Clear cache for this room
     this.clearRoomCache(roomId);

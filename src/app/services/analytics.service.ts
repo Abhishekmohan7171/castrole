@@ -21,16 +21,21 @@ import {
   AnalyticsIncrement,
   VideoTrackingSession,
 } from '../../assets/interfaces/analytics.interfaces';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnalyticsService implements OnDestroy {
   private firestore = inject(Firestore);
+  private notificationService = inject(NotificationService);
 
   // Profile view tracking
   private profileViewStartTime: number | null = null;
   private currentProfileActorId: string | null = null;
+  private currentProducerId: string | null = null;
+  private currentProducerName: string | null = null;
+  private currentProducerPhotoUrl: string | null = null;
 
   // Video tracking sessions (keyed by videoPath)
   private videoSessions = new Map<string, VideoTrackingSession>();
@@ -181,8 +186,11 @@ export class AnalyticsService implements OnDestroy {
    * Start tracking profile view duration
    * Call when user lands on profile page
    * @param actorId Actor whose profile is being viewed
+   * @param producerId Producer viewing the profile (optional)
+   * @param producerName Producer's name (optional)
+   * @param producerPhotoUrl Producer's photo URL (optional)
    */
-  async startProfileView(actorId: string): Promise<void> {
+  async startProfileView(actorId: string, producerId?: string, producerName?: string, producerPhotoUrl?: string): Promise<void> {
     // Check ghost mode
     const isGhost = await this.checkGhostMode(actorId);
     if (isGhost) {
@@ -191,6 +199,9 @@ export class AnalyticsService implements OnDestroy {
     }
 
     this.currentProfileActorId = actorId;
+    this.currentProducerId = producerId || null;
+    this.currentProducerName = producerName || null;
+    this.currentProducerPhotoUrl = producerPhotoUrl || null;
     this.profileViewStartTime = Date.now();
 
     console.log('Started profile view tracking:', actorId);
@@ -222,12 +233,34 @@ export class AnalyticsService implements OnDestroy {
       totalProfileViewMs: cappedDurationMs,
     });
 
+    // Create profile view notification for actor
+    if (this.currentProducerId && this.currentProducerName) {
+      try {
+        // Check if actor has premium subscription
+        const actorDoc = await getDoc(doc(this.firestore, 'profiles', this.currentProfileActorId));
+        const isPremium = actorDoc.exists() ? actorDoc.data()?.['actorProfile']?.['isSubscribed'] === true : false;
+        
+        await this.notificationService.createProfileViewNotification(
+          this.currentProfileActorId,
+          this.currentProducerId,
+          this.currentProducerName,
+          isPremium,
+          this.currentProducerPhotoUrl || undefined
+        );
+      } catch (error) {
+        console.error('Failed to create profile view notification:', error);
+      }
+    }
+
     console.log(`Profile view tracked: ${cappedDurationMs}ms`);
     this.resetProfileView();
   }
 
   private resetProfileView() {
     this.currentProfileActorId = null;
+    this.currentProducerId = null;
+    this.currentProducerName = null;
+    this.currentProducerPhotoUrl = null;
     this.profileViewStartTime = null;
   }
 
@@ -511,6 +544,37 @@ export class AnalyticsService implements OnDestroy {
 
       await setDoc(wishlistRef, wishlistDoc);
       console.log('✓ Added to wishlist:', wishlistId);
+
+      // Create wishlist notification for actor
+      try {
+        // Check if actor has premium subscription
+        const actorProfileDoc = await getDoc(doc(this.firestore, 'profiles', actorId));
+        const isPremium = actorProfileDoc.exists() 
+          ? actorProfileDoc.data()?.['actorProfile']?.['isSubscribed'] === true
+          : false;
+
+        // Get producer info for notification
+        const producerDoc = await getDoc(doc(this.firestore, 'users', producerId));
+        const producerData = producerDoc.exists() ? producerDoc.data() : null;
+        const producerName = producerData?.['name'] || 'A producer';
+        
+        // Get producer photo from profile
+        const producerProfileDoc = await getDoc(doc(this.firestore, 'profiles', producerId));
+        const producerPhotoUrl = producerProfileDoc.exists() 
+          ? producerProfileDoc.data()?.['producerProfile']?.['producerProfileImageUrl']
+          : undefined;
+
+        await this.notificationService.createWishlistAddNotification(
+          actorId,
+          producerId,
+          producerName,
+          producerPhotoUrl,
+          isPremium
+        );
+      } catch (error) {
+        console.error('Failed to create wishlist notification:', error);
+        // Non-fatal - don't throw
+      }
     } catch (error) {
       console.error('Error adding to wishlist:', error);
       throw error;
