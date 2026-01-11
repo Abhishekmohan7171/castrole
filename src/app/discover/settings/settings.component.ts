@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ProfileService } from '../../services/profile.service';
 import { LoadingService } from '../../services/loading.service';
@@ -62,6 +62,7 @@ export class SettingsComponent implements OnInit {
   private firestore = inject(Firestore);
   private profileService = inject(ProfileService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private loadingService = inject(LoadingService);
   private analyticsService = inject(AnalyticsService);
   private userService = inject(UserService);
@@ -194,6 +195,16 @@ export class SettingsComponent implements OnInit {
   });
 
   async ngOnInit() {
+    // Read tab query parameter
+    this.route.queryParams.pipe(take(1)).subscribe(params => {
+      const tabParam = params['tab'] as SettingsTab;
+      const validTabs: SettingsTab[] = ['account', 'privacy', 'subscriptions', 'analytics', 'support', 'legal'];
+
+      if (tabParam && validTabs.includes(tabParam)) {
+        this.activeTab.set(tabParam);
+      }
+    });
+
     // Wait for auth to be fully initialized before loading user data
     this.loadingService.isLoading$
       .pipe(
@@ -208,6 +219,13 @@ export class SettingsComponent implements OnInit {
 
   setActiveTab(tab: SettingsTab) {
     this.activeTab.set(tab);
+    // Update URL with query parameter
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 
   // Tab change handler
@@ -994,7 +1012,7 @@ export class SettingsComponent implements OnInit {
     // 1. Redirecting to payment gateway
     // 2. Processing payment
     // 3. Updating user subscription status
-    console.log('✓ Upgrade subscription initiated');
+    console.log('✓ Upgrade subscription initiated:', plan);
     // For now, just show success message
   }
 

@@ -1305,6 +1305,35 @@ import {
       </div>
     </div>
 
+    <!-- Floating Support Button (only for public profiles) -->
+    @if (!isViewingOwnProfile()) {
+    <button
+      (click)="navigateToSupport()"
+      class="fixed bottom-6 right-6 z-40 px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ring-2 ring-white/20 hover:ring-white/30"
+      aria-label="Support & Feedback"
+    >
+      <svg
+        class="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"
+        />
+      </svg>
+      <span class="font-medium text-sm">Report / Feedback</span>
+    </button>
+    }
+
     <!-- Media Preview Modal -->
     @if (isPreviewModalOpen()) {
     <div
@@ -2346,6 +2375,12 @@ export class ProfileComponent implements OnInit {
   navigateToSocialLinks() {
     this.router.navigate(['/discover/profile/edit'], {
       queryParams: { section: 'socials' },
+    });
+  }
+
+  navigateToSupport() {
+    this.router.navigate(['/discover/settings'], {
+      queryParams: { tab: 'support' },
     });
   }
 
