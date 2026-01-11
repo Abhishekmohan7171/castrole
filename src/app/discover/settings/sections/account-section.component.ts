@@ -31,36 +31,31 @@ import { FormsModule } from '@angular/forms';
           >
             Email
           </label>
+
           <div class="flex gap-3">
             <input
               type="email"
-              [value]="localEditableData().email"
-              (input)="updateField('email', $event)"
-              [disabled]="!isEditingField('email')"
-              class="flex-1 px-3 py-2 text-sm rounded-lg border transition-all duration-200"
+              [value]="userData().email"
+              disabled
+              class="flex-1 px-3 py-2 text-sm rounded-lg border opacity-60 transition-all duration-200"
               [ngClass]="{
-                'bg-purple-950/20 border-purple-900/30 text-purple-100 focus:border-purple-500 focus:ring-purple-500/20':
+                'bg-purple-950/20 border-purple-900/30 text-purple-100':
                   isActor(),
-                'bg-black/20 border-neutral-700 text-neutral-200 focus:border-neutral-500 focus:ring-neutral-500/20':
-                  !isActor(),
-                'opacity-60': !isEditingField('email')
+                'bg-black/20 border-neutral-700 text-neutral-200':
+                  !isActor()
               }"
             />
             <button
-              (click)="onToggleEditField('email')"
+              (click)="onChangeEmail()"
               class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
               [ngClass]="{
-                'bg-purple-600 border-purple-600 text-white hover:bg-purple-700':
-                  isActor() && isEditingField('email'),
                 'border-purple-900/30 text-purple-300 hover:bg-purple-950/20':
-                  isActor() && !isEditingField('email'),
-                'bg-neutral-600 border-neutral-600 text-white hover:bg-neutral-700':
-                  !isActor() && isEditingField('email'),
+                  isActor(),
                 'border-neutral-700 text-neutral-300 hover:bg-black/20':
-                  !isActor() && !isEditingField('email')
+                  !isActor()
               }"
             >
-              {{ isEditingField('email') ? 'Save' : 'Edit' }}
+              Change
             </button>
           </div>
         </div>
@@ -226,6 +221,9 @@ export class AccountSectionComponent {
   addAccount = input.required<() => void>();
   switchRole = input.required<() => void>();
 
+  // Email change input
+  openEmailChangeModal = input.required<() => void>();
+
   // Output for data changes
   dataChange = output<{ email: string; phone: string }>();
 
@@ -298,5 +296,9 @@ export class AccountSectionComponent {
 
   onSwitchRole() {
     this.switchRole()();
+  }
+
+  onChangeEmail() {
+    this.openEmailChangeModal()();
   }
 }

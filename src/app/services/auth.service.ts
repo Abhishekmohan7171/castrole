@@ -23,6 +23,8 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult,
   PhoneAuthProvider,
+  applyActionCode,
+  fetchSignInMethodsForEmail,
 } from '@angular/fire/auth';
 import {
   Firestore,
@@ -609,6 +611,83 @@ export class AuthService {
   /** Confirms a password reset with the given code and new password */
   async confirmPasswordReset(code: string, newPassword: string): Promise<void> {
     return confirmPasswordReset(this.auth, code, newPassword);
+  }
+
+  // =========================
+  // Email Change Methods
+  // =========================
+
+  /** Check if email is already in use by another account */
+  async isEmailInUse(email: string): Promise<boolean> {
+    try {
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+      return signInMethods.length > 0;
+    } catch (error) {
+      console.error('[AuthService] Error checking email:', error);
+      return false;
+    }
+  }
+
+  /** Update user email directly */
+  async updateUserEmail(newEmail: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user');
+    }
+
+    try {
+      const { updateEmail } = await import('@angular/fire/auth');
+      await updateEmail(user, newEmail);
+    } catch (error: any) {
+      console.error('[AuthService] Email update failed:', error);
+      if (error?.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already in use by another account');
+      } else if (error?.code === 'auth/invalid-email') {
+        throw new Error('Invalid email format');
+      } else if (error?.code === 'auth/requires-recent-login') {
+        throw new Error('Please log out and log back in to change your email');
+      }
+      throw error;
+    }
+  }
+
+  /** Send verification email to user's current email */
+  async sendVerificationEmail(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user');
+    }
+
+    try {
+      const { sendEmailVerification } = await import('@angular/fire/auth');
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/discover/settings?tab=account`,
+        handleCodeInApp: false,
+      });
+    } catch (error: any) {
+      console.error('[AuthService] Send verification failed:', error);
+      if (error?.code === 'auth/too-many-requests') {
+        throw new Error('Too many requests. Please try again later.');
+      }
+      throw error;
+    }
+  }
+
+  /** Apply email verification action code */
+  async applyEmailVerification(oobCode: string): Promise<void> {
+    try {
+      await applyActionCode(this.auth, oobCode);
+      // Reload user to get updated emailVerified status
+      await this.auth.currentUser?.reload();
+    } catch (error: any) {
+      console.error('[AuthService] Apply verification failed:', error);
+      if (error?.code === 'auth/expired-action-code') {
+        throw new Error('Verification link has expired');
+      } else if (error?.code === 'auth/invalid-action-code') {
+        throw new Error('Invalid or already used verification link');
+      }
+      throw error;
+    }
   }
 
   /** Logs out the current user and updates their status in Firestore */
