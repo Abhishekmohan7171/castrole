@@ -1293,7 +1293,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         }
 
         // Return the real-time updates from Firestore
-        return this.chat.observeMessages(c.id);
+        return this.chat.observeMessages(c.id, this.meUid!);
       }),
       tap(async (msgs: (ChatMessage & { id: string })[]) => {
         // Mark messages as delivered when they arrive

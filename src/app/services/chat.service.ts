@@ -132,12 +132,26 @@ export class ChatService {
     this.setTypingState(roomId, senderId, false);
 
     const roomRef = doc(this.db, 'chatRooms', roomId);
-    await updateDoc(roomRef, {
+    
+    // Get room data to check if receiver has hidden this chat
+    const roomSnap = await getDoc(roomRef);
+    const roomData = roomSnap.data() as ChatRoom;
+    
+    // Prepare update data
+    const updateData: any = {
       lastMessage: { ...message, id: created.id },
       actorCanSee: true,
       updatedAt: serverTimestamp(),
       [`unreadCount.${receiverId}`]: increment(1)
-    });
+    };
+    
+    // If receiver has hidden this chat, unhide it automatically
+    if (roomData?.hiddenFor?.includes(receiverId)) {
+      const newHiddenFor = roomData.hiddenFor.filter(id => id !== receiverId);
+      updateData.hiddenFor = newHiddenFor;
+    }
+    
+    await updateDoc(roomRef, updateData);
 
     // Create message notification for receiver
     try {
@@ -176,6 +190,10 @@ export class ChatService {
 
     // Clear cache for this room since we have new messages
     this.clearRoomCache(roomId);
+    // Clear message cache for both users
+    this.messagesCache.delete(`${roomId}_${senderId}`);
+    this.messagesCache.delete(`${roomId}_${receiverId}`);
+    this.userRoomsCache.clear();
   }
 
   // Observe rooms for a user by role (client-side sort by updatedAt desc)
@@ -547,17 +565,37 @@ export class ChatService {
   }
 
   // Observe messages in a room ordered by timestamp with caching
-  observeMessages(roomId: string, messageLimit = 50): Observable<(ChatMessage & { id: string })[]> {
-    // Check if we have a cached observable
-    if (this.messagesCache.has(roomId)) {
-      return this.messagesCache.get(roomId)!;
+  // Filters messages based on per-user clearedFor timestamp
+  observeMessages(roomId: string, userId: string, messageLimit = 50): Observable<(ChatMessage & { id: string })[]> {
+    // Check if we have a cached observable for this user
+    const cacheKey = `${roomId}_${userId}`;
+    if (this.messagesCache.has(cacheKey)) {
+      return this.messagesCache.get(cacheKey)!;
     }
     
     // Create the real-time observable
     const msgsRef = collection(this.db, 'chatRooms', roomId, 'messages');
     const qMsgs = query(msgsRef, orderBy('timestamp', 'asc'), firestoreLimit(messageLimit));
+    const roomRef = doc(this.db, 'chatRooms', roomId);
     
     const result$ = collectionData(qMsgs, { idField: 'id' }).pipe(
+      // Filter messages based on clearedFor timestamp for this user
+      concatMap(async (messages: any[]) => {
+        // Get room data to check clearedFor timestamp
+        const roomSnap = await getDoc(roomRef);
+        const roomData = roomSnap.data() as ChatRoom;
+        
+        // If user has cleared messages, filter out old ones
+        if (roomData?.clearedFor?.[userId]) {
+          const clearTimestamp = (roomData.clearedFor[userId] as any).toMillis();
+          return messages.filter((msg: any) => {
+            const msgTimestamp = msg.timestamp?.toMillis?.() || 0;
+            return msgTimestamp > clearTimestamp;
+          });
+        }
+        
+        return messages;
+      }),
       // Store data in localStorage for faster initial load
       tap((messages: any[]) => {
         try {
@@ -577,11 +615,11 @@ export class ChatService {
     ) as Observable<(ChatMessage & { id: string })[]>;
 
     // Store in cache
-    this.messagesCache.set(roomId, result$);
+    this.messagesCache.set(cacheKey, result$);
 
     // Set cache expiry - shorter expiry for more real-time updates
     setTimeout(() => {
-      this.messagesCache.delete(roomId);
+      this.messagesCache.delete(cacheKey);
     }, this.CACHE_EXPIRY);
 
     return result$;
@@ -799,11 +837,15 @@ export class ChatService {
         throw new Error('You are not authorized to hide this chat');
       }
 
-      // Add user to hiddenFor array
+      // Add user to hiddenFor array and set clearedFor timestamp
+      // This ensures that when the chat is auto-unhidden by a new message,
+      // old messages won't reappear
       const currentHidden = roomData.hiddenFor || [];
       if (!currentHidden.includes(userId)) {
+        const currentClearedFor = roomData.clearedFor || {};
         await updateDoc(roomRef, {
           hiddenFor: [...currentHidden, userId],
+          [`clearedFor.${userId}`]: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
       }
