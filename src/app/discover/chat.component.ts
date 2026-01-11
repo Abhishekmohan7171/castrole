@@ -378,69 +378,237 @@ import { ProfileUrlService } from '../services/profile-url.service';
               </div>
             </div>
 
-            <!-- Block/Unblock Menu -->
-            <div *ngIf="active()" class="relative">
-              <button
-                type="button"
-                (click)="showBlockMenu.set(!showBlockMenu())"
-                class="p-2 rounded-full transition-colors"
-                [ngClass]="{
-                  'hover:bg-purple-950/10 text-purple-300/50': myRole() === 'actor',
-                  'hover:bg-white/10 text-neutral-400': myRole() !== 'actor'
-                }"
-                title="More options"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="12" cy="5" r="1"></circle>
-                  <circle cx="12" cy="19" r="1"></circle>
-                </svg>
-              </button>
+            <!-- Chat options menu (only show when chat is selected) -->
+            @if (active()) {
+              <div class="relative">
+                <button
+                  type="button"
+                  (click)="toggleChatMenu()"
+                  class="p-2 rounded-lg transition-colors"
+                  [ngClass]="{
+                    'hover:bg-purple-950/30 text-purple-300': myRole() === 'actor',
+                    'hover:bg-white/5 text-neutral-300': myRole() !== 'actor'
+                  }"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="12" cy="5" r="1"></circle>
+                    <circle cx="12" cy="19" r="1"></circle>
+                  </svg>
+                </button>
 
-              <!-- Dropdown Menu -->
-              @if (showBlockMenu()) {
-                <div class="absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-10 border transition-colors duration-300"
+                <!-- Backdrop for click outside -->
+                @if (showChatMenu()) {
+                  <div class="fixed inset-0 z-40" (click)="closeChatMenu()"></div>
+                }
+
+                <!-- Chat menu dropdown -->
+                @if (showChatMenu()) {
+                  <div class="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-50"
                      [ngClass]="{
-                       'bg-purple-950/10 border-purple-900/10': myRole() === 'actor',
-                       'bg-neutral-900 border-white/10': myRole() !== 'actor'
+                       'bg-purple-950 border-purple-900/20': myRole() === 'actor',
+                       'bg-neutral-800 border-white/10': myRole() !== 'actor'
                      }">
-                  @if (!isCounterpartBlocked()) {
-                    <button
-                      type="button"
-                      (click)="blockCurrentUser()"
-                      class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2"
-                      [ngClass]="{
-                        'hover:bg-purple-950/10 text-red-400': myRole() === 'actor',
-                        'hover:bg-white/5 text-red-400': myRole() !== 'actor'
-                      }"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                      </svg>
-                      Block User
-                    </button>
-                  } @else {
-                    <button
-                      type="button"
-                      (click)="unblockCurrentUser()"
-                      class="w-full px-4 py-2 text-left text-sm transition rounded-lg flex items-center gap-2"
-                      [ngClass]="{
-                        'hover:bg-purple-950/10 text-green-400': myRole() === 'actor',
-                        'hover:bg-white/5 text-green-400': myRole() !== 'actor'
-                      }"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                      Unblock User
-                    </button>
-                  }
+                  <!-- Clear Chat -->
+                  <button
+                    type="button"
+                    (click)="showClearConfirm.set(true); showChatMenu.set(false)"
+                    class="w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2 border-b"
+                    [ngClass]="{
+                      'hover:bg-purple-900/30 text-purple-200 border-purple-900/20': myRole() === 'actor',
+                      'hover:bg-white/5 text-neutral-200 border-white/10': myRole() !== 'actor'
+                    }"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    Clear Messages
+                  </button>
+
+                  <!-- Remove Chat -->
+                  <button
+                    type="button"
+                    (click)="showDeleteConfirm.set(true); showChatMenu.set(false)"
+                    class="w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2 text-red-400 hover:bg-red-500/10"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Remove Chat
+                  </button>
+
+                  <!-- Block/Unblock -->
+                  <div class="border-t"
+                       [ngClass]="{
+                         'border-purple-900/20': myRole() === 'actor',
+                         'border-white/10': myRole() !== 'actor'
+                       }">
+                    @if (!isCounterpartBlocked()) {
+                      <button
+                        type="button"
+                        (click)="blockCurrentUser()"
+                        class="w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2"
+                        [ngClass]="{
+                          'hover:bg-purple-900/30 text-purple-200': myRole() === 'actor',
+                          'hover:bg-white/5 text-neutral-200': myRole() !== 'actor'
+                        }"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                        Block User
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="unblockCurrentUser()"
+                        class="w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2"
+                        [ngClass]="{
+                          'hover:bg-purple-900/30 text-purple-200': myRole() === 'actor',
+                          'hover:bg-white/5 text-neutral-200': myRole() !== 'actor'
+                        }"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        Unblock User
+                      </button>
+                    }
+                  </div>
                 </div>
               }
-            </div>
+              </div>
+            }
           </header>
+
+          <!-- Inline Notification -->
+          @if (notification()) {
+            <div class="fixed top-4 right-4 z-[60] animate-in slide-in-from-top-2 duration-300">
+              <div class="rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 min-w-[300px] border"
+                   [ngClass]="{
+                     'bg-green-950 border-green-900/50 text-green-200': notification()!.type === 'success',
+                     'bg-red-950 border-red-900/50 text-red-200': notification()!.type === 'error',
+                     'bg-blue-950 border-blue-900/50 text-blue-200': notification()!.type === 'info'
+                   }">
+                <!-- Icon -->
+                @if (notification()!.type === 'success') {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                } @else if (notification()!.type === 'error') {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  </svg>
+                } @else {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                }
+                <span class="text-sm font-medium">{{ notification()!.message }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Delete Confirmation Modal -->
+          @if (showDeleteConfirm()) {
+            <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" (click)="showDeleteConfirm.set(false)">
+              <div class="rounded-xl p-6 max-w-md w-full border shadow-xl" 
+                   [ngClass]="{
+                     'bg-purple-950/95 border-purple-900/30': myRole() === 'actor',
+                     'bg-neutral-900/95 border-white/10': myRole() !== 'actor'
+                   }"
+                   (click)="$event.stopPropagation()">
+                <h3 class="text-lg font-semibold mb-2"
+                    [ngClass]="{
+                      'text-purple-100': myRole() === 'actor',
+                      'text-neutral-100': myRole() !== 'actor'
+                    }">Remove Chat?</h3>
+                <p class="text-sm mb-6"
+                   [ngClass]="{
+                     'text-purple-200/70': myRole() === 'actor',
+                     'text-neutral-400': myRole() !== 'actor'
+                   }">This will remove this chat from your view. The other person can still see and use the chat. You can restore it if they send you a new message.</p>
+                <div class="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    (click)="showDeleteConfirm.set(false)"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    [ngClass]="{
+                      'bg-purple-900/30 hover:bg-purple-900/50 text-purple-200': myRole() === 'actor',
+                      'bg-neutral-800 hover:bg-neutral-700 text-neutral-200': myRole() !== 'actor'
+                    }"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    (click)="deleteChat()"
+                    class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Clear Confirmation Modal -->
+          @if (showClearConfirm()) {
+            <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" (click)="showClearConfirm.set(false)">
+              <div class="rounded-xl p-6 max-w-md w-full border shadow-xl"
+                   [ngClass]="{
+                     'bg-purple-950/95 border-purple-900/30': myRole() === 'actor',
+                     'bg-neutral-900/95 border-white/10': myRole() !== 'actor'
+                   }"
+                   (click)="$event.stopPropagation()">
+                <h3 class="text-lg font-semibold mb-2"
+                    [ngClass]="{
+                      'text-purple-100': myRole() === 'actor',
+                      'text-neutral-100': myRole() !== 'actor'
+                    }">Clear Messages?</h3>
+                <p class="text-sm mb-6"
+                   [ngClass]="{
+                     'text-purple-200/70': myRole() === 'actor',
+                     'text-neutral-400': myRole() !== 'actor'
+                   }">This will clear all messages from your view only. The other person will still see their messages. New messages will appear normally.</p>
+                <div class="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    (click)="showClearConfirm.set(false)"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    [ngClass]="{
+                      'bg-purple-900/30 hover:bg-purple-900/50 text-purple-200': myRole() === 'actor',
+                      'bg-neutral-800 hover:bg-neutral-700 text-neutral-200': myRole() !== 'actor'
+                    }"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    (click)="clearChat()"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    [ngClass]="{
+                      'bg-fuchsia-600 hover:bg-fuchsia-700 text-white': myRole() === 'actor',
+                      'bg-[#90ACC8] hover:bg-[#7a9ab8] text-white': myRole() !== 'actor'
+                    }"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
 
           <!-- Messages -->
           <div id="messagesContainer" class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 pb-12 space-y-4 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
@@ -795,11 +963,91 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
   
+  // Delete/Clear chat menu
+  showChatMenu = signal(false);
+  showDeleteConfirm = signal(false);
+  showClearConfirm = signal(false);
+
+  // Inline notification system
+  notification = signal<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
+    this.notification.set({ message, type });
+    setTimeout(() => this.notification.set(null), 3000);
+  }
+
+  toggleChatMenu() {
+    this.showChatMenu.set(!this.showChatMenu());
+  }
+
+  closeChatMenu() {
+    this.showChatMenu.set(false);
+  }
+
+  // Hide chat for current user (soft delete - only affects this user)
+  async deleteChat() {
+    const activeConv = this.active();
+    if (!activeConv || !this.meUid) return;
+
+    this.showDeleteConfirm.set(false);
+    this.showChatMenu.set(false);
+
+    try {
+      await this.chat.hideChatForUser(activeConv.id, this.meUid);
+      
+      // Remove from conversations list (will be filtered out by observeRoomsForUser)
+      const convos = this.conversations();
+      this.conversations.set(convos.filter(c => c.id !== activeConv.id));
+      
+      // Clear active conversation
+      this.active.set(null);
+      
+      this.showNotification('Chat removed from your view', 'success');
+    } catch (error) {
+      console.error('Error hiding chat:', error);
+      this.showNotification('Failed to remove chat. Please try again.', 'error');
+    }
+  }
+
+  // Clear messages for current user (soft clear - only affects this user)
+  async clearChat() {
+    const activeConv = this.active();
+    if (!activeConv || !this.meUid) return;
+
+    this.showClearConfirm.set(false);
+    this.showChatMenu.set(false);
+
+    try {
+      await this.chat.clearChatForUser(activeConv.id, this.meUid);
+      
+      // Clear messages in the active conversation
+      if (this.active()?.id === activeConv.id) {
+        this.active.set({
+          ...activeConv,
+          messages: [],
+          last: ''
+        });
+      }
+      
+      // Update conversations list
+      const convos = this.conversations();
+      const updatedConvos = convos.map(c => 
+        c.id === activeConv.id ? { ...c, last: '', messages: [] } : c
+      );
+      this.conversations.set(updatedConvos);
+      
+      this.showNotification('Messages cleared from your view', 'success');
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      this.showNotification('Failed to clear messages. Please try again.', 'error');
+    }
+  }
+
   // Mobile sidebar controls
   toggleSidebar() {
     this.sidebarOpen.set(!this.sidebarOpen());
   }
-  
+
   closeSidebar() {
     this.sidebarOpen.set(false);
   }

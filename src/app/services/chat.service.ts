@@ -196,9 +196,14 @@ export class ChatService {
     const q$ = collectionData(baseQ, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
     
     // For actors, filter rooms based on actorCanSee and actorAccepted
+    // Also filter out rooms hidden by this user
     const filtered$ = role === 'actor'
-      ? q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee && r.actorAccepted === true)))
-      : q$;
+      ? q$.pipe(map(rooms => rooms.filter(r => 
+          r.actorCanSee && 
+          r.actorAccepted === true && 
+          !(r.hiddenFor?.includes(uid))
+        )))
+      : q$.pipe(map(rooms => rooms.filter(r => !(r.hiddenFor?.includes(uid)))));
 
     const result$ = filtered$.pipe(
       map(rooms => [...rooms].sort((a, b) => {
@@ -770,5 +775,88 @@ export class ChatService {
    */
   isUserBlocked(userId: string, checkUserId: string): Observable<boolean> {
     return this.blockService.isUserBlocked(userId, checkUserId);
+  }
+
+  /**
+   * Hide chat room for a specific user (soft delete - only affects that user)
+   * The other participant can still see and use the chat
+   * @param roomId - The chat room ID to hide
+   * @param userId - The user requesting to hide the chat
+   */
+  async hideChatForUser(roomId: string, userId: string): Promise<void> {
+    try {
+      const roomRef = doc(this.db, 'chatRooms', roomId);
+      const roomSnap = await getDoc(roomRef);
+      
+      if (!roomSnap.exists()) {
+        throw new Error('Chat room not found');
+      }
+
+      const roomData = roomSnap.data() as ChatRoom;
+      
+      // Verify user is a participant
+      if (!roomData.participants?.includes(userId)) {
+        throw new Error('You are not authorized to hide this chat');
+      }
+
+      // Add user to hiddenFor array
+      const currentHidden = roomData.hiddenFor || [];
+      if (!currentHidden.includes(userId)) {
+        await updateDoc(roomRef, {
+          hiddenFor: [...currentHidden, userId],
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // Clear caches
+      this.messagesCache.delete(roomId);
+      this.userRoomsCache.clear();
+      this.roomsCache.clear();
+
+      console.log(`Chat room ${roomId} hidden for user ${userId}`);
+    } catch (error) {
+      console.error('Error hiding chat room:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear messages for a specific user (soft clear - only affects that user)
+   * Messages sent after this timestamp will still be visible
+   * @param roomId - The chat room ID to clear
+   * @param userId - The user requesting the clear
+   */
+  async clearChatForUser(roomId: string, userId: string): Promise<void> {
+    try {
+      const roomRef = doc(this.db, 'chatRooms', roomId);
+      const roomSnap = await getDoc(roomRef);
+      
+      if (!roomSnap.exists()) {
+        throw new Error('Chat room not found');
+      }
+
+      const roomData = roomSnap.data() as ChatRoom;
+      
+      // Verify user is a participant
+      if (!roomData.participants?.includes(userId)) {
+        throw new Error('You are not authorized to clear this chat');
+      }
+
+      // Set clear timestamp for this user
+      const clearedFor = roomData.clearedFor || {};
+      await updateDoc(roomRef, {
+        [`clearedFor.${userId}`]: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Clear caches
+      this.messagesCache.delete(roomId);
+      this.userRoomsCache.clear();
+
+      console.log(`Chat messages cleared for user ${userId} in room ${roomId}`);
+    } catch (error) {
+      console.error('Error clearing chat messages:', error);
+      throw error;
+    }
   }
 }

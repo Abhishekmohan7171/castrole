@@ -89,6 +89,10 @@ export interface ChatRoom {
 
   // Typing indicators
   typingUsers?: Record<string, Timestamp | null>; // { userId: timestamp or null }
+
+  // Per-user visibility and message clearing
+  hiddenFor?: string[]; // Array of userIds who have "deleted" this chat (soft delete)
+  clearedFor?: Record<string, Timestamp>; // { userId: timestamp } - messages before this timestamp are hidden for that user
 }
 
 export interface ChatMessage {
