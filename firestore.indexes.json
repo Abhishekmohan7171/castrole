@@ -77,8 +77,23 @@
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "postDate", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "user_analytics",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "profileViews", "order": "ASCENDING" }]
+    },
+    {
+      "collectionGroup": "user_analytics",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "searchAppearances", "order": "ASCENDING" }]
+    },
+    {
+      "collectionGroup": "user_analytics",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "totalVideoViews", "order": "ASCENDING" }]
     }
   ],
   "fieldOverrides": [],
-  "comment": "Indexes for notifications, user uploads, and discover collection"
+  "comment": "Indexes for notifications, user uploads, user analytics and discover collection"
 }
