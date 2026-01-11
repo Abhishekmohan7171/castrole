@@ -2,7 +2,16 @@ import { Component, input, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnalyticsService } from '../../../services/analytics.service';
 import { AuthService } from '../../../services/auth.service';
-import { Firestore, collection, query, where, getDocs, orderBy, limit } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  getCountFromServer,
+} from '@angular/fire/firestore';
 import {
   UserAnalyticsDoc,
   DailyAnalyticsDoc,
@@ -30,43 +39,44 @@ interface AnalyticsViewModel {
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (isSubscribed()) {
-      @if (isLoading()) {
-        <!-- Loading State -->
-        <div class="flex flex-col items-center justify-center min-h-[400px] space-y-6">
-          <!-- Spinner -->
-          <div class="relative">
-            <svg
-              class="w-12 h-12 text-purple-400 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          </div>
+    @if (isSubscribed()) { @if (isLoading()) {
+    <!-- Loading State -->
+    <div
+      class="flex flex-col items-center justify-center min-h-[400px] space-y-6"
+    >
+      <!-- Spinner -->
+      <div class="relative">
+        <svg
+          class="w-12 h-12 text-purple-400 animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
 
-          <!-- Rotating Message -->
-          <div class="text-sm font-medium text-purple-300 animate-pulse">
-            {{ getCurrentLoadingMessage() }}
-          </div>
-        </div>
-      } @else {
-        <!-- Analytics Content -->
-        <div class="space-y-8">
-          <!-- Profile Overview -->
+      <!-- Rotating Message -->
+      <div class="text-sm font-medium text-purple-300 animate-pulse">
+        {{ getCurrentLoadingMessage() }}
+      </div>
+    </div>
+    } @else {
+    <!-- Analytics Content -->
+    <div class="space-y-8">
+      <!-- Profile Overview -->
       <div class="space-y-4">
         <h3 class="text-sm font-medium text-purple-200">Profile Overview</h3>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -116,7 +126,9 @@ interface AnalyticsViewModel {
                 />
                 <path
                   class="stroke-purple-400"
-                  [attr.stroke-dasharray]="analytics().visibilityScore + ', 100'"
+                  [attr.stroke-dasharray]="
+                    analytics().visibilityScore * 10 + ', 100'
+                  "
                   d="M18 2.0845
                       a 15.9155 15.9155 0 0 1 0 31.831
                       a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -180,7 +192,9 @@ interface AnalyticsViewModel {
         <div class="bg-purple-950/20 rounded-xl p-4 ring-1 ring-purple-900/20">
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <div class="text-xs text-purple-300/60 mb-1">Total Video Views</div>
+              <div class="text-xs text-purple-300/60 mb-1">
+                Total Video Views
+              </div>
               <div class="text-2xl font-bold text-purple-100">
                 {{ analytics().totalVideoViews.toLocaleString() }}
               </div>
@@ -195,7 +209,9 @@ interface AnalyticsViewModel {
 
           @if (analytics().topVideo) {
           <div class="border-t border-purple-900/30 pt-4">
-            <div class="text-xs text-purple-300/60 mb-2">Top Performing Video</div>
+            <div class="text-xs text-purple-300/60 mb-2">
+              Top Performing Video
+            </div>
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <div class="text-sm font-medium text-purple-100 mb-1">
@@ -213,9 +229,8 @@ interface AnalyticsViewModel {
           }
         </div>
       </div>
-        </div>
-      }
-    } @else {
+    </div>
+    } } @else {
     <div class="py-16">
       <div
         class="max-w-md mx-auto px-8 py-12 text-center flex flex-col items-center gap-6 rounded-2xl border border-purple-900/40 bg-purple-950/20"
@@ -280,16 +295,16 @@ export class AnalyticsSectionComponent implements OnInit {
 
   // Loading messages
   private readonly loadingMessages = [
-    "Crunching the numbers...",
-    "Calculating your star power...",
-    "Analyzing your reach...",
-    "Tallying up those profile views...",
-    "Counting all those video watches...",
-    "Seeing who wishlisted you...",
-    "Checking your search appearances...",
-    "Computing your visibility score...",
-    "Reviewing your top performances...",
-    "Mapping your growth trends...",
+    'Crunching the numbers...',
+    'Calculating your star power...',
+    'Analyzing your reach...',
+    'Tallying up those profile views...',
+    'Counting all those video watches...',
+    'Seeing who wishlisted you...',
+    'Checking your search appearances...',
+    'Computing your visibility score...',
+    'Reviewing your top performances...',
+    'Mapping your growth trends...',
   ];
 
   async ngOnInit() {
@@ -303,10 +318,14 @@ export class AnalyticsSectionComponent implements OnInit {
 
     try {
       // 1. Load lifetime analytics
-      const lifetimeData = await this.analyticsService.getLifetimeAnalytics(currentUser.uid);
+      const lifetimeData = await this.analyticsService.getLifetimeAnalytics(
+        currentUser.uid
+      );
 
       // 2. Load wishlist count
-      const wishlistCount = await this.analyticsService.getWishlistCount(currentUser.uid);
+      const wishlistCount = await this.analyticsService.getWishlistCount(
+        currentUser.uid
+      );
 
       // 3. Load last 30 days of daily data (for trends)
       const endDate = this.getTodayId();
@@ -321,15 +340,21 @@ export class AnalyticsSectionComponent implements OnInit {
       const topVideo = await this.loadTopVideo(currentUser.uid);
 
       // 5. Calculate derived metrics
-      const avgProfileViewDuration = lifetimeData?.totalProfileViewMs && lifetimeData?.profileViews
-        ? this.formatDuration(lifetimeData.totalProfileViewMs / lifetimeData.profileViews / 1000)
-        : 'N/A';
+      const avgProfileViewDuration =
+        lifetimeData?.totalProfileViewMs && lifetimeData?.profileViews
+          ? this.formatDuration(
+              lifetimeData.totalProfileViewMs / lifetimeData.profileViews / 1000
+            )
+          : 'N/A';
 
-      const avgVideoWatchTime = lifetimeData?.totalWatchMs && lifetimeData?.totalVideoViews
-        ? this.formatDuration(lifetimeData.totalWatchMs / lifetimeData.totalVideoViews / 1000)
-        : 'N/A';
+      const avgVideoWatchTime =
+        lifetimeData?.totalWatchMs && lifetimeData?.totalVideoViews
+          ? this.formatDuration(
+              lifetimeData.totalWatchMs / lifetimeData.totalVideoViews / 1000
+            )
+          : 'N/A';
 
-      const visibilityScore = this.calculateVisibilityScore(
+      const visibilityScore = await this.calculateVisibilityScore(
         lifetimeData?.profileViews || 0,
         wishlistCount,
         lifetimeData?.searchAppearances || 0,
@@ -352,7 +377,6 @@ export class AnalyticsSectionComponent implements OnInit {
 
       // Set loading to false
       this.isLoading.set(false);
-
     } catch (error) {
       console.error('Error loading analytics:', error);
       // Still set loading to false on error
@@ -369,7 +393,8 @@ export class AnalyticsSectionComponent implements OnInit {
         return;
       }
 
-      const nextIndex = (this.currentMessageIndex() + 1) % this.loadingMessages.length;
+      const nextIndex =
+        (this.currentMessageIndex() + 1) % this.loadingMessages.length;
       this.currentMessageIndex.set(nextIndex);
     }, 2000);
   }
@@ -396,7 +421,10 @@ export class AnalyticsSectionComponent implements OnInit {
   } | null> {
     try {
       // Query uploads/{userId}/userUploads for videos
-      const videosRef = collection(this.firestore, `uploads/${userId}/userUploads`);
+      const videosRef = collection(
+        this.firestore,
+        `uploads/${userId}/userUploads`
+      );
       const q = query(videosRef, where('fileType', '==', 'video'));
       const snapshot = await getDocs(q);
 
@@ -406,7 +434,7 @@ export class AnalyticsSectionComponent implements OnInit {
       let topVideo: any = null;
       let maxViews = 0;
 
-      snapshot.forEach(doc => {
+      snapshot.forEach((doc) => {
         const data = doc.data() as MediaUpload;
         // Type guard to ensure we're working with video metadata
         if (data.fileType === 'video' && data.metadata) {
@@ -426,9 +454,10 @@ export class AnalyticsSectionComponent implements OnInit {
 
       if (!topVideo) return null;
 
-      const avgWatchTime = topVideo.views > 0
-        ? this.formatDuration(topVideo.totalWatchMs / topVideo.views / 1000)
-        : 'N/A';
+      const avgWatchTime =
+        topVideo.views > 0
+          ? this.formatDuration(topVideo.totalWatchMs / topVideo.views / 1000)
+          : 'N/A';
 
       return {
         title: topVideo.title,
@@ -441,44 +470,119 @@ export class AnalyticsSectionComponent implements OnInit {
     }
   }
 
-  private calculateVisibilityScore(
+  private async calculateVisibilityScore(
     profileViews: number,
     wishlistCount: number,
     searchAppearances: number,
     totalVideoViews: number,
     totalWatchMs: number
-  ): number {
+  ): Promise<number> {
     /**
-     * Enhanced visibility score formula with video metrics
+     * Percentile-based visibility score (0-10 scale)
+     * Calculates where user ranks compared to all other users
      * Weights:
-     * - Profile views: 1x (baseline engagement)
-     * - Wishlist count: 3x (strong interest signal)
-     * - Search appearances: 0.5x (exposure metric)
-     * - Video views: 2x (content engagement)
-     * - Avg watch time: bonus multiplier (quality metric)
+     * - Profile views: 25%
+     * - Wishlist count: 35% (strongest signal)
+     * - Search appearances: 15%
+     * - Video views: 25%
      */
 
-    // Base engagement score
-    const baseScore = profileViews + (wishlistCount * 3) + (searchAppearances * 0.5) + (totalVideoViews * 2);
+    try {
+      // Calculate percentile for each metric in parallel
+      const [profilePercentile, searchPercentile, videoPercentile] =
+        await Promise.all([
+          this.estimatePercentile('profileViews', profileViews),
+          this.estimatePercentile('searchAppearances', searchAppearances),
+          this.estimatePercentile('totalVideoViews', totalVideoViews),
+        ]);
 
-    // Calculate average watch time in seconds (if there are video views)
-    const avgWatchTimeSec = totalVideoViews > 0 ? (totalWatchMs / totalVideoViews / 1000) : 0;
+      // Wishlist uses benchmark since it's in separate collection
+      const wishlistPercentile = Math.min(wishlistCount / 10, 1.0);
 
-    // Bonus multiplier based on average watch time
-    // 0-10s: 1.0x, 10-30s: 1.1x, 30-60s: 1.2x, 60s+: 1.3x
-    let watchTimeMultiplier = 1.0;
-    if (avgWatchTimeSec >= 60) {
-      watchTimeMultiplier = 1.3;
-    } else if (avgWatchTimeSec >= 30) {
-      watchTimeMultiplier = 1.2;
-    } else if (avgWatchTimeSec >= 10) {
-      watchTimeMultiplier = 1.1;
+      // Weighted composite (0-1 scale)
+      const composite =
+        profilePercentile * 0.25 +
+        wishlistPercentile * 0.35 +
+        searchPercentile * 0.15 +
+        videoPercentile * 0.25;
+
+      const score = Math.round(composite * 10);
+
+      return score;
+    } catch (error) {
+      // Fallback to benchmark-based scoring
+      return this.fallbackBenchmarkScore(
+        profileViews,
+        wishlistCount,
+        searchAppearances,
+        totalVideoViews
+      );
     }
+  }
 
-    const rawScore = baseScore * watchTimeMultiplier;
+  /**
+   * Estimate percentile rank for a metric using count queries
+   * @param field Field name in user_analytics collection
+   * @param value User's value for this field
+   * @returns Percentile rank (0-1 scale)
+   */
+  private async estimatePercentile(
+    field: string,
+    value: number
+  ): Promise<number> {
+    try {
+      const analyticsRef = collection(this.firestore, 'user_analytics');
 
-    // Normalize to 0-100 scale (adjust divisor based on your needs)
-    return Math.min(Math.round(rawScore / 10), 100);
+      // Count users below this value
+      const belowQuery = query(analyticsRef, where(field, '<', value));
+      const belowCount = await getCountFromServer(belowQuery);
+
+      // Count total users
+      const totalQuery = query(analyticsRef);
+      const totalCount = await getCountFromServer(totalQuery);
+
+      const total = totalCount.data().count;
+      if (total === 0) return 0;
+
+      const percentile = belowCount.data().count / total;
+
+      return percentile;
+    } catch (error) {
+      // If count query fails, return middle percentile
+      return 0.5;
+    }
+  }
+
+  /**
+   * Fallback benchmark-based scoring when percentile calculation fails
+   */
+  private fallbackBenchmarkScore(
+    profileViews: number,
+    wishlistCount: number,
+    searchAppearances: number,
+    totalVideoViews: number
+  ): number {
+    // Define "good" benchmarks (each contributes 0-2.5 points)
+    const benchmarks = {
+      profileViews: 50,
+      wishlistCount: 10,
+      searchAppearances: 100,
+      videoViews: 100,
+    };
+
+    const scores = {
+      profile: Math.min((profileViews / benchmarks.profileViews) * 2.5, 2.5),
+      wishlist: Math.min((wishlistCount / benchmarks.wishlistCount) * 2.5, 2.5),
+      search: Math.min(
+        (searchAppearances / benchmarks.searchAppearances) * 2.5,
+        2.5
+      ),
+      video: Math.min((totalVideoViews / benchmarks.videoViews) * 2.5, 2.5),
+    };
+
+    return Math.round(
+      scores.profile + scores.wishlist + scores.search + scores.video
+    );
   }
 
   private formatDuration(seconds: number): string {
