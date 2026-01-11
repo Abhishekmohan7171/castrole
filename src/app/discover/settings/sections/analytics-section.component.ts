@@ -8,14 +8,9 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
-  limit,
   getCountFromServer,
 } from '@angular/fire/firestore';
-import {
-  UserAnalyticsDoc,
-  DailyAnalyticsDoc,
-} from '../../../../assets/interfaces/analytics.interfaces';
+import { DailyAnalyticsDoc } from '../../../../assets/interfaces/analytics.interfaces';
 import { MediaUpload } from '../../../../assets/interfaces/interfaces';
 
 interface AnalyticsViewModel {
