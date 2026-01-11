@@ -523,13 +523,6 @@ export class UploadComponent implements OnInit, OnDestroy {
   // Subscription status
   isSubscribed = computed(() => {
     const profileData = this.profileService.profileData();
-    // Check if user is a producer (has producerProfile)
-    // if (profileData?.producerProfile) {
-    //   return true; // Producers have no limits
-    // }
-    console.log(profileData,profileData?.actorProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
-    
-    // For actors, check subscription status
     return profileData?.actorProfile?.isSubscribed ?? false;
   });
   
@@ -638,6 +631,8 @@ export class UploadComponent implements OnInit, OnDestroy {
     // Close dropdown when clicking outside
     document.addEventListener('click', this.handleClickOutside.bind(this));
     
+    this.profileService.loadProfileData();
+
     // Load upload counts
     this.loadUploadCounts();
   }
