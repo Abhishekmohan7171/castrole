@@ -27,6 +27,8 @@ export interface UserDoc {
   // Privacy settings
   readReceipts?: boolean; // Default true - send read receipts
   allowChatRequests?: boolean; // Default true - allow new chat requests
+  // Email history tracking
+  emailHistory?: EmailHistoryEntry[];
 }
 
 export interface devices {
@@ -39,6 +41,13 @@ export interface blockedDetails {
   blockedBy: string;
   date: any;
   reason?: string;
+}
+
+export interface EmailHistoryEntry {
+  email: string;
+  changedAt: any; // Firestore serverTimestamp
+  changedFrom: string;
+  reason?: 'user_initiated' | 'admin_change';
 }
 
 //CHAT INTERFACES

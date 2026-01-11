@@ -25,6 +25,13 @@ export const routes: Routes = [
         (m) => m.ReactivateComponent
       ),
   },
+  {
+    path: 'auth/verify-email',
+    loadComponent: () =>
+      import('./auth/verify-email/verify-email.component').then(
+        (m) => m.VerifyEmailComponent
+      ),
+  },
   { path: 'register', redirectTo: 'onboarding' },
 
   // Onboarding flow

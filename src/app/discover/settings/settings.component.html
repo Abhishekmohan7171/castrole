@@ -125,6 +125,7 @@
             [getMissingRole]="getMissingRole.bind(this)"
             [addAccount]="addAccount.bind(this)"
             [switchRole]="switchRole.bind(this)"
+            [openEmailChangeModal]="openEmailChangeModal.bind(this)"
             (dataChange)="onEditableDataChange($event)"
           />
           } @case ('privacy') {
@@ -1000,6 +1001,15 @@
     [phone]="userData()?.phone || ''"
     (close)="closeAddAccountModal()"
     (submit)="handleAddAccountSubmit($event)"
+  />
+  }
+
+  <!-- Email Change Modal -->
+  @if (showEmailChangeModal()) {
+  <app-email-change-modal
+    [currentEmail]="userData()?.email || ''"
+    (close)="closeEmailChangeModal()"
+    (success)="closeEmailChangeModal()"
   />
   }
 </div>

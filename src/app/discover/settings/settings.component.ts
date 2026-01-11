@@ -38,6 +38,7 @@ import { SubscriptionsSectionComponent } from './sections/subscriptions-section.
 import { SupportSectionComponent } from './sections/support-section.component';
 import { LegalSectionComponent } from './sections/legal-section.component';
 import { AddAccountModalComponent } from './components/add-account-modal.component';
+import { EmailChangeModalComponent } from './components/email-change-modal.component';
 
 @Component({
   selector: 'app-discover-settings',
@@ -53,6 +54,7 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
     SupportSectionComponent,
     LegalSectionComponent,
     AddAccountModalComponent,
+    EmailChangeModalComponent,
   ],
   templateUrl: './settings.component.html',
   styles: [],
@@ -159,6 +161,9 @@ export class SettingsComponent implements OnInit {
   // Add account modal signals
   showAddAccountModal = signal<boolean>(false);
   addAccountType = signal<'actor' | 'producer'>('actor');
+
+  // Email change modal signals
+  showEmailChangeModal = signal<boolean>(false);
 
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
@@ -550,6 +555,20 @@ export class SettingsComponent implements OnInit {
       // Show error to user via modal
       throw error;
     }
+  }
+
+  // =========================
+  // Email Change Modal Methods
+  // =========================
+
+  openEmailChangeModal() {
+    this.showEmailChangeModal.set(true);
+  }
+
+  closeEmailChangeModal() {
+    this.showEmailChangeModal.set(false);
+    // Reload user data to get updated email
+    this.loadUserData();
   }
 
   async switchRole() {
@@ -1047,11 +1066,18 @@ export class SettingsComponent implements OnInit {
   // Support form methods
   async submitSupportForm() {
     if (!this.supportSubject().trim() || !this.supportConcern().trim()) {
+      this.toastService.warning(
+        'Please fill in both subject and description fields.',
+        3000
+      );
       return;
     }
 
     const user = this.auth.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      this.toastService.error('You must be logged in to submit feedback.', 3000);
+      return;
+    }
 
     this.isSubmittingSupport.set(true);
 
@@ -1076,11 +1102,17 @@ export class SettingsComponent implements OnInit {
       this.supportConcern.set('');
       this.isSubmittingSupport.set(false);
 
-      alert("Thank you for your feedback! We'll get back to you soon.");
+      this.toastService.success(
+        "Thank you for your feedback! We'll get back to you soon.",
+        4000
+      );
     } catch (error) {
       console.error('Error submitting support form:', error);
       this.isSubmittingSupport.set(false);
-      alert('Failed to submit your feedback. Please try again.');
+      this.toastService.error(
+        'Failed to submit your feedback. Please try again.',
+        5000
+      );
     }
   }
 }
