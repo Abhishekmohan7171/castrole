@@ -1033,14 +1033,21 @@ export class SearchComponent implements OnInit, OnDestroy {
   // Premium status
   isPremium = computed(() => {
     const profileData = this.profileService.profileData();
-    
-    // Check if user is a producer (has producerProfile) - producers are always premium
-    // if (profileData?.producerProfile) {
-    //   return true;
+    const role = this.currentUserRole();
+
+    if (!profileData) {
+      return false;
+    }
+
+    if (role === 'producer') {
+      return profileData.producerProfile?.isSubscribed ?? false;
+    }
+
+    // if (role === 'actor') {
+    //   return profileData.actorProfile?.isSubscribed ?? false;
     // }
-    console.log(profileData,profileData?.producerProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
-    // For actors, check subscription status
-    return profileData?.producerProfile?.isSubscribed ?? false;
+
+    return false;
   });
 
   // Voice player
@@ -1263,6 +1270,8 @@ export class SearchComponent implements OnInit, OnDestroy {
     if (this.currentUserId) {
       this.wishlistLoading.set(true);
     }
+
+    await this.profileService.loadProfileData();
 
     // Restore saved filters from localStorage (SSR-safe)
     // TODO: Update FilterPersistenceService to match new SearchFilters interface
