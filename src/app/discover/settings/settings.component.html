@@ -65,9 +65,12 @@
             (click)="onTabChange(tab)"
             class="w-full text-left px-4 py-4 rounded-xl border-l-2 transition-all duration-200"
             [ngClass]="{
-              'bg-[#2D1C36] text-white border-[#946BA9]': activeTab() === tab && isActor(),
-              'bg-[#515D69]/30 text-white border-[#90ACC8]': activeTab() === tab && !isActor(),
-              'text-[#5E5E67] hover:bg-white/5 border-transparent': activeTab() !== tab
+              'bg-[#2D1C36] text-white border-[#946BA9]':
+                activeTab() === tab && isActor(),
+              'bg-[#515D69]/30 text-white border-[#90ACC8]':
+                activeTab() === tab && !isActor(),
+              'text-[#5E5E67] hover:bg-white/5 border-transparent':
+                activeTab() !== tab
             }"
           >
             <div class="flex items-start gap-3">
@@ -752,7 +755,8 @@
       </div>
 
       <!-- Data Export Section -->
-      <div class="mb-6 p-4 rounded-lg border"
+      <div
+        class="mb-6 p-4 rounded-lg border"
         [ngClass]="{
           'bg-blue-600/10 border-blue-600/30': true
         }"
@@ -780,7 +784,8 @@
                 'text-neutral-300': !isActor()
               }"
             >
-              Export all your profile data, images, and chat history before deleting (GDPR compliant).
+              Export all your profile data, images, and chat history before
+              deleting (GDPR compliant).
             </p>
           </div>
         </div>
@@ -795,34 +800,34 @@
           }"
         >
           @if (isExporting()) {
-            <div class="flex items-center justify-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  class="opacity-25"
-                ></circle>
-                <path
-                  fill="currentColor"
-                  class="opacity-75"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Exporting...
-            </div>
-          } @else {
-            Download My Data
-          }
+          <div class="flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+                class="opacity-25"
+              ></circle>
+              <path
+                fill="currentColor"
+                class="opacity-75"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Exporting...
+          </div>
+          } @else { Download My Data }
         </button>
       </div>
 
       <!-- Warning Content -->
       <div class="space-y-4 mb-6">
         <!-- Grace Period Info -->
-        <div class="flex items-start gap-3 p-3 rounded-lg bg-blue-600/10 border border-blue-600/30">
+        <div
+          class="flex items-start gap-3 p-3 rounded-lg bg-blue-600/10 border border-blue-600/30"
+        >
           <svg
             class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0"
             fill="none"
@@ -837,7 +842,9 @@
             />
           </svg>
           <div>
-            <h4 class="font-medium text-blue-300 mb-1.5">30-Day Grace Period</h4>
+            <h4 class="font-medium text-blue-300 mb-1.5">
+              30-Day Grace Period
+            </h4>
             <p
               class="text-xs leading-relaxed"
               [ngClass]="{
@@ -845,7 +852,8 @@
                 'text-neutral-300': !isActor()
               }"
             >
-              Your account will be scheduled for deletion. You can reactivate it anytime within 30 days by logging in.
+              Your account will be scheduled for deletion. You can reactivate it
+              anytime within 30 days by logging in.
             </p>
           </div>
         </div>
@@ -866,9 +874,7 @@
             />
           </svg>
           <div>
-            <h4 class="font-medium text-orange-400 mb-2">
-              Immediate Effects
-            </h4>
+            <h4 class="font-medium text-orange-400 mb-2">Immediate Effects</h4>
             <ul
               class="text-sm space-y-1 ml-4"
               [ngClass]="{
@@ -885,7 +891,9 @@
         </div>
 
         <!-- Permanent Deletion Warning -->
-        <div class="flex items-start gap-3 p-3 rounded-lg bg-red-600/10 border border-red-600/30">
+        <div
+          class="flex items-start gap-3 p-3 rounded-lg bg-red-600/10 border border-red-600/30"
+        >
           <svg
             class="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0"
             fill="none"
@@ -908,7 +916,9 @@
                 'text-neutral-300': !isActor()
               }"
             >
-              All your data will be <strong>permanently deleted</strong> including profile, media, chat history, and analytics. This cannot be undone.
+              All your data will be
+              <strong>permanently deleted</strong> including profile, media,
+              chat history, and analytics. This cannot be undone.
             </p>
           </div>
         </div>
@@ -1010,6 +1020,16 @@
     [currentEmail]="userData()?.email || ''"
     (close)="closeEmailChangeModal()"
     (success)="closeEmailChangeModal()"
+  />
+  }
+
+  <!-- OTP Modal -->
+  @if (showOtpModal()) {
+  <app-otp
+    [isOpen]="showOtpModal()"
+    [phone]="otpPhoneNumber()"
+    (closeModal)="onCloseOtpModal()"
+    (otpVerified)="onOtpVerified()"
   />
   }
 </div>
