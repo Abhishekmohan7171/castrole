@@ -61,12 +61,35 @@ interface Tag {
                 </div>
               }
               
-              <!-- Edit Cover Button -->
-              <button 
-                class="absolute bottom-4 left-4 bg-black/50 text-white px-4 py-2 rounded-lg text-sm hover:bg-black/70 transition-colors"
-                (click)="editCover()">
-                edit cover
-              </button>
+              <!-- Cover Image Overlay -->
+              @if (coverImagePreviewUrl()) {
+                <div class="absolute inset-0 rounded-xl overflow-hidden">
+                  <img 
+                    [src]="coverImagePreviewUrl()" 
+                    class="w-full h-full object-cover"
+                    alt="Cover image">
+                  <!-- Only show Change Cover button if not uploading/uploaded -->
+                  @if (!isUploading() && !uploadSuccess()) {
+                    <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button 
+                        class="bg-white/90 text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white transition-colors"
+                        (click)="editCover()">
+                        Change Cover
+                      </button>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <!-- Add Cover Button - only show if not uploading/uploaded -->
+                @if (!isUploading() && !uploadSuccess()) {
+                  <button 
+                    class="absolute bottom-4 left-4 bg-black/50 text-white px-4 py-2 rounded-lg text-sm hover:bg-black/70 transition-colors"
+                    (click)="editCover()"
+                    [disabled]="!selectedVideoFile()">
+                    {{ selectedVideoFile() ? 'Add Cover Image' : 'Upload video first' }}
+                  </button>
+                }
+              }
             </div>
 
             <!-- Video File Input -->
@@ -89,6 +112,14 @@ interface Tag {
                 }
               </label>
             </div>
+
+            <!-- Cover Image Upload (Hidden Input) -->
+            <input 
+              type="file" 
+              accept="image/*" 
+              (change)="onCoverImageSelected($event)"
+              class="hidden"
+              id="cover-image-upload">
           </div>
 
           <!-- Video Metadata Form -->
@@ -467,6 +498,8 @@ export class UploadComponent implements OnInit, OnDestroy {
   // Video upload state
   selectedVideoFile = signal<File | null>(null);
   videoPreviewUrl = signal<string>('');
+  coverImageFile = signal<File | null>(null);
+  coverImagePreviewUrl = signal<string>('');
   tags = signal<Tag[]>([]);
   showTagInput = signal(false);
   newTagName = signal('');
@@ -702,6 +735,13 @@ export class UploadComponent implements OnInit, OnDestroy {
       this.videoResolution.set('');
       this.videoFps.set(0);
       this.videoBitrate.set(0);
+      
+      // Clear cover image when changing video
+      if (this.coverImagePreviewUrl()) {
+        URL.revokeObjectURL(this.coverImagePreviewUrl());
+      }
+      this.coverImageFile.set(null);
+      this.coverImagePreviewUrl.set('');
 
       // Validate file type first
       if (!this.uploadService.validateFileType(file, ['video/'])) {
@@ -909,8 +949,45 @@ export class UploadComponent implements OnInit, OnDestroy {
   }
 
   editCover(): void {
-    // TODO: Implement cover editing functionality
-    // Will allow users to select a custom thumbnail from the video
+    if (!this.selectedVideoFile()) {
+      return;
+    }
+    // Trigger file input for cover image
+    const input = document.getElementById('cover-image-upload') as HTMLInputElement;
+    if (input) {
+      input.click();
+    }
+  }
+
+  onCoverImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.uploadError.set('Please select a valid image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB for cover image)
+      const fileSizeMB = file.size / (1024 * 1024);
+      if (fileSizeMB > 5) {
+        this.uploadError.set('Cover image must be less than 5MB');
+        return;
+      }
+      
+      // Clear previous cover image preview
+      if (this.coverImagePreviewUrl()) {
+        URL.revokeObjectURL(this.coverImagePreviewUrl());
+      }
+      
+      // Set new cover image
+      this.coverImageFile.set(file);
+      const previewUrl = URL.createObjectURL(file);
+      this.coverImagePreviewUrl.set(previewUrl);
+      this.uploadError.set('');
+    }
   }
 
   async uploadVideo(): Promise<void> {
@@ -966,6 +1043,26 @@ export class UploadComponent implements OnInit, OnDestroy {
         `uploads/${userId}/userUploads/${videoId}`
       );
 
+      // Upload cover image first if provided
+      let coverImageUrl = '';
+      const coverImage = this.coverImageFile();
+      if (coverImage) {
+        try {
+          const coverImageExt = coverImage.name.split('.').pop() || 'jpg';
+          const coverImagePath = `covers/${userId}/${videoId}/cover.${coverImageExt}`;
+          const coverImageRef = ref(this.storage, coverImagePath);
+          
+          const coverUploadTask = await uploadBytesResumable(coverImageRef, coverImage, {
+            contentType: coverImage.type
+          });
+          
+          coverImageUrl = await getDownloadURL(coverUploadTask.ref);
+        } catch (error: any) {
+          console.error('Failed to upload cover image:', error);
+          // Continue with video upload even if cover upload fails
+        }
+      }
+
       const firestoreData = {
         fileName: file.name,
         fileSize: file.size,
@@ -974,6 +1071,7 @@ export class UploadComponent implements OnInit, OnDestroy {
         videoId: videoId,
         rawPath: storagePath,
         processingStatus: 'UPLOADING',
+        ...(coverImageUrl && { coverImageUrl }),
         metadata: {
           tags: this.tags().map(tag => tag.name),
           description: this.description(),
@@ -1370,15 +1468,22 @@ export class UploadComponent implements OnInit, OnDestroy {
   }
 
   resetVideoForm(): void {
-    // Clean up preview URL first
-    const url = this.videoPreviewUrl();
-    if (url) {
-      URL.revokeObjectURL(url);
+    // Clean up preview URLs
+    const videoUrl = this.videoPreviewUrl();
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    
+    const coverUrl = this.coverImagePreviewUrl();
+    if (coverUrl) {
+      URL.revokeObjectURL(coverUrl);
     }
 
     // Reset all form states
     this.selectedVideoFile.set(null);
     this.videoPreviewUrl.set('');
+    this.coverImageFile.set(null);
+    this.coverImagePreviewUrl.set('');
     this.tags.set([]);
     this.description.set('');
     this.newTagName.set('');
