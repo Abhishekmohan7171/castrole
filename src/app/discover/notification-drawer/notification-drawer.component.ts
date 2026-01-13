@@ -144,7 +144,10 @@ export interface Notification {
                     <img *ngIf="getAvatarUrl(notification); else defaultIcon"
                          [src]="getAvatarUrl(notification)"
                          [alt]="notification.title"
-                         class="w-full h-full object-cover">
+                         [ngClass]="{
+                           'w-full h-full object-cover': true,
+                           'blur-sm': shouldBlurAvatar(notification)
+                         }">
                     <ng-template #defaultIcon>
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
                            [ngClass]="{
@@ -280,9 +283,11 @@ export class NotificationDrawerComponent {
   }
 
   markAsRead(notification: Notification): void {
+    // Mark as read and trigger navigation
     if (!notification.read) {
       this.markAsReadEvent.emit(notification);
     }
+    // Emit click event for navigation
     if (notification.actionUrl) {
       this.notificationClick.emit(notification);
     }
@@ -313,6 +318,13 @@ export class NotificationDrawerComponent {
 
   getAvatarUrl(notification: Notification): string | undefined {
     return notification.metadata.actorPhotoUrl || notification.metadata.producerPhotoUrl;
+  }
+
+  shouldBlurAvatar(notification: Notification): boolean {
+    // Blur avatar for non-premium profile_view and wishlist_add notifications
+    const isPremium = notification.metadata.isPremium ?? true;
+    const shouldBlur = (notification.type === 'profile_view' || notification.type === 'wishlist_add') && !isPremium;
+    return shouldBlur;
   }
 
   getNotificationIcon(type: NotificationType): string {

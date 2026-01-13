@@ -226,9 +226,9 @@ export class NotificationService {
       recipientId: actorId,
       type: 'connection_request',
       category: 'connection',
-      title: 'New Connection Request',
+      title: 'Connection Request',
       message: `${producerName} wants to connect with you`,
-      actionUrl: `/discover/chat/requests`,
+      actionUrl: `/discover/chat`,
       metadata: {
         producerId,
         producerName,
@@ -254,7 +254,7 @@ export class NotificationService {
       category: 'connection',
       title: 'Connection Established',
       message: `You're now connected with ${producerName} — Start chatting`,
-      actionUrl: `/discover/chat/${chatRoomId}`,
+      actionUrl: `/discover/chat`,
       metadata: {
         producerId,
         producerName,
@@ -281,7 +281,7 @@ export class NotificationService {
       category: 'message',
       title: `New message from ${producerName}`,
       message: messagePreview.substring(0, 100),
-      actionUrl: `/discover/chat/${chatRoomId}`,
+      actionUrl: `/discover/chat`,
       metadata: {
         producerId,
         producerName,
@@ -308,8 +308,8 @@ export class NotificationService {
       title: 'Profile View',
       message: isPremium 
         ? `${producerName} viewed your profile`
-        : 'A producer viewed your profile',
-      actionUrl: isPremium ? `/discover/settings/analytics` : `/discover/settings/subscription`,
+        : 'A producer viewed your profile — Subscribe to know who — Click to subscribe',
+      actionUrl: isPremium ? undefined : `/discover/settings?tab=subscriptions`,
       metadata: {
         producerId,
         producerName: isPremium ? producerName : undefined,
@@ -336,8 +336,8 @@ export class NotificationService {
       title: 'Added to Wishlist',
       message: isPremium 
         ? `${producerName} added you to their wishlist`
-        : 'A producer added you to their wishlist — Subscribe to see who',
-      actionUrl: isPremium ? `/discover/profile` : `/discover/settings/subscription`,
+        : 'A producer added you to their wishlist — Subscribe to know who — Click to subscribe',
+      actionUrl: isPremium ? undefined : `/discover/settings?tab=subscriptions`,
       metadata: {
         producerId,
         producerName: isPremium ? producerName : undefined,
@@ -410,7 +410,7 @@ export class NotificationService {
       category: 'system',
       title: 'Complete Your Profile',
       message: `Your profile is ${completenessPercentage}% complete. Add more details to increase visibility`,
-      actionUrl: `/discover/edit-profile`,
+      actionUrl: `/discover/profile/edit`,
       metadata: {
         completenessPercentage
       }
@@ -430,7 +430,7 @@ export class NotificationService {
       category: 'system',
       title: 'Improve Your Visibility',
       message: suggestion,
-      actionUrl: `/discover/edit-profile`,
+      actionUrl: `/discover/profile/edit`,
       metadata: {}
     });
   }
@@ -518,7 +518,7 @@ export class NotificationService {
       category: 'connection',
       title: 'Connection Accepted',
       message: `${actorName} accepted your connection request — Start chatting`,
-      actionUrl: `/discover/chat/${chatRoomId}`,
+      actionUrl: `/discover/chat`,
       metadata: {
         actorId,
         actorName,
@@ -569,7 +569,7 @@ export class NotificationService {
       category: 'message',
       title: `New message from ${actorName}`,
       message: messagePreview.substring(0, 100),
-      actionUrl: `/discover/chat/${chatRoomId}`,
+      actionUrl: `/discover/chat`,
       metadata: {
         actorId,
         actorName,
@@ -700,10 +700,16 @@ export class NotificationService {
 
       // Check if actor has premium subscription
       const profileDoc = await getDoc(doc(this.db, 'profiles', actorId));
-      if (!profileDoc.exists()) return;
+      if (!profileDoc.exists()) {
+        this.logger.info('Profile not found for monthly analytics check');
+        return;
+      }
       
       const isPremium = profileDoc.data()?.['actorProfile']?.['isSubscribed'] === true;
-      if (!isPremium) return; // Only for premium users
+      if (!isPremium) {
+        this.logger.info('User not premium, skipping monthly analytics');
+        return; // Only for premium users
+      }
 
       // Get analytics for last month
       const lastMonthId = this.getLastMonthId();
@@ -711,7 +717,10 @@ export class NotificationService {
         doc(this.db, `user_analytics/${actorId}/daily/${lastMonthId}`)
       );
 
-      if (!analyticsDoc.exists()) return;
+      if (!analyticsDoc.exists()) {
+        this.logger.info('No analytics data found for last month');
+        return;
+      }
 
       const data = analyticsDoc.data();
       const profileViews = data?.['profileViews'] || 0;
@@ -729,6 +738,7 @@ export class NotificationService {
       // Mark as sent for this month
       localStorage.setItem(lastSentKey, new Date().toISOString());
     } catch (error) {
+      // Silently log - don't break the app
       this.logger.error('Error checking monthly analytics:', error);
     }
   }
@@ -745,11 +755,17 @@ export class NotificationService {
       if (lastSent) return;
 
       const profileDoc = await getDoc(doc(this.db, 'profiles', actorId));
-      if (!profileDoc.exists()) return;
+      if (!profileDoc.exists()) {
+        this.logger.info('Profile not found for completeness check');
+        return;
+      }
 
       const profile = profileDoc.data();
       const actorProfile = profile?.['actorProfile'];
-      if (!actorProfile) return;
+      if (!actorProfile) {
+        this.logger.info('Actor profile not found');
+        return;
+      }
 
       // Calculate completeness
       let completedFields = 0;
@@ -768,12 +784,13 @@ export class NotificationService {
 
       const percentage = Math.round((completedFields / totalFields) * 100);
 
-      // Send reminder if less than 80% complete
-      if (percentage < 80) {
+      // Send reminder if less than 90% complete
+      if (percentage < 90) {
         await this.createProfileCompletenessReminder(actorId, percentage);
         localStorage.setItem(lastSentKey, new Date().toISOString());
       }
     } catch (error) {
+      // Silently log - don't break the app
       this.logger.error('Error checking profile completeness:', error);
     }
   }
@@ -784,13 +801,22 @@ export class NotificationService {
   async checkSubscriptionExpiry(actorId: string): Promise<void> {
     try {
       const profileDoc = await getDoc(doc(this.db, 'profiles', actorId));
-      if (!profileDoc.exists()) return;
+      if (!profileDoc.exists()) {
+        this.logger.info('Profile not found for subscription check');
+        return;
+      }
 
       const actorProfile = profileDoc.data()?.['actorProfile'];
-      if (!actorProfile?.isSubscribed) return;
+      if (!actorProfile?.isSubscribed) {
+        this.logger.info('User not subscribed, skipping expiry check');
+        return;
+      }
 
       const expiryDate = actorProfile.subscriptionExpiryDate?.toDate();
-      if (!expiryDate) return;
+      if (!expiryDate) {
+        this.logger.info('No expiry date found');
+        return;
+      }
 
       const now = new Date();
       const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -806,6 +832,7 @@ export class NotificationService {
         }
       }
     } catch (error) {
+      // Silently log - don't break the app
       this.logger.error('Error checking subscription expiry:', error);
     }
   }
@@ -902,7 +929,10 @@ export class NotificationService {
 
       // Get analytics for last 30 days
       const analyticsDoc = await getDoc(doc(this.db, 'user_analytics', actorId));
-      if (!analyticsDoc.exists()) return;
+      if (!analyticsDoc.exists()) {
+        this.logger.info('No analytics data found for visibility check');
+        return;
+      }
 
       const data = analyticsDoc.data();
       const profileViews = data?.['profileViews'] || 0;
@@ -914,6 +944,7 @@ export class NotificationService {
         localStorage.setItem(lastSentKey, new Date().toISOString());
       }
     } catch (error) {
+      // Silently log - don't break the app
       this.logger.error('Error checking visibility suggestion:', error);
     }
   }
