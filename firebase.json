@@ -13,17 +13,6 @@
   "hosting": {
     "public": "dist/castrole/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          {
-            "key": "Cross-Origin-Opener-Policy",
-            "value": "same-origin"
-          }
-        ]
-      }
-    ],
     "rewrites": [
       {
         "source": "**",
