@@ -14,6 +14,7 @@ import { VoiceIntroSectionComponent } from './sections/voice-intro-section.compo
 import { LanguagesSkillsSectionComponent } from './sections/languages-skills-section.component';
 import { SocialsSectionComponent } from './sections/socials-section.component';
 import { ToastService } from '../../services/toast.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-edit-profile',
@@ -423,6 +424,7 @@ export class EditProfileComponent implements OnInit {
   private firestore = inject(Firestore);
   private auth = inject(Auth);
   private toastService = inject(ToastService);
+  private notificationService = inject(NotificationService);
 
   // State
   profile = signal<Profile | null>(null);
@@ -667,6 +669,9 @@ export class EditProfileComponent implements OnInit {
       if (!isAutosave) {
         this.toastService.success('Profile updated successfully!');
       }
+
+      // Check profile completeness and trigger notification after successful save
+      await this.checkAndNotifyProfileCompleteness();
     } catch (error) {
       if (attemptsLeft > 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -805,5 +810,49 @@ export class EditProfileComponent implements OnInit {
     }
 
     return obj;
+  }
+
+  /**
+   * Check profile completeness and trigger notification immediately
+   * Called after every successful save (including autosave)
+   */
+  private async checkAndNotifyProfileCompleteness(): Promise<void> {
+    try {
+      const currentProfile = this.profile();
+      const userId = this.auth.currentUser?.uid;
+      
+      // Only check for actors
+      if (!currentProfile || !userId || !this.isActor()) {
+        return;
+      }
+
+      const actorProfile = currentProfile.actorProfile;
+      if (!actorProfile) return;
+
+      // Calculate completeness (same 10 fields as NotificationService)
+      let completedFields = 0;
+      const totalFields = 10;
+
+      if (actorProfile.stageName) completedFields++;
+      if ((currentProfile as any).bio) completedFields++; // bio is stored at Profile level
+      if (actorProfile.actorProfileImageUrl) completedFields++;
+      if (currentProfile.age) completedFields++; // age is at Profile level
+      if (currentProfile.gender) completedFields++; // gender is at Profile level
+      if (actorProfile.height) completedFields++;
+      if (actorProfile.weight) completedFields++;
+      if (currentProfile.location) completedFields++; // location is at Profile level
+      if (actorProfile.skills && actorProfile.skills.length > 0) completedFields++;
+      if (actorProfile.languages && actorProfile.languages.length > 0) completedFields++;
+
+      const percentage = Math.round((completedFields / totalFields) * 100);
+
+      // Trigger notification if less than 90% complete
+      if (percentage < 90) {
+        await this.notificationService.createProfileCompletenessReminder(userId, percentage);
+      }
+    } catch (error) {
+      // Silently fail - don't break the save flow
+      console.error('Error checking profile completeness:', error);
+    }
   }
 }

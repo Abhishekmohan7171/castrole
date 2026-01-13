@@ -519,8 +519,35 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                     )
                   );
 
-                  // Auto-trigger notification checks are disabled to prevent console errors
-                  // These should be triggered via scheduled jobs or manual admin actions instead
+                  // Auto-trigger notification checks (once per session)
+                  const sessionKey = `notifications_checked_${user.uid}`;
+                  if (!sessionStorage.getItem(sessionKey)) {
+                    // Mark as checked for this session
+                    sessionStorage.setItem(sessionKey, 'true');
+                    
+                    // Run checks based on user role (with error handling)
+                    if (userData['currentRole'] === 'actor') {
+                      // Actor-specific checks
+                      this.notificationService.checkAndSendMonthlyAnalytics(user.uid).catch(err => 
+                        this.logger.error('Error checking monthly analytics:', err)
+                      );
+                      // NOTE: checkProfileCompleteness removed - only triggers on edit-profile save
+                      this.notificationService.checkSubscriptionExpiry(user.uid).catch(err => 
+                        this.logger.error('Error checking subscription expiry:', err)
+                      );
+                      this.notificationService.checkAndSendVisibilitySuggestion(user.uid).catch(err => 
+                        this.logger.error('Error checking visibility suggestion:', err)
+                      );
+                    } else if (userData['currentRole'] === 'producer') {
+                      // Producer-specific checks
+                      this.notificationService.checkWishlistMatches(user.uid).catch(err => 
+                        this.logger.error('Error checking wishlist matches:', err)
+                      );
+                      this.notificationService.checkDatabaseGrowth(user.uid).catch(err => 
+                        this.logger.error('Error checking database growth:', err)
+                      );
+                    }
+                  }
 
                   // Initialize chat notification count
                   if (userData['currentRole'] === 'actor') {
