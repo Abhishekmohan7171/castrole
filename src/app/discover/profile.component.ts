@@ -1477,6 +1477,7 @@ import {
         <!-- Media content -->
         <div
           class="w-full h-full flex items-center justify-center px-20 relative"
+          [ngClass]="{ 'pb-32': previewMediaType() === 'video' && !isProfilePicIsolationMode() }"
         >
           @if (previewMediaType() === 'image') {
           <img
@@ -1569,10 +1570,9 @@ import {
               }
             </div>
 
-            <!-- Right: Share and Delete Actions (only for own profile) -->
-            @if (isViewingOwnProfile()) {
+            <!-- Right: Share and Delete Actions -->
             <div class="flex gap-2 flex-shrink-0">
-              <!-- Share Link Button -->
+              <!-- Share Link Button (visible to everyone) -->
               <button
                 (click)="shareMediaLink(); $event.stopPropagation()"
                 class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
@@ -1595,7 +1595,8 @@ import {
                 <span class="text-white text-sm">Share</span>
               </button>
 
-              <!-- Delete Button -->
+              <!-- Delete Button (only for own profile) -->
+              @if (isViewingOwnProfile()) {
               <button
                 (click)="showDeleteConfirmation(); $event.stopPropagation()"
                 class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
@@ -1617,8 +1618,8 @@ import {
                 </svg>
                 <span class="text-white text-sm">Delete</span>
               </button>
+              }
             </div>
-            }
           </div>
         </div>
         }
