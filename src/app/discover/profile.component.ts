@@ -1377,6 +1377,7 @@ import {
           </svg>
         </button>
 
+
         <!-- Profile Picture Actions (only for images and own profile) -->
         @if (previewMediaType() === 'image' && isViewingOwnProfile()) {
         <div class="absolute top-4 left-4 z-10 flex gap-2">
@@ -1426,56 +1427,6 @@ import {
         </div>
         }
 
-        <!-- Share and Delete Actions (only for own profile) -->
-        @if (isViewingOwnProfile() && !isProfilePicIsolationMode()) {
-        <div class="absolute bottom-16 right-4 z-10 flex gap-2">
-          <!-- Share Link Button -->
-          <button
-            (click)="shareMediaLink(); $event.stopPropagation()"
-            class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
-            aria-label="Share link"
-            title="Copy media link to clipboard"
-          >
-            <svg
-              class="w-5 h-5 text-white"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-              />
-            </svg>
-            <span class="text-white text-sm">Share</span>
-          </button>
-
-          <!-- Delete Button -->
-          <button
-            (click)="showDeleteConfirmation(); $event.stopPropagation()"
-            class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
-            aria-label="Delete media"
-            title="Delete this media"
-          >
-            <svg
-              class="w-5 h-5 text-white"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            <span class="text-white text-sm">Delete</span>
-          </button>
-        </div>
-        }
 
         <!-- Previous button -->
         @if (canGoToPrevious()) {
@@ -1578,8 +1529,102 @@ import {
           }
         </div>
 
-        <!-- Counter indicator -->
-        @if (!isProfilePicIsolationMode()) {
+        <!-- Video Info Section (below video) -->
+        @if (previewMediaType() === 'video' && !isProfilePicIsolationMode() && (currentVideoTags().length > 0 || currentVideoDescription() || currentVideoUpdatedAt())) {
+        <div class="absolute bottom-4 left-4 right-4 z-10">
+          <!-- Description Section (Full Width) -->
+          <div
+            class="w-full px-4 py-3 bg-black/80 backdrop-blur-sm rounded-lg ring-1 ring-white/20 flex justify-between items-start gap-4"
+          >
+            <!-- Left: Description Content -->
+            <div class="flex-1 space-y-2">
+              <!-- Description Title -->
+              <div class="text-white font-semibold text-sm">Description</div>
+
+              <!-- Updated Date -->
+              @if (currentVideoUpdatedAt()) {
+              <div class="text-neutral-400 text-xs">
+                {{ currentVideoUpdatedAt() }}
+              </div>
+              }
+
+              <!-- Description Text -->
+              @if (currentVideoDescription()) {
+              <div class="text-white text-sm leading-relaxed">
+                {{ currentVideoDescription() }}
+              </div>
+              }
+
+              <!-- Tags -->
+              @if (currentVideoTags().length > 0) {
+              <div class="flex flex-wrap gap-2 pt-2">
+                @for (tag of currentVideoTags(); track tag) {
+                <span
+                  class="px-3 py-1 bg-white/10 text-white text-xs rounded-full ring-1 ring-white/20"
+                >
+                  {{ tag }}
+                </span>
+                }
+              </div>
+              }
+            </div>
+
+            <!-- Right: Share and Delete Actions (only for own profile) -->
+            @if (isViewingOwnProfile()) {
+            <div class="flex gap-2 flex-shrink-0">
+              <!-- Share Link Button -->
+              <button
+                (click)="shareMediaLink(); $event.stopPropagation()"
+                class="px-4 py-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+                aria-label="Share link"
+                title="Copy media link to clipboard"
+              >
+                <svg
+                  class="w-5 h-5 text-white"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                  />
+                </svg>
+                <span class="text-white text-sm">Share</span>
+              </button>
+
+              <!-- Delete Button -->
+              <button
+                (click)="showDeleteConfirmation(); $event.stopPropagation()"
+                class="px-4 py-2 bg-red-600/70 hover:bg-red-600/90 rounded-lg transition-colors ring-1 ring-white/20 flex items-center gap-2"
+                aria-label="Delete media"
+                title="Delete this media"
+              >
+                <svg
+                  class="w-5 h-5 text-white"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                <span class="text-white text-sm">Delete</span>
+              </button>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Counter indicator (hidden for videos since info is at bottom) -->
+        @if (!isProfilePicIsolationMode() && previewMediaType() === 'image') {
         <div
           class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-black/50 rounded-full text-white text-sm ring-1 ring-white/20"
         >
@@ -1765,6 +1810,9 @@ export class ProfileComponent implements OnInit {
   currentMediaIndex = signal(0);
   isProfilePicIsolationMode = signal(false);
   isMediaLoading = signal(false);
+  currentVideoTags = signal<string[]>([]);
+  currentVideoDescription = signal<string>('');
+  currentVideoUpdatedAt = signal<string>('');
 
   // Delete confirmation dialog state
   isDeleteConfirmationOpen = signal(false);
@@ -2470,7 +2518,7 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  openPreviewModal(
+  async openPreviewModal(
     url: string,
     type: 'image' | 'video',
     isolationMode: boolean = false
@@ -2492,8 +2540,64 @@ export class ProfileComponent implements OnInit {
       if (videoInfo) {
         this.currentVideoId = videoInfo.docId;
         this.currentActorId = this.targetUserId() || null;
+
+        // Fetch video tags from Firestore
+        await this.fetchVideoTags(videoInfo.userId, videoInfo.docId);
       }
+    } else {
+      // Clear video metadata if viewing an image
+      this.currentVideoTags.set([]);
+      this.currentVideoDescription.set('');
+      this.currentVideoUpdatedAt.set('');
     }
+  }
+
+  async fetchVideoTags(userId: string, videoId: string) {
+    try {
+      const uploadDocRef = doc(
+        this.firestore,
+        `uploads/${userId}/userUploads/${videoId}`
+      );
+      const uploadDoc = await getDoc(uploadDocRef);
+
+      if (uploadDoc.exists()) {
+        const data = uploadDoc.data();
+        const tags = data?.['metadata']?.['tags'] || [];
+        const description = data?.['metadata']?.['description'] || '';
+        const uploadedAt = data?.['uploadedAt'];
+
+        this.currentVideoTags.set(tags);
+        this.currentVideoDescription.set(description);
+
+        // Format the uploadedAt date
+        if (uploadedAt) {
+          const date = uploadedAt.toDate ? uploadedAt.toDate() : new Date(uploadedAt);
+          this.currentVideoUpdatedAt.set(this.formatDate(date));
+        } else {
+          this.currentVideoUpdatedAt.set('');
+        }
+      } else {
+        this.currentVideoTags.set([]);
+        this.currentVideoDescription.set('');
+        this.currentVideoUpdatedAt.set('');
+      }
+    } catch (error) {
+      console.error('Error fetching video metadata:', error);
+      this.currentVideoTags.set([]);
+      this.currentVideoDescription.set('');
+      this.currentVideoUpdatedAt.set('');
+    }
+  }
+
+  formatDate(date: Date): string {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `Uploaded on ${month} ${day}, ${year}`;
   }
 
   async closePreviewModal() {
@@ -2511,6 +2615,9 @@ export class ProfileComponent implements OnInit {
     this.previewMediaUrl.set(null);
     this.currentMediaIndex.set(0);
     this.isProfilePicIsolationMode.set(false);
+    this.currentVideoTags.set([]);
+    this.currentVideoDescription.set('');
+    this.currentVideoUpdatedAt.set('');
   }
 
   async goToPreviousMedia() {
@@ -2538,11 +2645,18 @@ export class ProfileComponent implements OnInit {
 
       // Prepare video tracking if navigating to a video
       if (this.previewMediaType() === 'video') {
-        const fileName = this.extractFileNameFromUrl(newUrl);
-        if (fileName) {
-          this.currentVideoId = fileName;
+        const videoInfo = this.videoData().find((v) => v.url === newUrl);
+        if (videoInfo) {
+          this.currentVideoId = videoInfo.docId;
           this.currentActorId = this.targetUserId() || null;
+          // Fetch video tags
+          await this.fetchVideoTags(videoInfo.userId, videoInfo.docId);
         }
+      } else {
+        // Clear video metadata if navigating to an image
+        this.currentVideoTags.set([]);
+        this.currentVideoDescription.set('');
+        this.currentVideoUpdatedAt.set('');
       }
     }
   }
@@ -2572,11 +2686,18 @@ export class ProfileComponent implements OnInit {
 
       // Prepare video tracking if navigating to a video
       if (this.previewMediaType() === 'video') {
-        const fileName = this.extractFileNameFromUrl(newUrl);
-        if (fileName) {
-          this.currentVideoId = fileName;
+        const videoInfo = this.videoData().find((v) => v.url === newUrl);
+        if (videoInfo) {
+          this.currentVideoId = videoInfo.docId;
           this.currentActorId = this.targetUserId() || null;
+          // Fetch video metadata
+          await this.fetchVideoTags(videoInfo.userId, videoInfo.docId);
         }
+      } else {
+        // Clear video metadata if navigating to an image
+        this.currentVideoTags.set([]);
+        this.currentVideoDescription.set('');
+        this.currentVideoUpdatedAt.set('');
       }
     }
   }
