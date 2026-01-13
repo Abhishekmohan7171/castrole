@@ -585,114 +585,126 @@ import {
                 }
               </div>
               } @else if (hasVideos()) {
-              <div class="grid grid-cols-2 gap-2 mb-4">
-                @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
-                { @if (idx < 4) {
-                <div
-                  class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
-                  [ngClass]="{
-                    'hover:ring-purple-500/50': isActorTheme(),
-                    'hover:ring-neutral-600': !isActorTheme(),
-                    'overflow-hidden': openMenuUrl() !== videoUrl,
-                    'overflow-visible': openMenuUrl() === videoUrl
-                  }"
-                  (click)="openPreviewModal(videoUrl, 'video')"
-                >
-                  <video
-                    [src]="videoUrl"
-                    class="w-full h-full object-cover pointer-events-none bg-neutral-900 rounded-lg"
-                    preload="metadata"
-                    loading="lazy"
-                  ></video>
+              <div class="max-h-[400px] overflow-y-auto mb-4">
+                <div class="grid grid-cols-2 gap-2">
+                  @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
+                  {
+                  <div
+                    class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
+                    [ngClass]="{
+                      'hover:ring-purple-500/50': isActorTheme(),
+                      'hover:ring-neutral-600': !isActorTheme(),
+                      'overflow-hidden': openMenuUrl() !== videoUrl,
+                      'overflow-visible': openMenuUrl() === videoUrl
+                    }"
+                    (click)="openPreviewModal(videoUrl, 'video')"
+                  >
+                    <video
+                      [src]="videoUrl"
+                      class="w-full h-full object-cover pointer-events-none bg-neutral-900 rounded-lg"
+                      preload="metadata"
+                      loading="lazy"
+                    ></video>
 
-                  <!-- 3-dot menu button (only for own profile) -->
-                  @if (isViewingOwnProfile()) {
+                    <!-- 3-dot menu button (only for own profile) -->
+                    @if (isViewingOwnProfile()) {
+                    <button
+                      (click)="toggleMenu(videoUrl, $event)"
+                      class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                      aria-label="More options"
+                    >
+                      <svg
+                        class="w-4 h-4 text-white"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                        />
+                      </svg>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    @if (openMenuUrl() === videoUrl) {
+                    <div
+                      class="absolute top-10 right-2 bg-neutral-900 rounded-lg shadow-xl ring-1 ring-white/10 z-10 min-w-[160px] overflow-hidden"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <!-- Share Option -->
+                      <button
+                        (click)="shareMediaLink(videoUrl)"
+                        class="w-full px-4 py-2.5 text-left text-white hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                          />
+                        </svg>
+                        <span class="text-sm">Share Link</span>
+                      </button>
+
+                      <!-- Delete Option -->
+                      <button
+                        (click)="showDeleteConfirmation(videoUrl, 'video')"
+                        class="w-full px-4 py-2.5 text-left text-red-400 hover:bg-neutral-800 transition-colors flex items-center gap-3"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        <span class="text-sm">Delete</span>
+                      </button>
+                    </div>
+                    } }
+                  </div>
+                  }
+
+                  <!-- Add More Videos Button (+ icon in grid) -->
+                  @if (isViewingOwnProfile() && videoUrls().length < 4) {
                   <button
-                    (click)="toggleMenu(videoUrl, $event)"
-                    class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="More options"
+                    (click)="navigateToUpload()"
+                    class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
                   >
                     <svg
-                      class="w-4 h-4 text-white"
+                      class="h-8 w-8 text-neutral-600"
                       viewBox="0 0 24 24"
-                      fill="currentColor"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
                     >
-                      <path
-                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-                      />
+                      <path d="M12 5v14M5 12h14" />
                     </svg>
                   </button>
-
-                  <!-- Dropdown Menu -->
-                  @if (openMenuUrl() === videoUrl) {
-                  <div
-                    class="absolute top-10 right-2 bg-neutral-900 rounded-lg shadow-xl ring-1 ring-white/10 z-10 min-w-[160px] overflow-hidden"
-                    (click)="$event.stopPropagation()"
-                  >
-                    <!-- Share Option -->
-                    <button
-                      (click)="shareMediaLink(videoUrl)"
-                      class="w-full px-4 py-2.5 text-left text-white hover:bg-neutral-800 transition-colors flex items-center gap-3"
-                    >
-                      <svg
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                        />
-                      </svg>
-                      <span class="text-sm">Share Link</span>
-                    </button>
-
-                    <!-- Delete Option -->
-                    <button
-                      (click)="showDeleteConfirmation(videoUrl, 'video')"
-                      class="w-full px-4 py-2.5 text-left text-red-400 hover:bg-neutral-800 transition-colors flex items-center gap-3"
-                    >
-                      <svg
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                      <span class="text-sm">Delete</span>
-                    </button>
-                  </div>
-                  } }
+                  }
                 </div>
-                } }
-
-                <!-- Add More Videos Button -->
-                @if (isViewingOwnProfile() && videoUrls().length < 4) {
-                <button
-                  (click)="navigateToUpload()"
-                  class="aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex items-center justify-center"
-                >
-                  <svg
-                    class="h-8 w-8 text-neutral-600"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
-                }
               </div>
+
+              <!-- Add More Videos Text Button (for 4+ videos) -->
+              @if (isViewingOwnProfile() && videoUrls().length >= 4) {
+              <button
+                (click)="navigateToUpload()"
+                class="w-full py-2 text-center text-sm text-neutral-400 hover:text-white transition-colors"
+              >
+                Add more
+              </button>
+              }
               } @else if (isViewingOwnProfile()) {
               <button
                 (click)="navigateToUpload()"
