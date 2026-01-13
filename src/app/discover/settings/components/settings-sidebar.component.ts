@@ -1,5 +1,6 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 export type SettingsTab =
   | 'account'
@@ -17,6 +18,8 @@ export type SettingsTab =
   styleUrls: ['./settings-sidebar.component.css'],
 })
 export class SettingsSidebarComponent {
+  private router = inject(Router);
+
   // Inputs
   availableTabs = input.required<SettingsTab[]>();
   activeTab = input.required<SettingsTab>();
@@ -70,6 +73,7 @@ export class SettingsSidebarComponent {
 
   // Event handlers
   onTabClick(tab: SettingsTab): void {
+    this.router.navigate(['/discover/settings', tab]);
     this.tabChange.emit(tab);
   }
 }

@@ -225,16 +225,23 @@ export class SettingsComponent implements OnInit {
       }
     });
 
-    // Wait for auth to be fully initialized before loading user data
-    this.loadingService.isLoading$
-      .pipe(
-        filter((isLoading) => !isLoading),
-        take(1)
-      )
-      .subscribe(async () => {
-        await this.loadUserData();
-        await this.profileService.loadProfileData();
-      });
+    const user = this.auth.getCurrentUser();
+    if (user) {
+      await this.loadUserData();
+      await this.profileService.loadProfileData();
+    }
+  }
+
+  private isValidTab(tab: string): tab is SettingsTab {
+    const validTabs: SettingsTab[] = [
+      'account',
+      'privacy',
+      'subscriptions',
+      'analytics',
+      'support',
+      'legal',
+    ];
+    return validTabs.includes(tab as SettingsTab);
   }
 
   setActiveTab(tab: SettingsTab) {

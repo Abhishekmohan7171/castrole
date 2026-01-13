@@ -109,6 +109,13 @@ export const routes: Routes = [
             (m) => m.SettingsComponent
           ),
       },
+      {
+        path: 'settings/:section',
+        loadComponent: () =>
+          import('./discover/settings/settings.component').then(
+            (m) => m.SettingsComponent
+          ),
+      },
       // Public profile routes (/:slugUid format - STORED in database)
       // Example: /discover/rajkumar-rao-xK9mP2nQ7R
       {
