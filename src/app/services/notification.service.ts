@@ -364,7 +364,7 @@ export class NotificationService {
       category: 'analytics',
       title: 'Monthly Profile Views',
       message: `Your profile got ${viewCount} views this month — View full analytics`,
-      actionUrl: `/discover/settings/analytics`,
+      actionUrl: `/discover/settings?tab=analytics`,
       metadata: {
         viewCount,
         isPremium: true
@@ -389,7 +389,7 @@ export class NotificationService {
       category: 'analytics',
       title: 'Monthly Search Appearances',
       message: `You appeared in ${searchCount} searches this month — View full analytics`,
-      actionUrl: `/discover/settings/analytics`,
+      actionUrl: `/discover/settings?tab=analytics`,
       metadata: {
         searchCount,
         isPremium: true
@@ -451,7 +451,7 @@ export class NotificationService {
       message: isRenewal 
         ? 'Your premium subscription has been successfully renewed'
         : `Your premium subscription expires in ${daysUntilExpiry} days. Renew to keep premium features`,
-      actionUrl: `/discover/settings/subscription`,
+      actionUrl: `/discover/settings?tab=subscriptions`,
       metadata: {
         daysUntilExpiry,
         isPremium: true
@@ -473,7 +473,7 @@ export class NotificationService {
       category: 'system',
       title: 'New Device Login',
       message: `New login detected from ${deviceInfo}. If this wasn't you, secure your account immediately`,
-      actionUrl: `/discover/settings/account`,
+      actionUrl: `/discover/settings?tab=account`,
       metadata: {
         deviceInfo,
         ipAddress
@@ -634,7 +634,7 @@ export class NotificationService {
       category: 'system',
       title: 'Billing Update',
       message: billingMessage,
-      actionUrl: `/discover/settings/subscription`,
+      actionUrl: `/discover/settings?tab=subscriptions`,
       metadata: {
         isPremium: true
       }
@@ -655,7 +655,7 @@ export class NotificationService {
       category: 'system',
       title: 'New Device Login',
       message: `New login detected from ${deviceInfo}. If this wasn't you, secure your account immediately`,
-      actionUrl: `/discover/settings/account`,
+      actionUrl: `/discover/settings?tab=account`,
       metadata: {
         deviceInfo,
         ipAddress
