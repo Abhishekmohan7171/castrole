@@ -1,10 +1,4 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  signal,
-  computed,
-} from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -39,6 +33,9 @@ import { SupportSectionComponent } from './sections/support-section.component';
 import { LegalSectionComponent } from './sections/legal-section.component';
 import { AddAccountModalComponent } from './components/add-account-modal.component';
 import { EmailChangeModalComponent } from './components/email-change-modal.component';
+import { OtpComponent } from '../../common-components/otp/otp.component';
+import { OtpVerificationService } from '../../services/otp-verification.service';
+import { PhoneAuthService } from '../../services/phone-auth.service';
 
 @Component({
   selector: 'app-discover-settings',
@@ -55,6 +52,7 @@ import { EmailChangeModalComponent } from './components/email-change-modal.compo
     LegalSectionComponent,
     AddAccountModalComponent,
     EmailChangeModalComponent,
+    OtpComponent,
   ],
   templateUrl: './settings.component.html',
   styles: [],
@@ -70,6 +68,8 @@ export class SettingsComponent implements OnInit {
   private userService = inject(UserService);
   private toastService = inject(ToastService);
   private dataExportService = inject(DataExportService);
+  private otpVerificationService = inject(OtpVerificationService);
+  private phoneAuthService = inject(PhoneAuthService);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -84,7 +84,11 @@ export class SettingsComponent implements OnInit {
     }
 
     const profileData = this.profileService.profileData();
-    console.log(profileData,profileData?.actorProfile?.isSubscribed, ">>>>>>>>>>>><<<<<<<<<<")
+    console.log(
+      profileData,
+      profileData?.actorProfile?.isSubscribed,
+      '>>>>>>>>>>>><<<<<<<<<<'
+    );
     return profileData?.actorProfile?.isSubscribed ?? false;
   });
 
@@ -165,6 +169,10 @@ export class SettingsComponent implements OnInit {
   // Email change modal signals
   showEmailChangeModal = signal<boolean>(false);
 
+  // OTP modal signals
+  showOtpModal = signal<boolean>(false);
+  otpPhoneNumber = signal<string>('');
+
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
 
@@ -201,9 +209,16 @@ export class SettingsComponent implements OnInit {
 
   async ngOnInit() {
     // Read tab query parameter
-    this.route.queryParams.pipe(take(1)).subscribe(params => {
+    this.route.queryParams.pipe(take(1)).subscribe((params) => {
       const tabParam = params['tab'] as SettingsTab;
-      const validTabs: SettingsTab[] = ['account', 'privacy', 'subscriptions', 'analytics', 'support', 'legal'];
+      const validTabs: SettingsTab[] = [
+        'account',
+        'privacy',
+        'subscriptions',
+        'analytics',
+        'support',
+        'legal',
+      ];
 
       if (tabParam && validTabs.includes(tabParam)) {
         this.activeTab.set(tabParam);
@@ -229,7 +244,7 @@ export class SettingsComponent implements OnInit {
       relativeTo: this.route,
       queryParams: { tab },
       queryParamsHandling: 'merge',
-      replaceUrl: true
+      replaceUrl: true,
     });
   }
 
@@ -436,21 +451,57 @@ export class SettingsComponent implements OnInit {
 
     try {
       const currentData = this.editableUserData();
-      const updateData: Partial<UserDoc> = {};
+      const fieldValue = currentData[field].trim();
 
       // Validate the field value
-      const fieldValue = currentData[field].trim();
       if (!fieldValue) {
-        console.error(`${field} cannot be empty`);
+        this.toastService.error(`${field} cannot be empty`);
         return;
       }
 
       // Additional validation for email
       if (field === 'email' && !this.isValidEmail(fieldValue)) {
-        console.error('Please enter a valid email address');
+        this.toastService.error('Please enter a valid email address');
         return;
       }
 
+      // For phone number changes, require OTP verification
+      if (field === 'phone') {
+        const currentUserData = this.userData();
+        const currentPhone = currentUserData?.phone || '';
+
+        // Check if phone number actually changed
+        if (fieldValue !== currentPhone) {
+          // Validate phone number format (should be in format: +XX-XXXXXXXXXX)
+          const phonePattern = /^\+\d{1,4}-\d{6,12}$/;
+          if (!phonePattern.test(fieldValue)) {
+            this.toastService.error(
+              'Please enter a valid phone number in format: +XX-XXXXXXXXXX'
+            );
+            return;
+          }
+
+          // Format phone number for Firebase (remove hyphen for OTP)
+          const phoneForOtp = fieldValue.replace('-', '');
+
+          // Store the phone number and open OTP modal
+          this.otpPhoneNumber.set(phoneForOtp);
+          this.showOtpModal.set(true);
+
+          // Send OTP
+          try {
+            await this.phoneAuthService.sendOTP(phoneForOtp);
+            this.toastService.info('OTP sent to your new phone number');
+          } catch (error: any) {
+            this.toastService.error(error.message || 'Failed to send OTP');
+            this.showOtpModal.set(false);
+          }
+          return; // Don't save yet, wait for OTP verification
+        }
+      }
+
+      // For email or unchanged phone, save directly
+      const updateData: Partial<UserDoc> = {};
       updateData[field] = fieldValue;
 
       const userDocRef = doc(this.firestore, 'users', user.uid);
@@ -466,8 +517,13 @@ export class SettingsComponent implements OnInit {
       const fields = new Set(this.editingFields());
       fields.delete(field);
       this.editingFields.set(fields);
+
+      this.toastService.success(
+        `${field === 'email' ? 'Email' : 'Phone number'} updated successfully`
+      );
     } catch (error) {
       console.error(`Error updating ${field}:`, error);
+      this.toastService.error(`Failed to update ${field}`);
       // Revert the editable data on error
       const currentUserData = this.userData();
       if (currentUserData) {
@@ -569,6 +625,70 @@ export class SettingsComponent implements OnInit {
     this.showEmailChangeModal.set(false);
     // Reload user data to get updated email
     this.loadUserData();
+  }
+
+  // =========================
+  // OTP Modal Methods
+  // =========================
+
+  async onOtpVerified() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    try {
+      const currentData = this.editableUserData();
+      const phoneValue = currentData.phone.trim();
+
+      // Update phone number in Firestore
+      const userDocRef = doc(this.firestore, 'users', user.uid);
+      await updateDoc(userDocRef, { phone: phoneValue });
+
+      // Update the userData signal
+      const currentUserData = this.userData();
+      if (currentUserData) {
+        this.userData.set({ ...currentUserData, phone: phoneValue });
+      }
+
+      // Remove phone from editing state
+      const fields = new Set(this.editingFields());
+      fields.delete('phone');
+      this.editingFields.set(fields);
+
+      // Close OTP modal
+      this.showOtpModal.set(false);
+
+      this.toastService.success('Phone number updated successfully');
+    } catch (error) {
+      console.error('Error updating phone after OTP verification:', error);
+      this.toastService.error('Failed to update phone number');
+
+      // Revert the editable data on error
+      const currentUserData = this.userData();
+      if (currentUserData) {
+        this.editableUserData.set({
+          email: currentUserData.email || '',
+          phone: currentUserData.phone || '',
+        });
+      }
+    }
+  }
+
+  onCloseOtpModal() {
+    this.showOtpModal.set(false);
+
+    // Revert phone number to original value
+    const currentUserData = this.userData();
+    if (currentUserData) {
+      this.editableUserData.set({
+        email: currentUserData.email || '',
+        phone: currentUserData.phone || '',
+      });
+    }
+
+    // Remove phone from editing state
+    const fields = new Set(this.editingFields());
+    fields.delete('phone');
+    this.editingFields.set(fields);
   }
 
   async switchRole() {
@@ -814,7 +934,7 @@ export class SettingsComponent implements OnInit {
       this.closeRecentLoginsModal();
 
       // Wait a moment for user to see the initial toast
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Logout from all devices (clears device array and updates loggedInTime)
       await this.auth.logoutAllDevices(user.uid);
@@ -823,7 +943,7 @@ export class SettingsComponent implements OnInit {
       this.toastService.success('Logged out of all devices successfully', 3000);
 
       // Wait longer for user to see the success message before navigating away
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Sign out the current user
       await this.auth.logout();
@@ -831,11 +951,14 @@ export class SettingsComponent implements OnInit {
       // Force redirect to login page
       await this.router.navigate(['/auth/login'], {
         queryParams: { reason: 'logout-all-devices' },
-        replaceUrl: true // Replace current URL in history
+        replaceUrl: true, // Replace current URL in history
       });
     } catch (error) {
       console.error('Error logging out from all devices:', error);
-      this.toastService.error('Failed to logout from all devices. Please try again.', 5000);
+      this.toastService.error(
+        'Failed to logout from all devices. Please try again.',
+        5000
+      );
 
       // On error, still try to redirect to login
       await this.router.navigate(['/auth/login']);
@@ -914,7 +1037,7 @@ export class SettingsComponent implements OnInit {
       // Logout and redirect to login with reason
       await this.auth.logout();
       this.router.navigate(['/auth/login'], {
-        queryParams: { reason: 'deletion-requested' }
+        queryParams: { reason: 'deletion-requested' },
       });
     } catch (error) {
       console.error('❌ Error deleting account:', error);
@@ -1075,7 +1198,10 @@ export class SettingsComponent implements OnInit {
 
     const user = this.auth.getCurrentUser();
     if (!user) {
-      this.toastService.error('You must be logged in to submit feedback.', 3000);
+      this.toastService.error(
+        'You must be logged in to submit feedback.',
+        3000
+      );
       return;
     }
 
