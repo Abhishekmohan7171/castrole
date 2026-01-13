@@ -280,11 +280,9 @@ export class NotificationDrawerComponent {
   }
 
   markAsRead(notification: Notification): void {
+    // Only mark as read, no navigation or drawer closing
     if (!notification.read) {
       this.markAsReadEvent.emit(notification);
-    }
-    if (notification.actionUrl) {
-      this.notificationClick.emit(notification);
     }
   }
 

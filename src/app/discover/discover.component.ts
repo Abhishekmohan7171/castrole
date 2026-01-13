@@ -698,13 +698,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     if (!this.uid) return;
     
     try {
+      // Only mark as read, no navigation or drawer closing
       await this.notificationService.markAsRead(this.uid, notification.id);
-      
-      // Navigate if there's an action URL
-      if (notification.actionUrl) {
-        this.router.navigate([notification.actionUrl]);
-        this.closeNotificationDrawer();
-      }
     } catch (error) {
       this.logger.error('Error marking notification as read:', error);
     }
