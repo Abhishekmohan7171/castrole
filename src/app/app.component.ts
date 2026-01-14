@@ -27,8 +27,17 @@ export class AppComponent implements OnInit {
   authInitialized = false;
   
   ngOnInit() {
+    // Flag to ensure initial navigation logic runs only once
+    let hasInitialized = false;
+
     // Wait for Firebase Auth to initialize
-    const unsubscribe = this.auth.onAuthStateChanged(async (user) => {
+    this.auth.onAuthStateChanged(async (user) => {
+      // Only run the initial navigation logic once
+      if (hasInitialized) {
+        return;
+      }
+      hasInitialized = true;
+
       // Run in NgZone to ensure Angular detects the changes
       await this.ngZone.run(async () => {
         console.log('Auth state changed:', user ? 'logged in' : 'logged out');
@@ -92,9 +101,6 @@ export class AppComponent implements OnInit {
           }
           // Otherwise preserve the current route (e.g., /onboarding)
         }
-
-        // Unsubscribe from auth state changes
-        unsubscribe();
       });
     });
   }
