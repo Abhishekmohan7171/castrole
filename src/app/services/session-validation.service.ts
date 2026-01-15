@@ -105,6 +105,16 @@ export class SessionValidationService {
     // Add 10 second grace period to account for server/client time differences and fresh login timing
     const GRACE_PERIOD_MS = 10000; // 10 seconds
 
+    // Calculate how long this session has been active
+    const currentTime = Date.now();
+    const sessionAge = currentTime - sessionStartTime;
+
+    // Skip validation for very new sessions (< 30 seconds) to avoid false positives during registration
+    if (sessionAge < 30000) {
+      console.log('[SessionValidation] Session is very recent, skipping validation to allow registration to complete');
+      return;
+    }
+
     // If server's loggedInTime is newer than our session start (with grace period), we've been logged out
     if (serverLoggedInTime > sessionStartTime + GRACE_PERIOD_MS) {
       console.log('[SessionValidation] Session invalidated. Server time:', new Date(serverLoggedInTime), 'Session start:', new Date(sessionStartTime));
@@ -133,7 +143,18 @@ export class SessionValidationService {
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
-        console.warn('[SessionValidation] User document does not exist');
+        // Document doesn't exist yet - this could be a fresh registration where the
+        // auth state changed before the document was created. Check if session is very recent.
+        const currentTime = Date.now();
+        const timeSinceSessionStart = currentTime - sessionStartTime;
+
+        // If session was created within the last 30 seconds, treat as valid (fresh registration)
+        if (timeSinceSessionStart < 30000) {
+          console.log('[SessionValidation] User document does not exist yet, but session is recent. Treating as valid (fresh registration).');
+          return true;
+        }
+
+        console.warn('[SessionValidation] User document does not exist and session is not recent');
         return false;
       }
 

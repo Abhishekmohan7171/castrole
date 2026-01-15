@@ -485,6 +485,9 @@ export class AuthService {
       await updateProfile(cred.user, { displayName: name });
     } catch {}
 
+    // Store session start BEFORE creating user document to prevent race condition
+    this.sessionValidation.initializeSession(cred.user.uid);
+
     // Create user document in users collection
     const ref = doc(this.db, 'users', cred.user.uid);
     const currentDevice = this.browserDetection.detectBrowser();
@@ -878,6 +881,9 @@ export class AuthService {
         }
       }
     }
+
+    // Store session start BEFORE creating user document to prevent race condition
+    this.sessionValidation.initializeSession(user.uid);
 
     // Create user document in users collection
     const ref = doc(this.db, 'users', user.uid);

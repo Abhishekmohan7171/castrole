@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -35,7 +35,6 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
 import { EmailChangeModalComponent } from './components/email-change-modal.component';
 import { OtpComponent } from '../../common-components/otp/otp.component';
 import { OtpVerificationService } from '../../services/otp-verification.service';
-import { PhoneAuthService } from '../../services/phone-auth.service';
 
 @Component({
   selector: 'app-discover-settings',
@@ -69,7 +68,6 @@ export class SettingsComponent implements OnInit {
   private toastService = inject(ToastService);
   private dataExportService = inject(DataExportService);
   private otpVerificationService = inject(OtpVerificationService);
-  private phoneAuthService = inject(PhoneAuthService);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -172,6 +170,9 @@ export class SettingsComponent implements OnInit {
   // OTP modal signals
   showOtpModal = signal<boolean>(false);
   otpPhoneNumber = signal<string>('');
+
+  // OTP modal ViewChild reference
+  @ViewChild('otpModal') otpModal!: OtpComponent;
 
   // Mobile sidebar state
   isMobileSidebarOpen = signal(false);
@@ -491,18 +492,16 @@ export class SettingsComponent implements OnInit {
           // Format phone number for Firebase (remove hyphen for OTP)
           const phoneForOtp = fieldValue.replace('-', '');
 
-          // Store the phone number and open OTP modal
+          // Store the phone number for later use after OTP verification
           this.otpPhoneNumber.set(phoneForOtp);
+
+          // Set modal state signal (for template binding)
           this.showOtpModal.set(true);
 
-          // Send OTP
-          try {
-            await this.phoneAuthService.sendOTP(phoneForOtp);
-            this.toastService.info('OTP sent to your new phone number');
-          } catch (error: any) {
-            this.toastService.error(error.message || 'Failed to send OTP');
-            this.showOtpModal.set(false);
-          }
+          // Open OTP modal using the component's open method
+          // This ensures reCAPTCHA is properly initialized before sending OTP
+          this.otpModal.open(phoneForOtp);
+
           return; // Don't save yet, wait for OTP verification
         }
       }
