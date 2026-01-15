@@ -1024,12 +1024,11 @@
   }
 
   <!-- OTP Modal -->
-  @if (showOtpModal()) {
   <app-otp
+    #otpModal
     [isOpen]="showOtpModal()"
     [phone]="otpPhoneNumber()"
     (closeModal)="onCloseOtpModal()"
     (otpVerified)="onOtpVerified()"
   />
-  }
 </div>
