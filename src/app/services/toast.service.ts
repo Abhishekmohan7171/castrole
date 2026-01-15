@@ -1,13 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'upload';
 
 export interface Toast {
   id: string;
   type: ToastType;
   message: string;
-  duration: number;
+  duration?: number; // Optional for long-running uploads
   timestamp: number;
+  progress?: number; // 0-100 for upload progress
 }
 
 @Injectable({
@@ -24,13 +25,14 @@ export class ToastService {
     return `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private addToast(type: ToastType, message: string, duration: number = 5000): void {
+  private addToast(type: ToastType, message: string, duration?: number, progress?: number): void {
     const toast: Toast = {
       id: this.generateId(),
       type,
       message,
       duration,
       timestamp: Date.now(),
+      progress,
     };
 
     // Add new toast
@@ -42,12 +44,49 @@ export class ToastService {
       this.toasts.set(this.toasts().slice(1));
     }
 
-    // Auto-dismiss after duration
-    if (duration > 0) {
+    // Auto-dismiss after duration (if specified)
+    if (duration && duration > 0) {
       setTimeout(() => {
         this.dismiss(toast.id);
       }, duration);
     }
+  }
+
+  showUploadProgress(message: string): string {
+    const id = this.generateId();
+    const toast: Toast = {
+      id,
+      type: 'upload',
+      message,
+      progress: 0,
+      timestamp: Date.now(),
+      // No duration - won't auto-dismiss
+    };
+
+    const currentToasts = this.toasts();
+    this.toasts.set([...currentToasts, toast]);
+
+    if (this.toasts().length > this.maxToasts) {
+      this.toasts.set(this.toasts().slice(1));
+    }
+
+    return id;
+  }
+
+  update(id: string, updates: Partial<Toast>): void {
+    this.toasts.update(current =>
+      current.map(t => {
+        if (t.id === id) {
+          const updated = { ...t, ...updates };
+          // If duration is set during update, schedule auto-dismiss
+          if (updates.duration && updates.duration > 0 && !t.duration) {
+            setTimeout(() => this.dismiss(id), updates.duration);
+          }
+          return updated;
+        }
+        return t;
+      })
+    );
   }
 
   success(message: string, duration: number = 5000): void {

@@ -536,11 +536,10 @@ export class UploadComponent implements OnInit, OnDestroy {
   isCompressing = signal<boolean>(false);
   compressionProgress = signal<number>(0);
   
-  // GCP Processing state
+  // GCP Processing state (kept for backward compatibility with template)
   processingStatus = signal<'UPLOADING' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED'>('UPLOADING');
   currentVideoId = signal<string>('');
   processingError = signal<string>('');
-  private statusUnsubscribe?: () => void;
   
   // Firebase services
   private storage = inject(Storage);
@@ -701,11 +700,6 @@ export class UploadComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clean up Firestore listener
-    if (this.statusUnsubscribe) {
-      this.statusUnsubscribe();
-    }
-    
     // Clean up any active intervals
     this.activeIntervals.forEach(id => clearInterval(id));
     this.activeIntervals = [];
@@ -996,202 +990,57 @@ export class UploadComponent implements OnInit, OnDestroy {
     const file = this.selectedVideoFile();
     if (!file) return;
 
-    // Reset state
-    this.uploadError.set('');
-    this.uploadSuccess.set(false);
-    this.isUploading.set(true);
-    this.uploadProgress.set(0);
-    this.processingStatus.set('UPLOADING');
-
-    try {
-      const userId = this.auth.currentUser?.uid;
-      if (!userId) {
-        this.uploadError.set('Please sign in to upload videos');
-        this.isUploading.set(false);
-        return;
-      }
-      
-      // Check upload limit
-      if (!this.canUploadMoreVideos()) {
-        const limit = this.videoUploadLimit();
-        this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' videos. Upgrade to premium for unlimited uploads.'}`);        this.isUploading.set(false);
-        return;
-      }
-
-      // Check file size limit (1000MB / 1GB)
-      const fileSizeMB = file.size / (1024 * 1024);
-      if (fileSizeMB > 1000) {
-        this.uploadError.set(`Video is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is 1GB (1000MB).`);
-        this.isUploading.set(false);
-        return;
-      }
-
-      // Generate unique video ID
-      const videoId = `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      this.currentVideoId.set(videoId);
-
-      // Get file extension
-      const fileExt = file.name.split('.').pop() || 'mp4';
-      
-      // Storage path: raw/{userId}/{videoId}/original.{ext}
-      const storagePath = `raw/${userId}/${videoId}/original.${fileExt}`;
-      const storageRef = ref(this.storage, storagePath);
-
-      // Create Firestore document
-      const firestoreDocRef = doc(
-        this.firestore,
-        `uploads/${userId}/userUploads/${videoId}`
-      );
-
-      // Upload cover image first if provided
-      let coverImageUrl = '';
-      const coverImage = this.coverImageFile();
-      if (coverImage) {
-        try {
-          const coverImageExt = coverImage.name.split('.').pop() || 'jpg';
-          const coverImagePath = `covers/${userId}/${videoId}/cover.${coverImageExt}`;
-          const coverImageRef = ref(this.storage, coverImagePath);
-          
-          const coverUploadTask = await uploadBytesResumable(coverImageRef, coverImage, {
-            contentType: coverImage.type
-          });
-          
-          coverImageUrl = await getDownloadURL(coverUploadTask.ref);
-        } catch (error: any) {
-          console.error('Failed to upload cover image:', error);
-          // Continue with video upload even if cover upload fails
-        }
-      }
-
-      const firestoreData = {
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedAt: serverTimestamp(),
-        userId: userId,
-        videoId: videoId,
-        rawPath: storagePath,
-        processingStatus: 'UPLOADING',
-        ...(coverImageUrl && { coverImageUrl }),
-        metadata: {
-          tags: this.tags().map(tag => tag.name),
-          description: this.description(),
-          duration: this.videoDuration(),
-          resolution: this.videoResolution(),
-          fps: this.videoFps(),
-          bitrate: this.videoBitrate(),
-          originalSize: file.size
-        }
-      };
-
-      await setDoc(firestoreDocRef, firestoreData);
-
-      // Start upload
-      const uploadTask = uploadBytesResumable(storageRef, file, {
-        contentType: file.type
-      });
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // Upload progress
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          this.uploadProgress.set(progress);
-        },
-        (error) => {
-          // Upload error
-          this.uploadError.set(`Upload failed: ${error.message}`);
-          this.isUploading.set(false);
-          
-          // Reload counts in case of error
-          this.loadUploadCounts();
-          this.processingStatus.set('FAILED');
-          
-          // Update Firestore
-          setDoc(firestoreDocRef, {
-            processingStatus: 'FAILED',
-            processingError: error.message
-          }, { merge: true });
-        },
-        async () => {
-          // Upload complete
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            
-            // Update Firestore - upload complete
-            await setDoc(firestoreDocRef, {
-              rawUrl: downloadURL,
-              uploadCompletedAt: serverTimestamp()
-            }, { merge: true });
-
-            // Upload done, now processing on server
-            this.uploadProgress.set(100);
-            this.processingStatus.set('QUEUED');
-
-            // Start watching processing status
-            this.watchProcessingStatus(userId, videoId);
-
-          } catch (error: any) {
-            this.uploadError.set(`Upload failed: ${error.message}`);
-            this.isUploading.set(false);
-            this.processingStatus.set('FAILED');
-          }
-        }
-      );
-
-    } catch (error: any) {
-      this.uploadError.set(`Upload failed: ${error.message}`);
-      this.isUploading.set(false);
-      this.processingStatus.set('FAILED');
+    const userId = this.auth.currentUser?.uid;
+    if (!userId) {
+      this.uploadError.set('Please sign in to upload videos');
+      return;
     }
+
+    // Check upload limit
+    if (!this.canUploadMoreVideos()) {
+      const limit = this.videoUploadLimit();
+      this.uploadError.set(`Upload limit reached. ${this.isSubscribed() ? '' : 'Free users can upload up to ' + limit + ' videos. Upgrade to premium for unlimited uploads.'}`);
+      return;
+    }
+
+    // Check file size limit (1000MB / 1GB)
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 1000) {
+      this.uploadError.set(`Video is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is 1GB (1000MB).`);
+      return;
+    }
+
+    // Prepare metadata
+    const metadata = {
+      tags: this.tags().map(tag => tag.name),
+      description: this.description(),
+      duration: this.videoDuration(),
+      resolution: this.videoResolution(),
+      fps: this.videoFps(),
+      bitrate: this.videoBitrate()
+    };
+
+    // Get cover image if provided
+    const coverImage = this.coverImageFile();
+
+    // Call background upload service
+    // This will handle the entire upload lifecycle independently
+    await this.uploadService.backgroundVideoUpload(file, metadata, coverImage);
+
+    // Increment upload count immediately
+    this.uploadedVideoCount.set(this.uploadedVideoCount() + 1);
+
+    // Update profile character types
+    await this.updateProfileCharacterTypes(userId);
+
+    // Reset form immediately - upload continues in background
+    this.resetVideoForm();
+
+    // Optional: Navigate to feed to see other content
+    // User can navigate away and upload will continue via toast notifications
+    // this.router.navigate(['/discover']);
   }
 
-  /**
-   * Watch processing status in real-time
-   */
-  private watchProcessingStatus(userId: string, videoId: string): void {
-    const docRef = doc(this.firestore, `uploads/${userId}/userUploads/${videoId}`);
-
-    this.statusUnsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const status = data['processingStatus'];
-          
-          this.processingStatus.set(status);
-
-          if (status === 'READY') {
-            // Processing complete!
-            this.isUploading.set(false);
-            this.uploadSuccess.set(true);
-            
-            // Increment video count
-            this.uploadedVideoCount.set(this.uploadedVideoCount() + 1);
-            
-            // Update profile characterTypes
-            this.updateProfileCharacterTypes(userId);
-            
-            // Stop watching
-            if (this.statusUnsubscribe) {
-              this.statusUnsubscribe();
-            }
-          } else if (status === 'FAILED') {
-            this.uploadError.set(data['processingError'] || 'Processing failed');
-            this.isUploading.set(false);
-            this.processingStatus.set('FAILED');
-            
-            // Stop watching
-            if (this.statusUnsubscribe) {
-              this.statusUnsubscribe();
-            }
-          }
-        }
-      },
-      (error) => {
-        this.uploadError.set(`Error watching status: ${error.message}`);
-      }
-    );
-  }
 
   /**
    * Compress video using browser's MediaRecorder API
