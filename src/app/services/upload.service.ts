@@ -13,12 +13,14 @@ import {
   limit,
   getDocs,
   collectionGroup,
-  QueryConstraint
+  QueryConstraint,
+  onSnapshot
 } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
 import { UploadProgress, MediaUpload, VideoMetadata, ImageMetadata } from '../../assets/interfaces/interfaces';
 import { VideoCompressionService } from './video-compression.service';
+import { ToastService } from './toast.service';
 
 
 @Injectable({
@@ -29,6 +31,177 @@ export class UploadService {
   private db = inject(Firestore);
   private auth = inject(Auth);
   private videoCompressionService = inject(VideoCompressionService);
+  private toastService = inject(ToastService);
+
+  /**
+   * Background video upload that runs independently of component lifecycle.
+   * Handles: Upload -> Cover Image -> Firestore Monitoring -> Toast Updates
+   * @param file Video file to upload
+   * @param metadata Video metadata (tags, description, duration, etc.)
+   * @param coverImageFile Optional cover image file
+   */
+  async backgroundVideoUpload(
+    file: File,
+    metadata: VideoMetadata & { duration: number; resolution: string; fps: number; bitrate: number },
+    coverImageFile?: File | null
+  ): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      this.toastService.error('You must be logged in to upload.');
+      return;
+    }
+
+    const toastId = this.toastService.showUploadProgress(`Preparing ${file.name}...`);
+
+    try {
+      // Generate unique video ID
+      const videoId = `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      const storagePath = `raw/${user.uid}/${videoId}/original.${fileExt}`;
+      const storageRef = ref(this.storage, storagePath);
+      const firestoreDocRef = doc(this.db, `uploads/${user.uid}/userUploads/${videoId}`);
+
+      // Upload cover image first if provided
+      let coverImageUrl = '';
+      if (coverImageFile) {
+        try {
+          this.toastService.update(toastId, { message: 'Uploading cover image...' });
+          const coverImageExt = coverImageFile.name.split('.').pop() || 'jpg';
+          const coverImagePath = `covers/${user.uid}/${videoId}/cover.${coverImageExt}`;
+          const coverImageRef = ref(this.storage, coverImagePath);
+          
+          const coverUploadTask = await uploadBytesResumable(coverImageRef, coverImageFile, {
+            contentType: coverImageFile.type
+          });
+          
+          coverImageUrl = await getDownloadURL(coverUploadTask.ref);
+        } catch (error: any) {
+          console.error('Failed to upload cover image:', error);
+          // Continue with video upload even if cover upload fails
+        }
+      }
+
+      // Save initial Firestore metadata
+      await setDoc(firestoreDocRef, {
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedAt: serverTimestamp(),
+        userId: user.uid,
+        videoId: videoId,
+        rawPath: storagePath,
+        processingStatus: 'UPLOADING',
+        ...(coverImageUrl && { coverImageUrl }),
+        metadata: {
+          tags: metadata.tags || [],
+          description: metadata.description || '',
+          duration: metadata.duration,
+          resolution: metadata.resolution,
+          fps: metadata.fps,
+          bitrate: metadata.bitrate,
+          originalSize: file.size
+        }
+      });
+
+      // Start video upload
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType: file.type
+      });
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          this.toastService.update(toastId, {
+            progress: progress,
+            message: `Uploading: ${progress.toFixed(0)}%`
+          });
+        },
+        (error) => {
+          this.toastService.update(toastId, {
+            type: 'error',
+            message: `Upload failed: ${error.message}`,
+            duration: 7000
+          });
+        },
+        async () => {
+          try {
+            // Upload complete - get download URL
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            
+            // Update Firestore
+            await setDoc(firestoreDocRef, {
+              rawUrl: downloadURL,
+              uploadCompletedAt: serverTimestamp(),
+              processingStatus: 'QUEUED'
+            }, { merge: true });
+
+            this.toastService.update(toastId, {
+              message: 'Upload complete. Processing...',
+              progress: 100
+            });
+
+            // Start watching processing status
+            this.watchProcessingInService(user.uid, videoId, toastId, file.name);
+          } catch (error: any) {
+            this.toastService.update(toastId, {
+              type: 'error',
+              message: `Error: ${error.message}`,
+              duration: 7000
+            });
+          }
+        }
+      );
+    } catch (err: any) {
+      this.toastService.update(toastId, {
+        type: 'error',
+        message: `Error: ${err.message}`,
+        duration: 7000
+      });
+    }
+  }
+
+  /**
+   * Watch Firestore processing status and update toast.
+   * Runs independently of component lifecycle.
+   */
+  private watchProcessingInService(
+    userId: string,
+    videoId: string,
+    toastId: string,
+    fileName: string
+  ): void {
+    const docRef = doc(this.db, `uploads/${userId}/userUploads/${videoId}`);
+
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      const data = snapshot.data();
+      const status = data?.['processingStatus'];
+
+      if (status === 'QUEUED') {
+        this.toastService.update(toastId, {
+          message: 'Video queued for processing...'
+        });
+      } else if (status === 'PROCESSING') {
+        this.toastService.update(toastId, {
+          message: 'Processing video formats...'
+        });
+      } else if (status === 'READY') {
+        this.toastService.update(toastId, {
+          type: 'success',
+          message: `${fileName} is ready!`,
+          duration: 5000
+        });
+        unsubscribe();
+      } else if (status === 'FAILED') {
+        const errorMsg = data?.['processingError'] || 'Processing failed';
+        this.toastService.update(toastId, {
+          type: 'error',
+          message: errorMsg,
+          duration: 7000
+        });
+        unsubscribe();
+      }
+    });
+  }
 
   /**
    * Upload a video file to Firebase Storage and save metadata to Firestore
