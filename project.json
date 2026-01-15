@@ -62,9 +62,7 @@
     "serve": {
       "executor": "@angular-devkit/build-angular:dev-server",
       "options": {
-        "headers": {
-          "Cross-Origin-Opener-Policy": "same-origin"
-        }
+     
       },
       "configurations": {
         "production": {
