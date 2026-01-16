@@ -179,6 +179,37 @@ export class LoginComponent implements OnInit {
     await this.signinEmailandPassword();
   }
 
+  private async handlePostLoginNavigation(uid: string) {
+    try {
+      const userDoc = await this.authService.getUserData(uid);
+      
+      if (!userDoc) {
+        await this.router.navigate(['/onboarding'], { replaceUrl: true });
+        return;
+      }
+
+      const roles = userDoc.roles || [];
+
+      if (roles.length > 1) {
+        await this.router.navigate(['/onboarding'], { 
+          queryParams: { mode: 'select' }, 
+          replaceUrl: true 
+        });
+        return;
+      }
+
+      if (roles.length === 1) {
+        await this.router.navigateByUrl(this.returnUrl);
+        return;
+      }
+
+      await this.router.navigate(['/onboarding'], { replaceUrl: true });
+
+    } catch (error) {
+      await this.router.navigateByUrl(this.returnUrl);
+    }
+  }
+
   async signinEmailandPassword() {
     if (this.form.invalid) return;
     const { email, password } = this.form.value;
@@ -187,8 +218,8 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.error = '';
     try {
-      await this.authService.loginWithEmail(email, password);
-      await this.router.navigateByUrl(this.returnUrl);
+      const user = await this.authService.loginWithEmail(email, password);
+      await this.handlePostLoginNavigation(user.uid);
     } catch (e: any) {
       const msg = e?.message || 'Failed to sign in';
       this.error = msg;
@@ -205,13 +236,9 @@ export class LoginComponent implements OnInit {
     try {
       const { user, exists } = await this.authService.signInWithGoogle();
 
-      // If user exists in the database, navigate to return URL
       if (exists) {
-        // Note: Login timestamp is already updated in signInWithGoogle()
-        await this.router.navigateByUrl(this.returnUrl);
+        await this.handlePostLoginNavigation(user.uid);
       } else {
-        // If user doesn't exist, redirect to onboarding with email pre-filled
-        // Use replaceUrl to prevent back button from returning to login
         await this.router.navigate(['/onboarding'], {
           queryParams: { email: user.email || '' },
           replaceUrl: true
@@ -232,13 +259,9 @@ export class LoginComponent implements OnInit {
     try {
       const { user, exists } = await this.authService.signInWithApple();
 
-      // If user exists in the database, navigate to return URL
       if (exists) {
-        // Note: Login timestamp is already updated in signInWithApple()
-        await this.router.navigateByUrl(this.returnUrl);
+        await this.handlePostLoginNavigation(user.uid);
       } else {
-        // If user doesn't exist, redirect to onboarding with email pre-filled
-        // Use replaceUrl to prevent back button from returning to login
         await this.router.navigate(['/onboarding'], {
           queryParams: { email: user.email || '' },
           replaceUrl: true

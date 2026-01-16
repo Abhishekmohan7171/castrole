@@ -18,7 +18,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId);
       
-      // Notifications sub-collection
+      // Notifications sub-collection (DEPRECATED - kept for backward compatibility)
       match /notifications/{notificationId} {
         // Users can only read their own notifications
         allow read: if isOwner(userId);
@@ -29,6 +29,32 @@ service cloud.firestore {
         // CRITICAL: Any authenticated user can create notifications for ANY user
         // This is required for actors to notify producers and vice versa
         // The recipientId in the notification determines who can read it
+        allow create: if request.auth != null;
+      }
+      
+      // Actor notifications sub-collection
+      match /notifications_actor/{notificationId} {
+        // Users can only read their own actor notifications
+        allow read: if isOwner(userId);
+        
+        // Users can update (mark as read) or delete their own notifications
+        allow update, delete: if isOwner(userId);
+        
+        // Any authenticated user can create notifications for any user
+        // This allows producers to send notifications to actors
+        allow create: if request.auth != null;
+      }
+      
+      // Producer notifications sub-collection
+      match /notifications_producer/{notificationId} {
+        // Users can only read their own producer notifications
+        allow read: if isOwner(userId);
+        
+        // Users can update (mark as read) or delete their own notifications
+        allow update, delete: if isOwner(userId);
+        
+        // Any authenticated user can create notifications for any user
+        // This allows actors to send notifications to producers
         allow create: if request.auth != null;
       }
     }

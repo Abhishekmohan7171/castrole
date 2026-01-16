@@ -26,6 +26,8 @@ import {
   NotificationMetadata 
 } from '../discover/notification-drawer/notification-drawer.component';
 
+export type UserRole = 'actor' | 'producer';
+
 interface CreateNotificationParams {
   recipientId: string;
   type: NotificationType;
@@ -41,12 +43,25 @@ export class NotificationService {
   private db = inject(Firestore);
   private logger = inject(LoggerService);
 
+  // ==================== CORE PATH LOGIC ====================
+
   /**
-   * Observe notifications for a user (real-time)
+   * DYNAMIC PATH GENERATOR
+   * Returns: users/{uid}/notifications_actor OR users/{uid}/notifications_producer
    */
-  observeNotifications(userId: string): Observable<Notification[]> {
+  private getCollectionPath(userId: string, role: UserRole): string {
+    return `users/${userId}/notifications_${role}`;
+  }
+
+  // ==================== READ OPERATIONS ====================
+
+  /**
+   * Observe notifications for a SPECIFIC ROLE
+   */
+  observeNotifications(userId: string, role: UserRole): Observable<Notification[]> {
     return new Observable<Notification[]>((observer) => {
-      const notifsRef = collection(this.db, `users/${userId}/notifications`);
+      const path = this.getCollectionPath(userId, role);
+      const notifsRef = collection(this.db, path);
       const q = query(notifsRef, orderBy('timestamp', 'desc'), limit(50));
       
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -67,7 +82,7 @@ export class NotificationService {
         });
         observer.next(notifications);
       }, (error) => {
-        this.logger.error('Error observing notifications:', error);
+        this.logger.error(`Error observing ${role} notifications:`, error);
         observer.error(error);
       });
       
@@ -76,20 +91,21 @@ export class NotificationService {
   }
 
   /**
-   * Get unread count
+   * Get unread count for a SPECIFIC ROLE
    */
-  getUnreadCount(userId: string): Observable<number> {
-    return this.observeNotifications(userId).pipe(
+  getUnreadCount(userId: string, role: UserRole): Observable<number> {
+    return this.observeNotifications(userId, role).pipe(
       map(notifications => notifications.filter(n => !n.read).length)
     );
   }
 
   /**
-   * Mark notification as read
+   * Mark notification as read for a SPECIFIC ROLE
    */
-  async markAsRead(userId: string, notificationId: string): Promise<void> {
+  async markAsRead(userId: string, notificationId: string, role: UserRole): Promise<void> {
     try {
-      const notifRef = doc(this.db, `users/${userId}/notifications/${notificationId}`);
+      const path = this.getCollectionPath(userId, role);
+      const notifRef = doc(this.db, `${path}/${notificationId}`);
       await updateDoc(notifRef, {
         read: true,
         readAt: serverTimestamp()
@@ -100,11 +116,12 @@ export class NotificationService {
   }
 
   /**
-   * Mark all notifications as read
+   * Mark all notifications as read for a SPECIFIC ROLE
    */
-  async markAllAsRead(userId: string): Promise<void> {
+  async markAllAsRead(userId: string, role: UserRole): Promise<void> {
     try {
-      const notifsRef = collection(this.db, `users/${userId}/notifications`);
+      const path = this.getCollectionPath(userId, role);
+      const notifsRef = collection(this.db, path);
       const q = query(notifsRef, where('read', '==', false));
       const snapshot = await getDocs(q);
       
@@ -118,7 +135,7 @@ export class NotificationService {
       
       if (snapshot.docs.length > 0) {
         await batch.commit();
-        this.logger.info(`Marked ${snapshot.docs.length} notifications as read`);
+        this.logger.info(`Marked ${snapshot.docs.length} ${role} notifications as read`);
       }
     } catch (error) {
       this.logger.error('Failed to mark all notifications as read', error);
@@ -126,11 +143,12 @@ export class NotificationService {
   }
 
   /**
-   * Delete a notification
+   * Delete a notification for a SPECIFIC ROLE
    */
-  async deleteNotification(userId: string, notificationId: string): Promise<void> {
+  async deleteNotification(userId: string, notificationId: string, role: UserRole): Promise<void> {
     try {
-      const notifRef = doc(this.db, `users/${userId}/notifications/${notificationId}`);
+      const path = this.getCollectionPath(userId, role);
+      const notifRef = doc(this.db, `${path}/${notificationId}`);
       await updateDoc(notifRef, {
         read: true
       });
@@ -164,16 +182,23 @@ export class NotificationService {
     }
   }
 
+  // ==================== CREATION LOGIC (INTERNAL) ====================
+
   /**
-   * Core method to create any notification
+   * Core method to create any notification with ROLE-BASED ROUTING
    */
-  private async createNotification(params: CreateNotificationParams): Promise<void> {
+  private async createNotification(
+    params: CreateNotificationParams,
+    targetRole: UserRole
+  ): Promise<void> {
     try {
-      const notifsRef = collection(this.db, `users/${params.recipientId}/notifications`);
+      const path = this.getCollectionPath(params.recipientId, targetRole);
+      const notifsRef = collection(this.db, path);
       
       console.log('Creating notification:', {
         type: params.type,
         recipientId: params.recipientId,
+        targetRole,
         title: params.title,
         message: params.message
       });
@@ -198,11 +223,12 @@ export class NotificationService {
         timestamp: serverTimestamp(),
         read: false,
         actionUrl: params.actionUrl,
-        metadata: cleanMetadata
+        metadata: cleanMetadata,
+        targetRole
       });
 
-      console.log(`✓ Notification created: ${params.type} for user ${params.recipientId}`);
-      this.logger.info(`Notification created: ${params.type} for user ${params.recipientId}`);
+      console.log(`✓ Notification created (${targetRole}): ${params.type} for user ${params.recipientId}`);
+      this.logger.info(`Notification created (${targetRole}): ${params.type} for user ${params.recipientId}`);
     } catch (error) {
       console.error(`✗ Failed to create notification: ${params.type}`, error);
       this.logger.error(`Failed to create notification: ${params.type}`, error);
@@ -235,7 +261,7 @@ export class NotificationService {
         producerPhotoUrl,
         connectionId
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -261,7 +287,7 @@ export class NotificationService {
         producerPhotoUrl,
         chatRoomId
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -288,7 +314,7 @@ export class NotificationService {
         producerPhotoUrl,
         chatRoomId
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -316,7 +342,7 @@ export class NotificationService {
         producerPhotoUrl: isPremium ? producerPhotoUrl : undefined,
         isPremium
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -344,7 +370,7 @@ export class NotificationService {
         producerPhotoUrl: isPremium ? producerPhotoUrl : undefined,
         isPremium
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -369,7 +395,7 @@ export class NotificationService {
         viewCount,
         isPremium: true
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -394,7 +420,7 @@ export class NotificationService {
         searchCount,
         isPremium: true
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -414,7 +440,7 @@ export class NotificationService {
       metadata: {
         completenessPercentage
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -432,7 +458,7 @@ export class NotificationService {
       message: suggestion,
       actionUrl: `/discover/profile/edit`,
       metadata: {}
-    });
+    }, 'actor');
   }
 
   /**
@@ -456,7 +482,7 @@ export class NotificationService {
         daysUntilExpiry,
         isPremium: true
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -478,7 +504,7 @@ export class NotificationService {
         deviceInfo,
         ipAddress
       }
-    });
+    }, 'actor');
   }
 
   /**
@@ -497,7 +523,7 @@ export class NotificationService {
       message: updateMessage,
       actionUrl: `/discover/feed`,
       metadata: {}
-    });
+    }, 'actor');
   }
 
   // ==================== PRODUCER NOTIFICATIONS (8 types) ====================
@@ -525,7 +551,7 @@ export class NotificationService {
         actorPhotoUrl,
         chatRoomId
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -549,7 +575,7 @@ export class NotificationService {
         actorName,
         actorPhotoUrl
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -576,7 +602,7 @@ export class NotificationService {
         actorPhotoUrl,
         chatRoomId
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -596,7 +622,7 @@ export class NotificationService {
       metadata: {
         matchCount
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -618,7 +644,7 @@ export class NotificationService {
         growthPercentage,
         newActorCount
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -638,7 +664,7 @@ export class NotificationService {
       metadata: {
         isPremium: true
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -660,7 +686,7 @@ export class NotificationService {
         deviceInfo,
         ipAddress
       }
-    });
+    }, 'producer');
   }
 
   /**
@@ -679,7 +705,7 @@ export class NotificationService {
       message: updateMessage,
       actionUrl: `/discover/feed`,
       metadata: {}
-    });
+    }, 'producer');
   }
 
   // ==================== AUTO-TRIGGER HELPERS ====================
