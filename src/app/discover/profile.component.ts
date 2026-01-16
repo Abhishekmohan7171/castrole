@@ -31,6 +31,7 @@ import {
   listAll,
   getDownloadURL,
   deleteObject,
+  getMetadata,
 } from '@angular/fire/storage';
 import { UserDoc } from '../../assets/interfaces/interfaces';
 import {
@@ -617,8 +618,12 @@ import {
                     }
 
                     <!-- Play icon overlay -->
-                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div class="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center group-hover:bg-black/80 transition-colors">
+                    <div
+                      class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    >
+                      <div
+                        class="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center group-hover:bg-black/80 transition-colors"
+                      >
                         <svg
                           class="w-6 h-6 text-white ml-1"
                           viewBox="0 0 24 24"
@@ -727,8 +732,7 @@ import {
               >
                 Add more
               </button>
-              }
-              } @else if (isViewingOwnProfile()) {
+              } } @else if (isViewingOwnProfile()) {
               <button
                 (click)="navigateToUpload()"
                 class="w-full aspect-video rounded-lg bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors flex flex-col items-center justify-center gap-2 mb-4"
@@ -1382,7 +1386,7 @@ import {
         <!-- Close button -->
         <button
           (click)="closePreviewModal()"
-          class="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors ring-1 ring-white/20"
+          class="absolute top-8 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors ring-1 ring-white/20"
           aria-label="Close preview"
         >
           <svg
@@ -1400,10 +1404,9 @@ import {
           </svg>
         </button>
 
-
         <!-- Profile Picture Actions (only for images and own profile) -->
         @if (previewMediaType() === 'image' && isViewingOwnProfile()) {
-        <div class="absolute top-4 left-4 z-10 flex gap-2">
+        <div class="absolute top-8 left-4 z-10 flex gap-2">
           @if (!isPreviewImageProfilePicture()) {
           <button
             (click)="setAsProfilePicture(); $event.stopPropagation()"
@@ -1449,7 +1452,6 @@ import {
           }
         </div>
         }
-
 
         <!-- Previous button -->
         @if (canGoToPrevious()) {
@@ -1500,7 +1502,10 @@ import {
         <!-- Media content -->
         <div
           class="w-full h-full flex items-center justify-center px-20 relative"
-          [ngClass]="{ 'pb-32': previewMediaType() === 'video' && !isProfilePicIsolationMode() }"
+          [ngClass]="{
+            'pb-32':
+              previewMediaType() === 'video' && !isProfilePicIsolationMode()
+          }"
         >
           @if (previewMediaType() === 'image') {
           <img
@@ -1554,7 +1559,9 @@ import {
         </div>
 
         <!-- Video Info Section (below video) -->
-        @if (previewMediaType() === 'video' && !isProfilePicIsolationMode() && (currentVideoTags().length > 0 || currentVideoDescription() || currentVideoUpdatedAt())) {
+        @if (previewMediaType() === 'video' && !isProfilePicIsolationMode() &&
+        (currentVideoTags().length > 0 || currentVideoDescription() ||
+        currentVideoUpdatedAt())) {
         <div class="absolute bottom-4 left-4 right-4 z-10">
           <!-- Description Section (Full Width) -->
           <div
@@ -1780,7 +1787,7 @@ export class ProfileComponent implements OnInit {
   targetUsername = signal<string | null>(null);
   targetUserId = signal<string | null>(null);
   currentUserRole = signal<string>('producer'); // Default to producer to prevent purple flash
-  
+
   // Theming based on logged-in user's role (not the profile being viewed)
   isActorTheme = computed(() => this.currentUserRole() === 'actor');
 
@@ -1809,14 +1816,23 @@ export class ProfileComponent implements OnInit {
   showBlockMenu = signal<boolean>(false);
 
   // Media signals
-  videoData = signal<Array<{ url: string; docId: string; userId: string; coverImageUrl?: string }>>([]);
+  videoData = signal<
+    Array<{
+      url: string;
+      docId: string;
+      userId: string;
+      coverImageUrl?: string;
+      uploadedAt?: Date;
+    }>
+  >([]);
   videoUrls = computed(() => this.videoData().map((v) => v.url));
-  imageUrls = signal<string[]>([]);
+  imageUrls = signal<Array<{ url: string; timeCreated: Date }>>([]);
+  allImageUrls = computed(() => this.imageUrls().map((img) => img.url));
   isLoadingMedia = signal(false);
 
   // Gallery images (excluding profile picture)
   galleryImageUrls = computed(() => {
-    const allImages = this.imageUrls();
+    const allImages = this.allImageUrls();
     const profilePicUrl = this.getProfileImageUrl();
 
     if (!profilePicUrl) {
@@ -1857,7 +1873,7 @@ export class ProfileComponent implements OnInit {
   currentMediaList = computed(() => {
     return this.previewMediaType() === 'video'
       ? this.videoUrls()
-      : this.imageUrls();
+      : this.allImageUrls();
   });
 
   canGoToPrevious = computed(
@@ -2107,16 +2123,24 @@ export class ProfileComponent implements OnInit {
             const currentUser = this.auth.getCurrentUser();
             if (currentUser) {
               // Get current producer's info for notification
-              const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
-              const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() as UserDoc : null;
+              const currentUserDoc = await getDoc(
+                doc(this.firestore, 'users', currentUser.uid)
+              );
+              const currentUserData = currentUserDoc.exists()
+                ? (currentUserDoc.data() as UserDoc)
+                : null;
               const producerName = currentUserData?.name || 'A producer';
-              
+
               // Get producer photo
-              const producerProfileDoc = await getDoc(doc(this.firestore, 'profiles', currentUser.uid));
-              const producerPhotoUrl = producerProfileDoc.exists() 
-                ? producerProfileDoc.data()?.['producerProfile']?.['producerProfileImageUrl']
+              const producerProfileDoc = await getDoc(
+                doc(this.firestore, 'profiles', currentUser.uid)
+              );
+              const producerPhotoUrl = producerProfileDoc.exists()
+                ? producerProfileDoc.data()?.['producerProfile']?.[
+                    'producerProfileImageUrl'
+                  ]
                 : undefined;
-              
+
               await this.analyticsService.startProfileView(
                 profileData.uid,
                 currentUser.uid,
@@ -2173,16 +2197,24 @@ export class ProfileComponent implements OnInit {
         const currentUser = this.auth.getCurrentUser();
         if (currentUser) {
           // Get current producer's info for notification
-          const currentUserDoc = await getDoc(doc(this.firestore, 'users', currentUser.uid));
-          const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() as UserDoc : null;
+          const currentUserDoc = await getDoc(
+            doc(this.firestore, 'users', currentUser.uid)
+          );
+          const currentUserData = currentUserDoc.exists()
+            ? (currentUserDoc.data() as UserDoc)
+            : null;
           const producerName = currentUserData?.name || 'A producer';
-          
+
           // Get producer photo
-          const producerProfileDoc = await getDoc(doc(this.firestore, 'profiles', currentUser.uid));
-          const producerPhotoUrl = producerProfileDoc.exists() 
-            ? producerProfileDoc.data()?.['producerProfile']?.['producerProfileImageUrl']
+          const producerProfileDoc = await getDoc(
+            doc(this.firestore, 'profiles', currentUser.uid)
+          );
+          const producerPhotoUrl = producerProfileDoc.exists()
+            ? producerProfileDoc.data()?.['producerProfile']?.[
+                'producerProfileImageUrl'
+              ]
             : undefined;
-          
+
           await this.analyticsService.startProfileView(
             profileData.uid,
             currentUser.uid,
@@ -2220,8 +2252,9 @@ export class ProfileComponent implements OnInit {
             // Extract docId from folder name (last part of path)
             const docId = videoIdFolder.name;
 
-            // Fetch cover image URL from Firestore
+            // Fetch cover image URL and uploadedAt from Firestore
             let coverImageUrl: string | undefined;
+            let uploadedAt: Date | undefined;
             try {
               const uploadDocRef = doc(
                 this.firestore,
@@ -2230,12 +2263,26 @@ export class ProfileComponent implements OnInit {
               const uploadDoc = await getDoc(uploadDocRef);
 
               if (uploadDoc.exists()) {
-                coverImageUrl = uploadDoc.data()?.['coverImageUrl'];
+                const data = uploadDoc.data();
+                coverImageUrl = data?.['coverImageUrl'];
+                const uploadedAtRaw = data?.['uploadedAt'];
+
+                // Convert Firestore timestamp to Date
+                if (uploadedAtRaw) {
+                  uploadedAt = uploadedAtRaw.toDate
+                    ? uploadedAtRaw.toDate()
+                    : new Date(uploadedAtRaw);
+                }
 
                 if (coverImageUrl) {
-                  console.log(`✅ Cover image found for video ${docId}:`, coverImageUrl);
+                  console.log(
+                    `✅ Cover image found for video ${docId}:`,
+                    coverImageUrl
+                  );
                 } else {
-                  console.log(`⚠️ No cover image for video ${docId} - using fallback`);
+                  console.log(
+                    `⚠️ No cover image for video ${docId} - using fallback`
+                  );
                 }
               } else {
                 console.log(`⚠️ Upload document not found for video ${docId}`);
@@ -2248,7 +2295,7 @@ export class ProfileComponent implements OnInit {
               // Continue without cover image
             }
 
-            return { url, docId, userId, coverImageUrl };
+            return { url, docId, userId, coverImageUrl, uploadedAt };
           } catch (error) {
             console.warn(
               `Failed to load video from ${videoIdFolder.fullPath}:`,
@@ -2260,22 +2307,45 @@ export class ProfileComponent implements OnInit {
       );
 
       const videosRaw = await Promise.all(videoDataPromises);
-      const videos = videosRaw.filter((v) => v !== null) as Array<{ url: string; docId: string; userId: string; coverImageUrl?: string }>;
+      const videos = videosRaw.filter((v) => v !== null) as Array<{
+        url: string;
+        docId: string;
+        userId: string;
+        coverImageUrl?: string;
+        uploadedAt?: Date;
+      }>;
+
+      // Sort videos by uploadedAt (latest first)
+      videos.sort((a, b) => {
+        if (!a.uploadedAt && !b.uploadedAt) return 0;
+        if (!a.uploadedAt) return 1;
+        if (!b.uploadedAt) return -1;
+        return b.uploadedAt.getTime() - a.uploadedAt.getTime();
+      });
 
       // Log summary of cover images
-      const withCover = videos.filter(v => v && v.coverImageUrl).length;
+      const withCover = videos.filter((v) => v && v.coverImageUrl).length;
       const withoutCover = videos.length - withCover;
-      console.log(`📊 Video thumbnails loaded: ${withCover} with cover images, ${withoutCover} using fallback`);
+      console.log(
+        `📊 Video thumbnails loaded: ${withCover} with cover images, ${withoutCover} using fallback`
+      );
 
       this.videoData.set(videos);
 
-      // Fetch images
+      // Fetch images with metadata
       const imagesRef = ref(this.storage, `users/${userId}/images`);
       const imagesList = await listAll(imagesRef);
-      const imageUrlPromises = imagesList.items.map((item) =>
-        getDownloadURL(item)
-      );
-      const images = await Promise.all(imageUrlPromises);
+      const imageDataPromises = imagesList.items.map(async (item) => {
+        const url = await getDownloadURL(item);
+        const metadata = await getMetadata(item);
+        const timeCreated = new Date(metadata.timeCreated);
+        return { url, timeCreated };
+      });
+      const images = await Promise.all(imageDataPromises);
+
+      // Sort images by timeCreated (latest first)
+      images.sort((a, b) => b.timeCreated.getTime() - a.timeCreated.getTime());
+
       this.imageUrls.set(images);
     } catch (error) {
       // Set empty arrays if folders don't exist
@@ -2586,7 +2656,7 @@ export class ProfileComponent implements OnInit {
     this.isProfilePicIsolationMode.set(isolationMode);
 
     // Find the index of the current media in the appropriate list
-    const mediaList = type === 'video' ? this.videoUrls() : this.imageUrls();
+    const mediaList = type === 'video' ? this.videoUrls() : this.allImageUrls();
     const index = mediaList.indexOf(url);
     this.currentMediaIndex.set(index >= 0 ? index : 0);
 
@@ -2629,7 +2699,9 @@ export class ProfileComponent implements OnInit {
 
         // Format the uploadedAt date
         if (uploadedAt) {
-          const date = uploadedAt.toDate ? uploadedAt.toDate() : new Date(uploadedAt);
+          const date = uploadedAt.toDate
+            ? uploadedAt.toDate()
+            : new Date(uploadedAt);
           this.currentVideoUpdatedAt.set(this.formatDate(date));
         } else {
           this.currentVideoUpdatedAt.set('');
@@ -2649,8 +2721,18 @@ export class ProfileComponent implements OnInit {
 
   formatDate(date: Date): string {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     const month = months[date.getMonth()];
     const day = date.getDate();
@@ -3110,7 +3192,7 @@ export class ProfileComponent implements OnInit {
         this.videoData.set(updatedVideos);
       } else {
         const updatedImages = this.imageUrls().filter(
-          (url) => url !== mediaUrl
+          (img) => img.url !== mediaUrl
         );
         this.imageUrls.set(updatedImages);
       }
