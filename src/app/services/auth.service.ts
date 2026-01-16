@@ -601,6 +601,22 @@ export class AuthService {
     return this.auth.currentUser;
   }
 
+  /** Fetch the full user document */
+  async getUserData(uid: string): Promise<UserDoc | null> {
+    const ref = doc(this.db, 'users', uid);
+    const snap = await getDoc(ref);
+    return snap.exists() ? (snap.data() as UserDoc) : null;
+  }
+
+  /** Update the current active role for the session */
+  async switchRole(uid: string, role: 'actor' | 'producer'): Promise<void> {
+    const ref = doc(this.db, 'users', uid);
+    await updateDoc(ref, {
+      currentRole: role,
+      updatedAt: serverTimestamp()
+    });
+  }
+
   /** Sends a password reset email to the specified email address */
   async sendPasswordResetEmail(email: string): Promise<void> {
     return sendPasswordResetEmail(this.auth, email);
