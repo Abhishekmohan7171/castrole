@@ -587,30 +587,53 @@ import {
               } @else if (hasVideos()) {
               <div class="max-h-[400px] overflow-y-auto mb-4">
                 <div class="grid grid-cols-2 gap-2">
-                  @for (videoUrl of videoUrls(); track videoUrl; let idx = $index)
+                  @for (video of videoData(); track video.url; let idx = $index)
                   {
                   <div
                     class="aspect-video rounded-lg bg-neutral-800/50 cursor-pointer hover:ring-2 transition-all relative group"
                     [ngClass]="{
                       'hover:ring-purple-500/50': isActorTheme(),
                       'hover:ring-neutral-600': !isActorTheme(),
-                      'overflow-hidden': openMenuUrl() !== videoUrl,
-                      'overflow-visible': openMenuUrl() === videoUrl
+                      'overflow-hidden': openMenuUrl() !== video.url,
+                      'overflow-visible': openMenuUrl() === video.url
                     }"
-                    (click)="openPreviewModal(videoUrl, 'video')"
+                    (click)="openPreviewModal(video.url, 'video')"
                   >
+                    <!-- Display cover image if available, otherwise fallback to video -->
+                    @if (video.coverImageUrl) {
+                    <img
+                      [src]="video.coverImageUrl"
+                      alt="Video thumbnail"
+                      class="w-full h-full object-cover pointer-events-none bg-neutral-900 rounded-lg"
+                      loading="lazy"
+                    />
+                    } @else {
                     <video
-                      [src]="videoUrl"
+                      [src]="video.url"
                       class="w-full h-full object-cover pointer-events-none bg-neutral-900 rounded-lg"
                       preload="metadata"
                       loading="lazy"
                     ></video>
+                    }
+
+                    <!-- Play icon overlay -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div class="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center group-hover:bg-black/80 transition-colors">
+                        <svg
+                          class="w-6 h-6 text-white ml-1"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
 
                     <!-- 3-dot menu button (only for own profile) -->
                     @if (isViewingOwnProfile()) {
                     <button
-                      (click)="toggleMenu(videoUrl, $event)"
-                      class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                      (click)="toggleMenu(video.url, $event)"
+                      class="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
                       aria-label="More options"
                     >
                       <svg
@@ -625,14 +648,14 @@ import {
                     </button>
 
                     <!-- Dropdown Menu -->
-                    @if (openMenuUrl() === videoUrl) {
+                    @if (openMenuUrl() === video.url) {
                     <div
                       class="absolute top-10 right-2 bg-neutral-900 rounded-lg shadow-xl ring-1 ring-white/10 z-10 min-w-[160px] overflow-hidden"
                       (click)="$event.stopPropagation()"
                     >
                       <!-- Share Option -->
                       <button
-                        (click)="shareMediaLink(videoUrl)"
+                        (click)="shareMediaLink(video.url)"
                         class="w-full px-4 py-2.5 text-left text-white hover:bg-neutral-800 transition-colors flex items-center gap-3"
                       >
                         <svg
@@ -653,7 +676,7 @@ import {
 
                       <!-- Delete Option -->
                       <button
-                        (click)="showDeleteConfirmation(videoUrl, 'video')"
+                        (click)="showDeleteConfirmation(video.url, 'video')"
                         class="w-full px-4 py-2.5 text-left text-red-400 hover:bg-neutral-800 transition-colors flex items-center gap-3"
                       >
                         <svg
@@ -1786,7 +1809,7 @@ export class ProfileComponent implements OnInit {
   showBlockMenu = signal<boolean>(false);
 
   // Media signals
-  videoData = signal<Array<{ url: string; docId: string; userId: string }>>([]);
+  videoData = signal<Array<{ url: string; docId: string; userId: string; coverImageUrl?: string }>>([]);
   videoUrls = computed(() => this.videoData().map((v) => v.url));
   imageUrls = signal<string[]>([]);
   isLoadingMedia = signal(false);
@@ -2196,7 +2219,36 @@ export class ProfileComponent implements OnInit {
             const url = await getDownloadURL(videoRef);
             // Extract docId from folder name (last part of path)
             const docId = videoIdFolder.name;
-            return { url, docId, userId };
+
+            // Fetch cover image URL from Firestore
+            let coverImageUrl: string | undefined;
+            try {
+              const uploadDocRef = doc(
+                this.firestore,
+                `uploads/${userId}/userUploads/${docId}`
+              );
+              const uploadDoc = await getDoc(uploadDocRef);
+
+              if (uploadDoc.exists()) {
+                coverImageUrl = uploadDoc.data()?.['coverImageUrl'];
+
+                if (coverImageUrl) {
+                  console.log(`✅ Cover image found for video ${docId}:`, coverImageUrl);
+                } else {
+                  console.log(`⚠️ No cover image for video ${docId} - using fallback`);
+                }
+              } else {
+                console.log(`⚠️ Upload document not found for video ${docId}`);
+              }
+            } catch (firestoreError) {
+              console.warn(
+                `❌ Failed to fetch cover image for video ${docId}:`,
+                firestoreError
+              );
+              // Continue without cover image
+            }
+
+            return { url, docId, userId, coverImageUrl };
           } catch (error) {
             console.warn(
               `Failed to load video from ${videoIdFolder.fullPath}:`,
@@ -2207,9 +2259,14 @@ export class ProfileComponent implements OnInit {
         }
       );
 
-      const videos = (await Promise.all(videoDataPromises)).filter(
-        (v): v is { url: string; docId: string; userId: string } => v !== null
-      );
+      const videosRaw = await Promise.all(videoDataPromises);
+      const videos = videosRaw.filter((v) => v !== null) as Array<{ url: string; docId: string; userId: string; coverImageUrl?: string }>;
+
+      // Log summary of cover images
+      const withCover = videos.filter(v => v && v.coverImageUrl).length;
+      const withoutCover = videos.length - withCover;
+      console.log(`📊 Video thumbnails loaded: ${withCover} with cover images, ${withoutCover} using fallback`);
+
       this.videoData.set(videos);
 
       // Fetch images
