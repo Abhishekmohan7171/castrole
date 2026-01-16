@@ -508,8 +508,9 @@ export class DiscoverComponent implements OnInit, OnDestroy {
                   this.fetchProfilePhoto(user.uid);
 
                   // Initialize real-time notifications
+                  const currentRole = userData['currentRole'] as 'actor' | 'producer';
                   this.subscriptions.add(
-                    this.notificationService.observeNotifications(user.uid).subscribe(
+                    this.notificationService.observeNotifications(user.uid, currentRole).subscribe(
                       (notifications) => {
                         this.notifications.set(notifications);
                       },
@@ -726,7 +727,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     
     try {
       // Only mark as read, no navigation or drawer closing
-      await this.notificationService.markAsRead(this.uid, notification.id);
+      const role = this.userRole() as 'actor' | 'producer';
+      await this.notificationService.markAsRead(this.uid, notification.id, role);
     } catch (error) {
       this.logger.error('Error marking notification as read:', error);
     }
@@ -736,7 +738,8 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     if (!this.uid) return;
     
     try {
-      await this.notificationService.markAllAsRead(this.uid);
+      const role = this.userRole() as 'actor' | 'producer';
+      await this.notificationService.markAllAsRead(this.uid, role);
     } catch (error) {
       this.logger.error('Error marking all notifications as read:', error);
     }
