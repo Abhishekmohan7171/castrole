@@ -691,9 +691,13 @@ export class DiscoverComponent implements OnInit, OnDestroy {
       const profileDocSnap = await getDoc(profileDocRef);
       if (profileDocSnap.exists()) {
         const profileData = profileDocSnap.data() as Profile;
-        const photoUrl =
-          profileData.actorProfile?.actorProfileImageUrl ||
-          profileData.producerProfile?.producerProfileImageUrl;
+
+        // Get the current role to show the correct profile picture
+        const currentRole = this.userRole() || 'actor';
+        const photoUrl = currentRole === 'actor'
+          ? profileData.actorProfile?.actorProfileImageUrl
+          : profileData.producerProfile?.producerProfileImageUrl;
+
         this.profilePhotoUrl.set(photoUrl);
       }
     } catch (error) {

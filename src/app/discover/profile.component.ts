@@ -24,6 +24,8 @@ import {
   collection,
   getDocs,
   limit,
+  onSnapshot,
+  Unsubscribe,
 } from '@angular/fire/firestore';
 import {
   Storage,
@@ -1869,6 +1871,9 @@ export class ProfileComponent implements OnInit {
   private currentVideoId: string | null = null;
   private currentActorId: string | null = null;
 
+  // Role change listener cleanup
+  private roleChangeUnsubscribe: Unsubscribe | null = null;
+
   // Computed for navigation
   currentMediaList = computed(() => {
     return this.previewMediaType() === 'video'
@@ -2032,10 +2037,33 @@ export class ProfileComponent implements OnInit {
       // console.log('Loading own profile');
       this.isViewingOwnProfile.set(true);
       this.loadUserProfile();
+
+      // Set up real-time listener for role changes (own profile only)
+      if (currentUser) {
+        const userDocRef = doc(this.firestore, 'users', currentUser.uid);
+        this.roleChangeUnsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const userData = docSnapshot.data() as UserDoc;
+            const newRole = userData.currentRole || 'actor';
+
+            // Update role if it changed
+            if (newRole !== this.userRole()) {
+              this.userRole.set(newRole);
+              // Profile image URL will automatically update via getProfileImageUrl()
+            }
+          }
+        });
+      }
     }
   }
 
   async ngOnDestroy() {
+    // Clean up role change listener
+    if (this.roleChangeUnsubscribe) {
+      this.roleChangeUnsubscribe();
+      this.roleChangeUnsubscribe = null;
+    }
+
     // End profile view tracking when leaving the page
     await this.analyticsService.endProfileView();
 
