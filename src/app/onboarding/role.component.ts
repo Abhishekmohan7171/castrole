@@ -10,7 +10,7 @@ import { AuthService } from '../services/auth.service';
   template: `
     <div class="min-h-screen bg-black text-neutral-300 flex flex-col items-center">
       <!-- Brand -->
-      <h1 class="pt-16 pb-12 text-5xl sm:text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">castrole</h1>
+      <h1 class="pt-16 pb-12 text-5xl sm:text-6xl md:text-7xl font-black tracking-wider text-neutral-400 select-none">kalacast</h1>
 
       @if (mode() === 'select') {
         <h2 class="text-xl text-neutral-400 mb-8 font-light">
