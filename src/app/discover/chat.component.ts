@@ -958,7 +958,7 @@ export class ChatComponent implements OnInit, OnDestroy {
           this.counterpartByRoom.set(r.id!, counterpartId);
           return combineLatest([
             this.user.observeUser(counterpartId).pipe(take(1)),
-            this.fetchProfileData(counterpartId)
+            this.fetchProfileData(counterpartId, r)
           ]).pipe(
             map(([u, profileData]) => ({
               id: r.id!,
@@ -1375,6 +1375,18 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private getCounterpartId(r: ChatRoom): string {
+    // Strict check based on role definition
+    // If I am the Actor in this room, the counterpart MUST be the Producer
+    if (r.actorId === this.meUid) {
+      return r.producerId;
+    }
+    
+    // If I am the Producer in this room, the counterpart MUST be the Actor
+    if (r.producerId === this.meUid) {
+      return r.actorId;
+    }
+
+    // Fallback for edge cases (legacy data)
     if (!this.meUid) return r.participants[0];
     return r.participants.find((p) => p !== this.meUid) || r.participants[0];
   }
@@ -1544,14 +1556,31 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   // Helper method to fetch profile photo and slug from Firestore
-  private fetchProfileData(uid: string): Observable<{ photoUrl?: string; slugUid?: string }> {
+  // Uses role-based logic: if counterpart is actor in this room, show actor image; if producer, show producer image
+  private fetchProfileData(uid: string, room: ChatRoom): Observable<{ photoUrl?: string; slugUid?: string }> {
     return new Observable(observer => {
       const profileDocRef = doc(this.firestore, 'profiles', uid);
       getDoc(profileDocRef).then(profileDocSnap => {
         if (profileDocSnap.exists()) {
           const profileData = profileDocSnap.data() as Profile;
-          const photoUrl = profileData.actorProfile?.actorProfileImageUrl || 
-                          profileData.producerProfile?.producerProfileImageUrl;
+          
+          // Determine which profile image to use based on the user's role in THIS room
+          let photoUrl: string | undefined;
+          
+          if (room.actorId === uid) {
+            // This user is the actor in this room, show actor profile image
+            photoUrl = profileData.actorProfile?.actorProfileImageUrl;
+          } else if (room.producerId === uid) {
+            // This user is the producer in this room, show producer profile image
+            photoUrl = profileData.producerProfile?.producerProfileImageUrl;
+          }
+          
+          // Fallback: if role-based image not found, try the other one
+          if (!photoUrl) {
+            photoUrl = profileData.actorProfile?.actorProfileImageUrl || 
+                      profileData.producerProfile?.producerProfileImageUrl;
+          }
+          
           const slugUid = profileData.slug;
           observer.next({ photoUrl, slugUid });
         } else {

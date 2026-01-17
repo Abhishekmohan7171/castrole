@@ -46,13 +46,19 @@ export class ChatService {
 
   // Ensure a room exists (created by producer). Returns roomId
   async ensureRoom(actorId: string, producerId: string): Promise<string> {
-    const participants = [actorId, producerId].sort();
-    const roomId = participants.join('_');
+    // CRITICAL: Prevent same user from chatting with themselves across roles
+    if (actorId === producerId) {
+      throw new Error('Cannot create chat room: same user cannot chat across roles');
+    }
+
+    // Role-based room ID format: {actorId}_actor_{producerId}_producer
+    // This ensures actor and producer conversations are separate even for dual-role users
+    const roomId = `${actorId}_actor_${producerId}_producer`;
     const roomRef = doc(this.db, 'chatRooms', roomId);
     const snap = await getDoc(roomRef);
     if (!snap.exists()) {
       await setDoc(roomRef, {
-        participants,
+        participants: [actorId, producerId],
         actorId,
         producerId,
         createdBy: producerId,
@@ -66,18 +72,25 @@ export class ChatService {
         typingUsers: {
           [actorId]: null,
           [producerId]: null
-        }
-      } as Partial<ChatRoom>);
+        },
+        // Add role context for better filtering
+        actorRole: 'actor' as UserRole,
+        producerRole: 'producer' as UserRole
+      });
     }
     return roomId;
   }
 
   // Producer initiates chat by sending first message (optional)
   async producerStartChat(actorId: string, producerId: string, text?: string, producerName?: string, producerPhotoUrl?: string): Promise<string> {
+    // CRITICAL: Prevent same user from chatting with themselves
+    if (actorId === producerId) {
+      throw new Error('You cannot message yourself');
+    }
+
     // Check if either user has blocked the other before creating/accessing room
     const canInteract = await this.blockService.canUsersInteract(producerId, actorId);
     if (!canInteract) {
-      console.warn('Cannot start chat: one user has blocked the other');
       throw new Error('You cannot message this user');
     }
 
@@ -106,10 +119,14 @@ export class ChatService {
 
   // Send a message in a room
   async sendMessage({ roomId, senderId, receiverId, text, senderName, senderPhotoUrl }: { roomId: string; senderId: string; receiverId: string; text: string; senderName?: string; senderPhotoUrl?: string }): Promise<void> {
+    // CRITICAL: Prevent same user from messaging themselves
+    if (senderId === receiverId) {
+      throw new Error('You cannot message yourself');
+    }
+
     // Check if either user has blocked the other
     const canInteract = await this.blockService.canUsersInteract(senderId, receiverId);
     if (!canInteract) {
-      console.warn('Cannot send message: one user has blocked the other');
       throw new Error('You cannot message this user');
     }
 
@@ -178,7 +195,7 @@ export class ChatService {
     this.clearRoomCache(roomId);
   }
 
-  // Observe rooms for a user by role (client-side sort by updatedAt desc)
+  // Observe rooms for a user by role (server-side filtering with role-specific queries)
   observeRoomsForUser(uid: string, role: UserRole): Observable<(ChatRoom & { id: string })[]> {
     const cacheKey = `rooms_${uid}_${role}`;
 
@@ -190,15 +207,30 @@ export class ChatService {
     // Try to get initial data from localStorage
     const initialData = this.getCachedRooms(uid, role);
 
-    // If not in cache, create the observable and cache it
+    // SERVER-SIDE ROLE FILTERING: Query only rooms for the current role
     const roomsRef = collection(this.db, 'chatRooms');
-    const baseQ = query(roomsRef, where('participants', 'array-contains', uid));
+    let baseQ;
+    
+    if (role === 'actor') {
+      // Actor: Only fetch rooms where user is specifically the actorId
+      baseQ = query(roomsRef, where('actorId', '==', uid));
+    } else {
+      // Producer: Only fetch rooms where user is specifically the producerId
+      baseQ = query(roomsRef, where('producerId', '==', uid));
+    }
+    
     const q$ = collectionData(baseQ, { idField: 'id' }) as Observable<(ChatRoom & { id: string })[]>;
     
-    // For actors, filter rooms based on actorCanSee and actorAccepted
+    // Secondary client-side filtering for business logic (accepted/rejected status)
     const filtered$ = role === 'actor'
-      ? q$.pipe(map(rooms => rooms.filter(r => r.actorCanSee && r.actorAccepted === true)))
-      : q$;
+      ? q$.pipe(map(rooms => rooms.filter(r => {
+          // Actor sees rooms that are visible and accepted
+          return r.actorCanSee && r.actorAccepted === true;
+        })))
+      : q$.pipe(map(rooms => {
+          // Producer sees all their rooms (no additional filtering needed)
+          return rooms;
+        }));
 
     const result$ = filtered$.pipe(
       map(rooms => [...rooms].sort((a, b) => {
@@ -518,10 +550,16 @@ export class ChatService {
 
     return collectionData(q, { idField: 'id' }).pipe(
       map(rooms => {
-        // For actors, only count messages in accepted chats (not requests)
-        const filteredRooms = role === 'actor' 
-          ? rooms.filter((room: any) => room.actorAccepted === true)
-          : rooms;
+        // Role-based filtering: only count rooms where user is in the correct role
+        const filteredRooms = rooms.filter((room: any) => {
+          if (role === 'actor') {
+            // Actor: only count rooms where they are the actor AND accepted
+            return room.actorId === uid && room.actorAccepted === true;
+          } else {
+            // Producer: only count rooms where they are the producer
+            return room.producerId === uid;
+          }
+        });
           
         return filteredRooms.reduce((total, room: any) => {
           const unreadCount = room.unreadCount?.[uid] || 0;
@@ -715,9 +753,9 @@ export class ChatService {
     
     return collectionData(q, { idField: 'id' }).pipe(
       map(rooms => {
-        // Filter for rooms that have been rejected by the actor
+        // Role-based filtering: only show rooms where user is the producer AND rejected
         return (rooms as (ChatRoom & { id: string })[]).filter(r => {
-          return r.actorRejected === true;
+          return r.producerId === producerId && r.actorRejected === true;
         });
       }),
       shareReplay(1)
