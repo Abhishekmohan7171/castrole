@@ -381,7 +381,8 @@ import {
       :host {
         display: block;
       }
-      /* Actor gradient background - subtle like producer */
+      
+      /* Enhanced Actor gradient background with animation */
       .actor-theme::before {
         content: '';
         position: fixed;
@@ -389,18 +390,54 @@ import {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(
-          180deg,
-          #14081bff 0%,
-          #000000 100%
-        );
+        background: 
+          radial-gradient(ellipse at 20% 10%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.12) 0%, transparent 50%),
+          linear-gradient(180deg, #14081bff 0%, #0a0510 50%, #000000 100%);
         pointer-events: none;
         z-index: 0;
+        animation: actorGradientShift 20s ease infinite;
       }
+      
+      .actor-theme::after {
+        content: '';
+        position: fixed;
+        top: -50%;
+        left: -50%;
+        right: -50%;
+        bottom: -50%;
+        background: 
+          radial-gradient(circle at 50% 50%, rgba(192, 132, 252, 0.08) 0%, transparent 40%);
+        pointer-events: none;
+        z-index: 0;
+        animation: actorPulse 15s ease-in-out infinite;
+      }
+      
+      @keyframes actorGradientShift {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.85;
+        }
+      }
+      
+      @keyframes actorPulse {
+        0%, 100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 0.6;
+        }
+        50% {
+          transform: scale(1.1) rotate(5deg);
+          opacity: 0.8;
+        }
+      }
+      
       .actor-theme {
         position: relative;
       }
-      /* Producer gradient background */
+      
+      /* Enhanced Producer gradient background with animation */
       .producer-theme::before {
         content: '';
         position: fixed;
@@ -408,15 +445,49 @@ import {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(
-          180deg,
-          
-          #0d1419 30%,
-          #000000 100%
-        );
+        background: 
+          radial-gradient(ellipse at 15% 15%, rgba(83, 86, 95, 0.2) 0%, transparent 50%),
+          radial-gradient(ellipse at 85% 75%, rgba(54, 67, 97, 0.18) 0%, transparent 50%),
+          linear-gradient(180deg, #101214 0%, #0d1419 40%, #000000 100%);
         pointer-events: none;
         z-index: 0;
+        animation: producerGradientShift 18s ease infinite;
       }
+      
+      .producer-theme::after {
+        content: '';
+        position: fixed;
+        top: -50%;
+        left: -50%;
+        right: -50%;
+        bottom: -50%;
+        background: 
+          radial-gradient(circle at 50% 50%, rgba(144, 172, 200, 0.06) 0%, transparent 40%);
+        pointer-events: none;
+        z-index: 0;
+        animation: producerPulse 16s ease-in-out infinite;
+      }
+      
+      @keyframes producerGradientShift {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.9;
+        }
+      }
+      
+      @keyframes producerPulse {
+        0%, 100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 0.5;
+        }
+        50% {
+          transform: scale(1.08) rotate(-5deg);
+          opacity: 0.7;
+        }
+      }
+      
       .producer-theme {
         position: relative;
       }
