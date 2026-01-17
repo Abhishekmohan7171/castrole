@@ -111,15 +111,15 @@ import { LoaderComponent } from '../../common-components/loader/loader.component
         </div>
 
         <!-- Social buttons -->
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button type="button" (click)="onGoogle()" [disabled]="loading" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
+        <div class="mt-8 grid grid-cols-1 gap-6 place-items-center">
+          <button type="button" (click)="onGoogle()" [disabled]="loading" class="group w-full max-w-md rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/80 text-sm font-bold">G</span>
             <span class="tracking-wide">continue with google</span>
           </button>
-          <button type="button" (click)="onApple()" [disabled]="loading" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
+          <!-- <button type="button" (click)="onApple()" [disabled]="loading" class="group rounded-full ring-1 ring-white/10 bg-neutral-900/60 hover:bg-neutral-800/80 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 px-6 py-4 flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(255,255,255,0.06)] transition">
             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/80 text-base"></span>
             <span class="tracking-wide">continue with apple</span>
-          </button>
+          </button> -->
       </div>
     </div>
   `,
