@@ -14,12 +14,14 @@ export interface FilterState {
  * Search filters interface (matches search.component.ts)
  */
 export interface SearchFilters {
-  characterType: string;
+  characterTypes: string[];  // Multi-select character types
   minAge: number;
   maxAge: number;
   gender: string;
-  heightCm: string;
-  weightKg: string;
+  minHeight: number;  // Min height in cm
+  maxHeight: number;  // Max height in cm
+  minWeight: number;  // Min weight in kg
+  maxWeight: number;  // Max weight in kg
   languages: string[];
   skills: string[];
   location: string;
@@ -39,12 +41,14 @@ export class FilterPersistenceService {
 
   // Default filter values (matches search.component.ts defaults)
   private readonly defaultFilters: SearchFilters = {
-    characterType: 'any',
+    characterTypes: [],
     minAge: 0,
     maxAge: 100,
     gender: 'any',
-    heightCm: '',
-    weightKg: '',
+    minHeight: 140,
+    maxHeight: 200,
+    minWeight: 40,
+    maxWeight: 120,
     languages: [],
     skills: [],
     location: ''
@@ -134,12 +138,14 @@ export class FilterPersistenceService {
     }
 
     return {
-      characterType: this.validateString(data.characterType, 'any'),
+      characterTypes: this.validateArray(data.characterTypes),
       minAge: this.validateNumber(data.minAge, 0, 0, 100),
       maxAge: this.validateNumber(data.maxAge, 100, 0, 100),
       gender: this.validateString(data.gender, 'any'),
-      heightCm: this.validateString(data.heightCm, ''),
-      weightKg: this.validateString(data.weightKg, ''),
+      minHeight: this.validateNumber(data.minHeight, 140, 100, 250),
+      maxHeight: this.validateNumber(data.maxHeight, 200, 100, 250),
+      minWeight: this.validateNumber(data.minWeight, 40, 30, 150),
+      maxWeight: this.validateNumber(data.maxWeight, 120, 30, 150),
       languages: this.validateArray(data.languages),
       skills: this.validateArray(data.skills),
       location: this.validateString(data.location, '')

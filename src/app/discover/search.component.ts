@@ -1274,15 +1274,14 @@ export class SearchComponent implements OnInit, OnDestroy {
     await this.profileService.loadProfileData();
 
     // Restore saved filters from localStorage (SSR-safe)
-    // TODO: Update FilterPersistenceService to match new SearchFilters interface
-    // if (isPlatformBrowser(this.platformId)) {
-    //   const savedState = this.filterPersistence.loadFilters();
-    //   this.filters.set(savedState.filters);
-    //   this.searchQuery.set(savedState.searchQuery);
-    //   this.languageInput.set(savedState.languageInput);
-    //   this.skillsInput.set(savedState.skillsInput);
-    //   this.logger.log('Restored filters from localStorage:', savedState);
-    // }
+    if (isPlatformBrowser(this.platformId)) {
+      const savedState = this.filterPersistence.loadFilters();
+      this.filters.set(savedState.filters);
+      this.searchQuery.set(savedState.searchQuery);
+      this.languageInput.set(savedState.languageInput);
+      this.skillsInput.set(savedState.skillsInput);
+      this.logger.log('Restored filters from localStorage:', savedState);
+    }
 
     // Setup auto-save for filter changes
     this.setupAutoSave();
@@ -1310,16 +1309,15 @@ export class SearchComponent implements OnInit, OnDestroy {
    * Persist current filter state to localStorage
    */
   private persistFilters(): void {
-    // TODO: Update FilterPersistenceService to match new SearchFilters interface
-    // if (isPlatformBrowser(this.platformId)) {
-    //   this.filterPersistence.saveFilters({
-    //     filters: this.filters(),
-    //     searchQuery: this.searchQuery(),
-    //     languageInput: this.languageInput(),
-    //     skillsInput: this.skillsInput()
-    //   });
-    //   this.logger.log('Saved filters to localStorage');
-    // }
+    if (isPlatformBrowser(this.platformId)) {
+      this.filterPersistence.saveFilters({
+        filters: this.filters(),
+        searchQuery: this.searchQuery(),
+        languageInput: this.languageInput(),
+        skillsInput: this.skillsInput()
+      });
+      this.logger.log('Saved filters to localStorage');
+    }
   }
 
   ngOnDestroy(): void {
@@ -1384,13 +1382,24 @@ export class SearchComponent implements OnInit, OnDestroy {
       
       this.logger.log(`Loaded ${actors.length} actor profiles`);
 
-      // Filter out blocked users if current user is logged in
+      // Filter out blocked users and current user's own actor profile if they're a producer
       let filteredActors = actors;
       if (this.currentUserId) {
+        // Get blocked users
         const blockedUserIds = await firstValueFrom(this.blockService.getBlockedUserIds(this.currentUserId));
+        
+        // Filter out blocked users
         if (blockedUserIds && blockedUserIds.length > 0) {
           filteredActors = actors.filter(actor => !blockedUserIds.includes(actor.uid));
           this.logger.log(`Filtered ${actors.length - filteredActors.length} blocked actors`);
+        }
+        
+        // Filter out current user's own actor profile
+        // This handles the case where a user has both producer and actor roles
+        const beforeSelfFilter = filteredActors.length;
+        filteredActors = filteredActors.filter(actor => actor.uid !== this.currentUserId);
+        if (beforeSelfFilter !== filteredActors.length) {
+          this.logger.log(`Excluded current user's actor profile from search results`);
         }
       }
 
