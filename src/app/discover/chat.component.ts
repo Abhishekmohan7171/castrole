@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal, computed, effect } from '
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, from, interval, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { ChatService } from '../services/chat.service';
@@ -668,7 +668,7 @@ interface GroupedMessage {
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60 rounded-b-2xl"
-            *ngIf="active() && !isCounterpartBlocked()"
+            *ngIf="active()"
           >
             <input
               id="message-draft"
@@ -677,7 +677,8 @@ interface GroupedMessage {
               placeholder="type a message"
               autocomplete="off"
               (input)="onInputChange()"
-              class="flex-1 rounded-full px-4 py-2 outline-none ring-1 transition"
+              [disabled]="amIBlocked() || isCounterpartBlocked()"
+              class="flex-1 rounded-full px-4 py-2 outline-none ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed"
               [ngClass]="{
                 'bg-purple-950/10 text-purple-100 placeholder-purple-300/50 ring-purple-900/15 focus:ring-2 focus:ring-purple-500/30': myRole() === 'actor',
                 'bg-neutral-900 text-neutral-100 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-[#90ACC8]/30': myRole() !== 'actor'
@@ -686,7 +687,7 @@ interface GroupedMessage {
             <button
               type="submit"
               class="rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition disabled:opacity-50 flex items-center justify-center min-w-[70px]"
-              [disabled]="!draft.trim() || isSending"
+              [disabled]="!draft.trim() || isSending || amIBlocked() || isCounterpartBlocked()"
             >
               <span *ngIf="!isSending">send</span>
               <span *ngIf="isSending" class="flex items-center gap-1">
@@ -1094,27 +1095,21 @@ export class ChatComponent implements OnInit, OnDestroy {
           this.counterpartByRoom.set(r.id!, counterpartId);
           return combineLatest([
             this.user.observeUser(counterpartId).pipe(take(1)),
-            this.fetchProfileData(counterpartId, r)
+            this.fetchProfileData(counterpartId, r),
+            // Check block status as an observable
+            this.meUid ? from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid)) : of(false)
           ]).pipe(
-            switchMap(async ([u, profileData]) => {
-              // Check if this counterpart has blocked me
-              let isBlocked = false;
-              if (this.meUid) {
-                isBlocked = await this.blockService.isUserBlockedAsync(counterpartId, this.meUid);
-              }
-              
-              return {
-                id: r.id!,
-                name: (u?.name as string) || counterpartId,
-                last: r.lastMessage?.text || '',
-                unreadCount: r.unreadCount,
-                actorAccepted: r.actorAccepted,
-                actorRejected: r.actorRejected,
-                profilePhotoUrl: isBlocked ? '' : profileData.photoUrl, // Hide photo if blocked
-                slugUid: profileData.slugUid,
-                messages: [] as Message[]
-              };
-            })
+            map(([u, profileData, isBlocked]) => ({
+              id: r.id!,
+              name: (u?.name as string) || counterpartId,
+              last: r.lastMessage?.text || '',
+              unreadCount: r.unreadCount,
+              actorAccepted: r.actorAccepted,
+              actorRejected: r.actorRejected,
+              profilePhotoUrl: isBlocked ? '' : profileData.photoUrl, // Hide photo if blocked
+              slugUid: profileData.slugUid,
+              messages: [] as Message[]
+            }))
           );
         });
         return combineLatest(lookups);
@@ -1168,8 +1163,10 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.active$!.pipe(
         filter((c): c is Conversation => !!c),
         switchMap((c: Conversation) => this.chat.observeRoom(c.id))
-      ).subscribe(async (roomData) => {
-        if (roomData) {
+      ).pipe(
+        switchMap(roomData => {
+          if (!roomData) return of(null);
+          
           this.currentRoom.set(roomData as ChatRoom);
           
           // Determine counterpart ID
@@ -1177,13 +1174,27 @@ export class ChatComponent implements OnInit, OnDestroy {
             ? (roomData as ChatRoom).producerId 
             : (roomData as ChatRoom).actorId;
 
-          // Check Block Status
+          // Check Block Status reactively
           if (counterpartId && this.meUid) {
-            const blocked = await this.blockService.isUserBlockedAsync(counterpartId, this.meUid);
-            this.amIBlocked.set(blocked);
+            return from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid)).pipe(
+              tap(blocked => {
+                this.amIBlocked.set(blocked);
+                // Also update counterpartIsBlocked to trigger UI updates
+                return from(this.blockService.isUserBlockedAsync(this.meUid!, counterpartId)).pipe(
+                  tap(iBlockedThem => this.isCounterpartBlocked.set(iBlockedThem))
+                );
+              }),
+              switchMap(blocked => {
+                // Check if counterpart blocked me for UI updates
+                return from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid!)).pipe(
+                  tap(theyBlockedMe => this.counterpartIsBlocked.set(theyBlockedMe))
+                );
+              })
+            );
           }
-        }
-      })
+          return of(null);
+        })
+      ).subscribe()
     );
 
     // Messages stream based on active - optimized for instant loading
@@ -1214,24 +1225,29 @@ export class ChatComponent implements OnInit, OnDestroy {
         // Return the real-time updates from Firestore
         return this.chat.observeMessages(c.id);
       }),
-      tap(async (msgs: (ChatMessage & { id: string })[]) => {
+      tap((msgs: (ChatMessage & { id: string })[]) => {
         // NEW: Update raw messages for date grouping
         this.rawMessages.set(msgs);
-        
+      }),
+      switchMap((msgs: (ChatMessage & { id: string })[]) => {
         // Mark messages as delivered when they arrive (but not if I've blocked the sender)
         const activeConv = this.active();
         if (activeConv && this.meUid) {
-          // Get the counterpart ID
           const counterpartId = this.counterpartByRoom.get(activeConv.id);
           if (counterpartId) {
-            // Check if I have blocked the counterpart
-            const iHaveBlockedThem = await this.blockService.isUserBlockedAsync(this.meUid, counterpartId);
-            // Only mark as delivered if I haven't blocked them
-            if (!iHaveBlockedThem) {
-              await this.chat.markMessagesAsDelivered(activeConv.id, this.meUid);
-            }
+            // Check if I have blocked the counterpart and mark as delivered if not
+            return from(this.blockService.isUserBlockedAsync(this.meUid, counterpartId)).pipe(
+              switchMap(iHaveBlockedThem => {
+                if (!iHaveBlockedThem) {
+                  return from(this.chat.markMessagesAsDelivered(activeConv.id, this.meUid!));
+                }
+                return of(null);
+              }),
+              map(() => msgs)
+            );
           }
         }
+        return of(msgs);
       }),
       map((msgs: (ChatMessage & { id: string })[]) => msgs.map((m: ChatMessage & { id: string }) => {
         const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
@@ -1265,10 +1281,11 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     // Setup online status tracking for active conversation
     this.roomsSub.add(this.active$.pipe(
-      switchMap(async activeConv => {
+      switchMap(activeConv => {
         if (!activeConv) {
           this.counterpartOnline.set(false);
           this.counterpartLastSeen.set('');
+          this.counterpartIsBlocked.set(false);
           return of(null);
         }
         // Get counterpart ID from the room
@@ -1276,36 +1293,61 @@ export class ChatComponent implements OnInit, OnDestroy {
         if (!counterpartId) {
           this.counterpartOnline.set(false);
           this.counterpartLastSeen.set('');
+          this.counterpartIsBlocked.set(false);
           return of(null);
         }
         
         // Check if I am blocked by the counterpart
-        if (this.meUid) {
-          const blocked = await this.blockService.isUserBlockedAsync(counterpartId, this.meUid);
-          this.counterpartIsBlocked.set(blocked);
-          if (blocked) {
-            // If blocked, show offline status and "last seen long time ago"
-            this.counterpartOnline.set(false);
-            this.counterpartLastSeen.set('last seen long time ago');
-            return of(null);
-          }
+        if (!this.meUid) {
+          this.counterpartLastSeen.set('loading...');
+          return combineLatest([
+            this.presence.observeUserOnlineStatus(counterpartId),
+            this.presence.getLastSeenTime(counterpartId)
+          ]).pipe(
+            tap(([isOnline, lastSeen]) => {
+              this.counterpartOnline.set(isOnline);
+              this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+            })
+          );
         }
         
-        // Show loading state while fetching
-        this.counterpartLastSeen.set('loading...');
-        // Observe online status and last seen time
-        return combineLatest([
-          this.presence.observeUserOnlineStatus(counterpartId),
-          this.presence.getLastSeenTime(counterpartId)
-        ]).pipe(
-          tap(([isOnline, lastSeen]) => {
-            this.counterpartOnline.set(isOnline);
-            // Pass isOnline flag to formatLastSeen for accurate status
-            this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+        // Poll block status every 3 seconds to detect changes in real-time
+        return interval(3000).pipe(
+          startWith(0), // Check immediately
+          switchMap(() => combineLatest([
+            from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid!)), // They blocked me
+            from(this.blockService.isUserBlockedAsync(this.meUid!, counterpartId))  // I blocked them
+          ])),
+          tap(([theyBlockedMe, iBlockedThem]) => {
+            this.counterpartIsBlocked.set(theyBlockedMe);
+            this.amIBlocked.set(theyBlockedMe);
+            this.isCounterpartBlocked.set(iBlockedThem);
+          }),
+          switchMap(([theyBlockedMe]) => {
+            if (theyBlockedMe) {
+              // If blocked, show offline status and "last seen long time ago"
+              this.counterpartOnline.set(false);
+              this.counterpartLastSeen.set('last seen long time ago');
+              return of(null);
+            }
+            
+            // Show loading state while fetching (only on first load)
+            if (this.counterpartLastSeen() === '') {
+              this.counterpartLastSeen.set('loading...');
+            }
+            // Observe online status and last seen time
+            return combineLatest([
+              this.presence.observeUserOnlineStatus(counterpartId),
+              this.presence.getLastSeenTime(counterpartId)
+            ]).pipe(
+              tap(([isOnline, lastSeen]) => {
+                this.counterpartOnline.set(isOnline);
+                this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+              })
+            );
           })
         );
-      }),
-      switchMap(obs => obs || of(null))
+      })
     ).subscribe());
   }
   // Process cached rooms to show immediately
