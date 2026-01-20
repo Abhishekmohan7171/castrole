@@ -284,11 +284,15 @@ interface GroupedMessage {
             @if (active()) {
               <div 
                 (click)="viewProfile(active())"
-                class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
-                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
+                  'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'bg-purple-950/10 text-purple-300/50': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'bg-white/10 text-neutral-400': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden"
               >
                 @if (active()?.profilePhotoUrl && !counterpartIsBlocked()) {
                   <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
@@ -298,11 +302,15 @@ interface GroupedMessage {
               </div>
               <div 
                 (click)="viewProfile(active())"
-                class="text-sm font-medium cursor-pointer hover:underline transition-all duration-200"
                 [ngClass]="{
-                  'text-purple-200 hover:text-purple-100': myRole() === 'actor',
-                  'text-neutral-200 hover:text-white': myRole() !== 'actor'
+                  'cursor-pointer hover:underline': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'text-purple-200 hover:text-purple-100': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-purple-200': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'text-neutral-200 hover:text-white': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-neutral-200': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="text-sm font-medium transition-all duration-200"
               >
                 {{ active()?.name }}
               </div>
@@ -321,11 +329,15 @@ interface GroupedMessage {
           >
             <div 
               (click)="viewProfile(active())"
-              class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
               [ngClass]="{
-                'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
-                'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
+                'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black': !counterpartIsBlocked() && !amIBlocked(),
+                'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                'bg-purple-950/10 text-purple-300/50': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                'bg-white/10 text-neutral-400': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
               }"
+              class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden"
             >
               @if (active()?.profilePhotoUrl && !counterpartIsBlocked()) {
                 <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
@@ -336,11 +348,15 @@ interface GroupedMessage {
             <div class="text-sm flex-1">
               <div 
                 (click)="viewProfile(active())"
-                class="cursor-pointer  transition-all duration-200"
                 [ngClass]="{
-                  'text-purple-100/80 hover:text-purple-100': myRole() === 'actor',
-                  'text-neutral-100 hover:text-white': myRole() !== 'actor'
+                  'cursor-pointer': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'text-purple-100/80 hover:text-purple-100': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-purple-100/80': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'text-neutral-100 hover:text-white': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-neutral-100': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="transition-all duration-200"
               >
                 {{ active()?.name || 'select a chat' }}
               </div>
@@ -1886,6 +1902,11 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Navigate to user profile (similar to search component)
   viewProfile(conversation: Conversation | null): void {
     if (!conversation) return;
+    
+    // Don't allow profile navigation if blocked
+    if (this.counterpartIsBlocked() || this.amIBlocked()) {
+      return;
+    }
     
     const counterpartId = this.counterpartByRoom.get(conversation.id);
     if (!counterpartId) return;
