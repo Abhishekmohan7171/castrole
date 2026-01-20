@@ -12,6 +12,7 @@ import { UserDoc, Message, Conversation, ChatMessage, ChatRoom, UserRole } from 
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
+import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
 import { PresenceService } from '../services/presence.service';
 import { BlockService } from '../services/block.service';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
@@ -27,7 +28,7 @@ interface GroupedMessage {
 @Component({
   selector: 'app-discover-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent, ClickOutsideDirective],
   template: `
     <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col relative"
          [ngClass]="{'actor-theme': myRole() === 'actor'}">
@@ -402,7 +403,7 @@ interface GroupedMessage {
             </div>
 
             <!-- Block/Unblock Menu -->
-            <div *ngIf="active()" class="relative">
+            <div *ngIf="active()" class="relative" (clickOutside)="showBlockMenu.set(false)">
               <button
                 type="button"
                 (click)="showBlockMenu.set(!showBlockMenu())"
