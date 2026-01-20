@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal, computed, effect } from '
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, from, interval, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { ChatService } from '../services/chat.service';
@@ -12,15 +12,23 @@ import { UserDoc, Message, Conversation, ChatMessage, ChatRoom, UserRole } from 
 import { ProducersService } from '../services/producers.service';
 import { UserService } from '../services/user.service';
 import { LoaderComponent } from '../common-components/loader/loader.component';
+import { ClickOutsideDirective } from '../common-components/directives/click-outside.directive';
 import { PresenceService } from '../services/presence.service';
 import { BlockService } from '../services/block.service';
 import { Profile } from '../../assets/interfaces/profile.interfaces';
 import { ProfileUrlService } from '../services/profile-url.service';
 
+// Interface for Date Grouping
+interface GroupedMessage {
+  type: 'date' | 'message';
+  dateLabel?: string;
+  message?: ChatMessage & { id: string };
+}
+
 @Component({
   selector: 'app-discover-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, LoaderComponent, ClickOutsideDirective],
   template: `
     <div class="h-[calc(100vh-120px)] max-h-[calc(100vh-120px)] overflow-hidden text-neutral-200 flex flex-col relative"
          [ngClass]="{'actor-theme': myRole() === 'actor'}">
@@ -277,13 +285,17 @@ import { ProfileUrlService } from '../services/profile-url.service';
             @if (active()) {
               <div 
                 (click)="viewProfile(active())"
-                class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
                 [ngClass]="{
-                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
-                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
+                  'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'bg-purple-950/10 text-purple-300/50': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'bg-white/10 text-neutral-400': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden"
               >
-                @if (active()?.profilePhotoUrl) {
+                @if (active()?.profilePhotoUrl && !counterpartIsBlocked()) {
                   <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
                 } @else {
                   {{ active()?.name?.[0] | uppercase }}
@@ -291,11 +303,15 @@ import { ProfileUrlService } from '../services/profile-url.service';
               </div>
               <div 
                 (click)="viewProfile(active())"
-                class="text-sm font-medium cursor-pointer hover:underline transition-all duration-200"
                 [ngClass]="{
-                  'text-purple-200 hover:text-purple-100': myRole() === 'actor',
-                  'text-neutral-200 hover:text-white': myRole() !== 'actor'
+                  'cursor-pointer hover:underline': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'text-purple-200 hover:text-purple-100': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-purple-200': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'text-neutral-200 hover:text-white': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-neutral-200': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="text-sm font-medium transition-all duration-200"
               >
                 {{ active()?.name }}
               </div>
@@ -314,13 +330,17 @@ import { ProfileUrlService } from '../services/profile-url.service';
           >
             <div 
               (click)="viewProfile(active())"
-              class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black"
               [ngClass]="{
-                'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor',
-                'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor'
+                'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-black': !counterpartIsBlocked() && !amIBlocked(),
+                'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                'bg-purple-950/10 text-purple-300/50 hover:ring-fuchsia-500': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                'bg-purple-950/10 text-purple-300/50': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                'bg-white/10 text-neutral-400 hover:ring-[#90ACC8]': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                'bg-white/10 text-neutral-400': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
               }"
+              class="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 overflow-hidden"
             >
-              @if (active()?.profilePhotoUrl) {
+              @if (active()?.profilePhotoUrl && !counterpartIsBlocked()) {
                 <img [src]="active()!.profilePhotoUrl" [alt]="active()!.name" class="w-full h-full object-cover" />
               } @else {
                 {{ active()?.name?.[0] | uppercase }}
@@ -329,11 +349,15 @@ import { ProfileUrlService } from '../services/profile-url.service';
             <div class="text-sm flex-1">
               <div 
                 (click)="viewProfile(active())"
-                class="cursor-pointer  transition-all duration-200"
                 [ngClass]="{
-                  'text-purple-100/80 hover:text-purple-100': myRole() === 'actor',
-                  'text-neutral-100 hover:text-white': myRole() !== 'actor'
+                  'cursor-pointer': !counterpartIsBlocked() && !amIBlocked(),
+                  'cursor-default': counterpartIsBlocked() || amIBlocked(),
+                  'text-purple-100/80 hover:text-purple-100': myRole() === 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-purple-100/80': myRole() === 'actor' && (counterpartIsBlocked() || amIBlocked()),
+                  'text-neutral-100 hover:text-white': myRole() !== 'actor' && !counterpartIsBlocked() && !amIBlocked(),
+                  'text-neutral-100': myRole() !== 'actor' && (counterpartIsBlocked() || amIBlocked())
                 }"
+                class="transition-all duration-200"
               >
                 {{ active()?.name || 'select a chat' }}
               </div>
@@ -379,7 +403,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
             </div>
 
             <!-- Block/Unblock Menu -->
-            <div *ngIf="active()" class="relative">
+            <div *ngIf="active()" class="relative" (clickOutside)="showBlockMenu.set(false)">
               <button
                 type="button"
                 (click)="showBlockMenu.set(!showBlockMenu())"
@@ -448,45 +472,71 @@ import { ProfileUrlService } from '../services/profile-url.service';
             <app-loader [show]="loading()" [overlay]="false" message="Loading messages..."></app-loader>
 
             <ng-container *ngIf="active() && !loading(); else emptyStateTemplate">
-              <div
-                *ngFor="let m of filteredActiveMessages"
-                class="flex"
-                [class.justify-end]="m.from === 'me'"
-              >
-                <div
-                  class="max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2 text-sm"
-                  [ngClass]="{
-                    'bg-white/10 text-neutral-100 rounded-tr-sm':
-                      m.from === 'them',
-                    'bg-[#946BA9]/20 text-[#946BA9] rounded-tl-sm':
-                      m.from === 'me' && myRole() === 'actor',
-                    'bg-[#90ACC8]/20 text-[#90ACC8] rounded-tl-sm':
-                      m.from === 'me' && myRole() !== 'actor'
-                  }"
-                >
-                  <div>{{ m.text }}</div>
-                  <div class="mt-1 text-[10px] text-neutral-400 flex items-center gap-1.5">
-                    <span>{{ m.time }}</span>
-                    <!-- Read receipt status for my messages -->
-                    <span *ngIf="m.from === 'me' && m.status" class="flex items-center">
-                      <!-- Sent: single checkmark -->
-                      <svg *ngIf="m.status === 'sent'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      <!-- Delivered: double checkmark (gray) -->
-                      <svg *ngIf="m.status === 'delivered'" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
-                        <polyline points="4 12 9 17 20 6"></polyline>
-                        <polyline points="10 12 15 17 26 6"></polyline>
-                      </svg>
-                      <!-- Seen: double checkmark (blue) -->
-                      <svg *ngIf="m.status === 'seen'" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                        <polyline points="4 12 9 17 20 6"></polyline>
-                        <polyline points="10 12 15 17 26 6"></polyline>
-                      </svg>
-                    </span>
+              <!-- State 1: Producer - New Request (No messages yet) -->
+              @if (showProducerNewRequest()) {
+                <div class="flex justify-center items-center py-8">
+                  <div class="text-neutral-400 px-6 py-3 text-center text-sm max-w-md">
+                    You'll need to send the first message to complete this request.
                   </div>
                 </div>
-              </div>
+              }
+
+              <!-- Messages with Date Separators and Status Messages -->
+              @for (item of groupedMessages(); track $index) {
+                @if (item.type === 'date') {
+                  <!-- Date Separator or Status Message -->
+                  <div class="flex justify-center items-center py-2">
+                    <div class="text-neutral-400 text-xs px-4 py-1 text-center">
+                      {{ item.dateLabel }}
+                    </div>
+                  </div>
+                } @else if (item.type === 'message' && item.message) {
+                  <!-- Message Bubble -->
+                  <div
+                    class="flex"
+                    [class.justify-end]="item.message.senderId === meUid"
+                  >
+                    <div
+                      class="max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2 text-sm"
+                      [ngClass]="{
+                        'bg-white/10 text-neutral-100 rounded-tr-sm':
+                          item.message.senderId !== meUid,
+                        'bg-[#946BA9]/20 text-[#946BA9] rounded-tl-sm':
+                          item.message.senderId === meUid && myRole() === 'actor',
+                        'bg-[#90ACC8]/20 text-[#90ACC8] rounded-tl-sm':
+                          item.message.senderId === meUid && myRole() !== 'actor'
+                      }"
+                    >
+                      <div>{{ item.message.text }}</div>
+                      <div class="mt-1 text-[10px] text-neutral-400 flex items-center gap-1.5">
+                        <span>{{ formatTime(item.message.timestamp) }}</span>
+                        <!-- Read receipt status for my messages -->
+                        @if (item.message.senderId === meUid) {
+                          <span class="flex items-center">
+                            @if (getMessageStatus(item.message) === 'sent') {
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            }
+                            @if (getMessageStatus(item.message) === 'delivered') {
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                                <polyline points="4 12 9 17 20 6"></polyline>
+                                <polyline points="10 12 15 17 26 6"></polyline>
+                              </svg>
+                            }
+                            @if (getMessageStatus(item.message) === 'seen') {
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
+                                <polyline points="4 12 9 17 20 6"></polyline>
+                                <polyline points="10 12 15 17 26 6"></polyline>
+                              </svg>
+                            }
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
 
               <!-- Typing indicator in messages area -->
               <div *ngIf="typingUsers() as typingUsers" [class.hidden]="!typingUsers.length" class="flex">
@@ -631,26 +681,11 @@ import { ProfileUrlService } from '../services/profile-url.service';
             </div>
           </div>
 
-          <!-- Rejected by Actor Warning -->
-          <div
-            *ngIf="active() && !isCounterpartBlocked() && myRole() === 'producer' && isRejectedByActor()"
-            class="p-3 sm:p-4 pt-6 mb-4 border-t border-white/5 flex items-center justify-center shrink-0 bg-neutral-900/60 rounded-b-2xl"
-          >
-            <div class="text-red-400 text-sm flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-              </svg>
-              <span>You cannot message this actor</span>
-            </div>
-          </div>
-
           <!-- Composer -->
           <form
             (ngSubmit)="send()"
             class="p-3 sm:p-4 pt-6 border-t border-white/5 flex items-center gap-2 sm:gap-3 shrink-0 bg-neutral-900/60 rounded-b-2xl"
-            *ngIf="active() && !isCounterpartBlocked() && ((myRole() !== 'actor' && !isRejectedByActor()) || active()!.actorAccepted)"
+            *ngIf="active()"
           >
             <input
               id="message-draft"
@@ -659,7 +694,8 @@ import { ProfileUrlService } from '../services/profile-url.service';
               placeholder="type a message"
               autocomplete="off"
               (input)="onInputChange()"
-              class="flex-1 rounded-full px-4 py-2 outline-none ring-1 transition"
+              [disabled]="amIBlocked() || isCounterpartBlocked()"
+              class="flex-1 rounded-full px-4 py-2 outline-none ring-1 transition disabled:opacity-50 disabled:cursor-not-allowed"
               [ngClass]="{
                 'bg-purple-950/10 text-purple-100 placeholder-purple-300/50 ring-purple-900/15 focus:ring-2 focus:ring-purple-500/30': myRole() === 'actor',
                 'bg-neutral-900 text-neutral-100 placeholder-neutral-500 ring-white/10 focus:ring-2 focus:ring-[#90ACC8]/30': myRole() !== 'actor'
@@ -668,7 +704,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
             <button
               type="submit"
               class="rounded-full px-4 py-2 text-sm font-medium ring-1 ring-white/10 bg-white/5 hover:bg-white/10 text-neutral-100 transition disabled:opacity-50 flex items-center justify-center min-w-[70px]"
-              [disabled]="!draft.trim() || isSending"
+              [disabled]="!draft.trim() || isSending || amIBlocked() || isCounterpartBlocked()"
             >
               <span *ngIf="!isSending">send</span>
               <span *ngIf="isSending" class="flex items-center gap-1">
@@ -852,6 +888,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Online status
   counterpartOnline = signal<boolean>(false);
   counterpartLastSeen = signal<string>('');  // Start empty, will load
+  counterpartIsBlocked = signal<boolean>(false);  // Track if counterpart has blocked me
 
   // Unread counts - signals
   requestsCount$?: Observable<number>;
@@ -862,6 +899,123 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Rejected chats (for producers) - signal
   rejectedChats$?: Observable<(ChatRoom & { id: string })[]>;
   rejectedChats = signal<(ChatRoom & { id: string })[]>([]);
+
+  // NEW: Raw messages from Firestore (for date grouping)
+  rawMessages = signal<(ChatMessage & { id: string })[]>([]);
+
+  // NEW: Current room metadata (for status checks)
+  currentRoom = signal<ChatRoom | null>(null);
+
+  // NEW: Block state (only blocks prevent messaging, not rejections)
+  amIBlocked = signal(false);
+
+  // NEW: Computed - Messages grouped by date with status messages integrated
+  groupedMessages = computed<GroupedMessage[]>(() => {
+    const msgs = this.rawMessages();
+    const role = this.myRole();
+    
+    if (!msgs.length) return [];
+
+    const groups: GroupedMessage[] = [];
+    let lastDate = '';
+    let firstRealMessageSeen = false;
+
+    msgs.forEach((msg) => {
+      // Check if this is a system status message
+      const isSystemMessage = msg.senderId === 'system' && msg.messageType === 'system';
+      
+      if (isSystemMessage) {
+        // Handle system status messages
+        if (role === 'producer') {
+          let statusText = '';
+          if (msg.text === '__STATUS_ACCEPTED__') {
+            statusText = 'Your chat request has been accepted.';
+          } else if (msg.text === '__STATUS_DECLINED__') {
+            statusText = 'Your chat request has been declined.';
+          } else if (msg.text === '__STATUS_RESENT__') {
+            statusText = 'Chat request has been sent.';
+          }
+          
+          if (statusText) {
+            groups.push({ type: 'date', dateLabel: statusText });
+          }
+        }
+        return; // Don't add system messages as regular messages
+      }
+
+      // Regular message handling
+      let msgDate: Date;
+      if (msg.timestamp && (msg.timestamp as any).toDate) {
+        msgDate = (msg.timestamp as any).toDate();
+      } else if (msg.timestamp instanceof Date) {
+        msgDate = msg.timestamp;
+      } else {
+        msgDate = new Date();
+      }
+
+      const dateStr = this.getDateLabel(msgDate);
+      
+      // Add date separator
+      if (dateStr !== lastDate) {
+        groups.push({ type: 'date', dateLabel: dateStr });
+        lastDate = dateStr;
+      }
+      
+      // Add message
+      groups.push({ type: 'message', message: msg });
+      
+      // After first real message from producer, add "request sent" if no status exists yet
+      if (role === 'producer' && !firstRealMessageSeen) {
+        firstRealMessageSeen = true;
+        // Check if there's already a status message in the groups
+        const hasStatusMessage = groups.some(g => 
+          g.type === 'date' && 
+          (g.dateLabel?.includes('request') || g.dateLabel?.includes('accepted') || g.dateLabel?.includes('declined'))
+        );
+        
+        if (!hasStatusMessage) {
+          groups.push({ type: 'date', dateLabel: 'Chat request has been sent.' });
+        }
+      }
+    });
+
+    return groups;
+  });
+
+  // NEW: Producer status computed signals
+  // State 1: New (No messages yet)
+  showProducerNewRequest = computed(() => {
+    if (this.myRole() !== 'producer') return false;
+    const msgs = this.rawMessages();
+    return msgs.length === 0;
+  });
+
+  // State 2: Sent (Messages exist, not accepted/rejected)
+  showProducerRequestSent = computed(() => {
+    if (this.myRole() !== 'producer') return false;
+    const room = this.currentRoom();
+    const msgs = this.rawMessages();
+    return msgs.length > 0 && room && !room.actorAccepted && !room.actorRejected;
+  });
+
+  showProducerRequestAccepted = computed(() => {
+    if (this.myRole() !== 'producer') return false;
+    const room = this.currentRoom();
+    return room && room.actorAccepted === true;
+  });
+
+  showProducerRequestDeclined = computed(() => {
+    if (this.myRole() !== 'producer') return false;
+    const room = this.currentRoom();
+    return room && room.actorRejected === true;
+  });
+
+  // NEW: Actor actions visibility
+  showActorActions = computed(() => {
+    if (this.myRole() !== 'actor') return false;
+    const room = this.currentRoom();
+    return room && !room.actorAccepted && !room.actorRejected;
+  });
 
   // Actor message search
   messageSearch = new FormControl('');
@@ -958,16 +1112,18 @@ export class ChatComponent implements OnInit, OnDestroy {
           this.counterpartByRoom.set(r.id!, counterpartId);
           return combineLatest([
             this.user.observeUser(counterpartId).pipe(take(1)),
-            this.fetchProfileData(counterpartId, r)
+            this.fetchProfileData(counterpartId, r),
+            // Check block status as an observable
+            this.meUid ? from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid)) : of(false)
           ]).pipe(
-            map(([u, profileData]) => ({
+            map(([u, profileData, isBlocked]) => ({
               id: r.id!,
               name: (u?.name as string) || counterpartId,
               last: r.lastMessage?.text || '',
               unreadCount: r.unreadCount,
               actorAccepted: r.actorAccepted,
               actorRejected: r.actorRejected,
-              profilePhotoUrl: profileData.photoUrl,
+              profilePhotoUrl: isBlocked ? '' : profileData.photoUrl, // Hide photo if blocked
               slugUid: profileData.slugUid,
               messages: [] as Message[]
             }))
@@ -1019,6 +1175,45 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Mirror to active signal
     this.roomsSub.add(this.active$!.subscribe(c => this.active.set(c)));
 
+    // Observe room metadata for status updates (runs whenever active conversation changes)
+    this.roomsSub.add(
+      this.active$!.pipe(
+        filter((c): c is Conversation => !!c),
+        switchMap((c: Conversation) => this.chat.observeRoom(c.id))
+      ).pipe(
+        switchMap(roomData => {
+          if (!roomData) return of(null);
+          
+          this.currentRoom.set(roomData as ChatRoom);
+          
+          // Determine counterpart ID
+          const counterpartId = (roomData as ChatRoom).actorId === this.meUid 
+            ? (roomData as ChatRoom).producerId 
+            : (roomData as ChatRoom).actorId;
+
+          // Check Block Status reactively
+          if (counterpartId && this.meUid) {
+            return from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid)).pipe(
+              tap(blocked => {
+                this.amIBlocked.set(blocked);
+                // Also update counterpartIsBlocked to trigger UI updates
+                return from(this.blockService.isUserBlockedAsync(this.meUid!, counterpartId)).pipe(
+                  tap(iBlockedThem => this.isCounterpartBlocked.set(iBlockedThem))
+                );
+              }),
+              switchMap(blocked => {
+                // Check if counterpart blocked me for UI updates
+                return from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid!)).pipe(
+                  tap(theyBlockedMe => this.counterpartIsBlocked.set(theyBlockedMe))
+                );
+              })
+            );
+          }
+          return of(null);
+        })
+      ).subscribe()
+    );
+
     // Messages stream based on active - optimized for instant loading
     this.messages$ = this.active$!.pipe(
       filter((c): c is Conversation => !!c),
@@ -1047,12 +1242,29 @@ export class ChatComponent implements OnInit, OnDestroy {
         // Return the real-time updates from Firestore
         return this.chat.observeMessages(c.id);
       }),
-      tap(async (msgs: (ChatMessage & { id: string })[]) => {
-        // Mark messages as delivered when they arrive
+      tap((msgs: (ChatMessage & { id: string })[]) => {
+        // NEW: Update raw messages for date grouping
+        this.rawMessages.set(msgs);
+      }),
+      switchMap((msgs: (ChatMessage & { id: string })[]) => {
+        // Mark messages as delivered when they arrive (but not if I've blocked the sender)
         const activeConv = this.active();
         if (activeConv && this.meUid) {
-          await this.chat.markMessagesAsDelivered(activeConv.id, this.meUid);
+          const counterpartId = this.counterpartByRoom.get(activeConv.id);
+          if (counterpartId) {
+            // Check if I have blocked the counterpart and mark as delivered if not
+            return from(this.blockService.isUserBlockedAsync(this.meUid, counterpartId)).pipe(
+              switchMap(iHaveBlockedThem => {
+                if (!iHaveBlockedThem) {
+                  return from(this.chat.markMessagesAsDelivered(activeConv.id, this.meUid!));
+                }
+                return of(null);
+              }),
+              map(() => msgs)
+            );
+          }
         }
+        return of(msgs);
       }),
       map((msgs: (ChatMessage & { id: string })[]) => msgs.map((m: ChatMessage & { id: string }) => {
         const from: 'me' | 'them' = m.senderId === this.meUid! ? 'me' : 'them';
@@ -1090,6 +1302,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         if (!activeConv) {
           this.counterpartOnline.set(false);
           this.counterpartLastSeen.set('');
+          this.counterpartIsBlocked.set(false);
           return of(null);
         }
         // Get counterpart ID from the room
@@ -1097,19 +1310,58 @@ export class ChatComponent implements OnInit, OnDestroy {
         if (!counterpartId) {
           this.counterpartOnline.set(false);
           this.counterpartLastSeen.set('');
+          this.counterpartIsBlocked.set(false);
           return of(null);
         }
-        // Show loading state while fetching
-        this.counterpartLastSeen.set('loading...');
-        // Observe online status and last seen time
-        return combineLatest([
-          this.presence.observeUserOnlineStatus(counterpartId),
-          this.presence.getLastSeenTime(counterpartId)
-        ]).pipe(
-          tap(([isOnline, lastSeen]) => {
-            this.counterpartOnline.set(isOnline);
-            // Pass isOnline flag to formatLastSeen for accurate status
-            this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+        
+        // Check if I am blocked by the counterpart
+        if (!this.meUid) {
+          this.counterpartLastSeen.set('loading...');
+          return combineLatest([
+            this.presence.observeUserOnlineStatus(counterpartId),
+            this.presence.getLastSeenTime(counterpartId)
+          ]).pipe(
+            tap(([isOnline, lastSeen]) => {
+              this.counterpartOnline.set(isOnline);
+              this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+            })
+          );
+        }
+        
+        // Poll block status every 3 seconds to detect changes in real-time
+        return interval(3000).pipe(
+          startWith(0), // Check immediately
+          switchMap(() => combineLatest([
+            from(this.blockService.isUserBlockedAsync(counterpartId, this.meUid!)), // They blocked me
+            from(this.blockService.isUserBlockedAsync(this.meUid!, counterpartId))  // I blocked them
+          ])),
+          tap(([theyBlockedMe, iBlockedThem]) => {
+            this.counterpartIsBlocked.set(theyBlockedMe);
+            this.amIBlocked.set(theyBlockedMe);
+            this.isCounterpartBlocked.set(iBlockedThem);
+          }),
+          switchMap(([theyBlockedMe]) => {
+            if (theyBlockedMe) {
+              // If blocked, show offline status and "last seen long time ago"
+              this.counterpartOnline.set(false);
+              this.counterpartLastSeen.set('last seen long time ago');
+              return of(null);
+            }
+            
+            // Show loading state while fetching (only on first load)
+            if (this.counterpartLastSeen() === '') {
+              this.counterpartLastSeen.set('loading...');
+            }
+            // Observe online status and last seen time
+            return combineLatest([
+              this.presence.observeUserOnlineStatus(counterpartId),
+              this.presence.getLastSeenTime(counterpartId)
+            ]).pipe(
+              tap(([isOnline, lastSeen]) => {
+                this.counterpartOnline.set(isOnline);
+                this.counterpartLastSeen.set(this.presence.formatLastSeen(lastSeen, isOnline));
+              })
+            );
           })
         );
       })
@@ -1282,10 +1534,10 @@ export class ChatComponent implements OnInit, OnDestroy {
     const txt = this.draft.trim();
     if (!txt || !this.active() || !this.meUid || this.isSending) return;
 
-    // Prevent sending if the conversation has been rejected (for producers)
-    if (this.myRole() === 'producer' && this.isRejectedByActor()) {
-      this.draft = '';
-      return;
+    // NEW: REMOVED rejection check - producers can now re-send after being declined
+    // Only block check remains - blocked users cannot send
+    if (this.amIBlocked()) {
+      return; // Blocked users cannot send
     }
 
     const activeConv = this.active();
@@ -1347,7 +1599,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
 
-  private formatTime(ts: any): string {
+  formatTime(ts: any): string {
     try {
       const d = ('toDate' in ts ? ts.toDate() : new Date()) as Date;
       const hh = d.getHours().toString().padStart(2, '0');
@@ -1358,7 +1610,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getMessageStatus(message: ChatMessage): 'sent' | 'delivered' | 'seen' {
+  getMessageStatus(message: ChatMessage): 'sent' | 'delivered' | 'seen' {
     // Check if message has been read
     const hasReadAt = message.readAt && message.readAt !== null;
     const hasDeliveredAt = message.deliveredAt && message.deliveredAt !== null;
@@ -1371,6 +1623,21 @@ export class ChatComponent implements OnInit, OnDestroy {
       return 'delivered';
     } else {
       return 'sent';
+    }
+  }
+
+  // NEW: Helper method for date labels
+  private getDateLabel(date: Date): string {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
   }
 
@@ -1636,6 +1903,11 @@ export class ChatComponent implements OnInit, OnDestroy {
   // Navigate to user profile (similar to search component)
   viewProfile(conversation: Conversation | null): void {
     if (!conversation) return;
+    
+    // Don't allow profile navigation if blocked
+    if (this.counterpartIsBlocked() || this.amIBlocked()) {
+      return;
+    }
     
     const counterpartId = this.counterpartByRoom.get(conversation.id);
     if (!counterpartId) return;

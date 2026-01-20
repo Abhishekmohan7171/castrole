@@ -149,18 +149,43 @@ export class ChatService {
     this.setTypingState(roomId, senderId, false);
 
     const roomRef = doc(this.db, 'chatRooms', roomId);
-    await updateDoc(roomRef, {
+    
+    // LOGIC UPDATE: Check if producer is re-sending after rejection
+    const roomSnap = await getDoc(roomRef);
+    const roomData = roomSnap.data();
+    
+    const updateData: any = {
       lastMessage: { ...message, id: created.id },
       actorCanSee: true,
       updatedAt: serverTimestamp(),
       [`unreadCount.${receiverId}`]: increment(1)
-    });
+    };
+    
+    // If producer is sending and room was previously rejected, reset the rejection
+    if (roomData && senderId === roomData['producerId'] && roomData['actorRejected'] === true) {
+      updateData.actorRejected = false;
+      updateData.actorAccepted = false; // Reset to pending state
+      
+      // Add a system message to record the re-send
+      const systemMsgRef = collection(this.db, 'chatRooms', roomId, 'messages');
+      await addDoc(systemMsgRef, {
+        chatRoomId: roomId,
+        senderId: 'system',
+        receiverId: receiverId,
+        text: '__STATUS_RESENT__',
+        timestamp: serverTimestamp(),
+        read: true,
+        messageType: 'system',
+        deliveredAt: null,
+        readAt: null,
+      });
+    }
+    
+    await updateDoc(roomRef, updateData);
 
     // Create message notification for receiver
     try {
-      // Get room to determine actor/producer roles
-      const roomSnap = await getDoc(roomRef);
-      const roomData = roomSnap.data();
+      // roomData already fetched above for rejection check
       
       if (roomData) {
         const isActorSender = roomData['actorId'] === senderId;
@@ -657,6 +682,20 @@ export class ChatService {
       updatedAt: serverTimestamp()
     });
     
+    // Add a system message to record the acceptance
+    const systemMsgRef = collection(this.db, 'chatRooms', roomId, 'messages');
+    await addDoc(systemMsgRef, {
+      chatRoomId: roomId,
+      senderId: 'system',
+      receiverId: roomData?.['producerId'] || '',
+      text: '__STATUS_ACCEPTED__',
+      timestamp: serverTimestamp(),
+      read: true,
+      messageType: 'system',
+      deliveredAt: null,
+      readAt: null,
+    });
+    
     // Create notifications for both parties
     if (roomData) {
       const producerId = roomData['producerId'];
@@ -717,6 +756,20 @@ export class ChatService {
       updatedAt: serverTimestamp()
     });
     
+    // Add a system message to record the decline
+    const systemMsgRef = collection(this.db, 'chatRooms', roomId, 'messages');
+    await addDoc(systemMsgRef, {
+      chatRoomId: roomId,
+      senderId: 'system',
+      receiverId: roomData?.['producerId'] || '',
+      text: '__STATUS_DECLINED__',
+      timestamp: serverTimestamp(),
+      read: true,
+      messageType: 'system',
+      deliveredAt: null,
+      readAt: null,
+    });
+    
     // Create notification for producer
     if (roomData) {
       const producerId = roomData['producerId'];
@@ -760,6 +813,12 @@ export class ChatService {
       }),
       shareReplay(1)
     );
+  }
+
+  // Observe a single room for real-time metadata updates
+  observeRoom(roomId: string): Observable<ChatRoom> {
+    const roomRef = doc(this.db, 'chatRooms', roomId);
+    return docData(roomRef, { idField: 'id' }) as Observable<ChatRoom>;
   }
 
   // Search messages across all rooms for a user

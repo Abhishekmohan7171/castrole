@@ -108,7 +108,7 @@ export interface ChatMessage {
   text: string;
   timestamp: Timestamp;
   read: boolean;
-  messageType: 'text' | 'image' | 'file';
+  messageType: 'text' | 'image' | 'file' | 'system';
   // Read receipts
   deliveredAt?: Timestamp; // When message was delivered to receiver
   readAt?: Timestamp; // When message was read/seen by receiver
