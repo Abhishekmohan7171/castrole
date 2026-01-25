@@ -14,6 +14,7 @@ import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { BlockService } from '../services/block.service';
+import { DialogService } from '../services/dialog.service';
 import {
   Firestore,
   doc,
@@ -1772,6 +1773,7 @@ export class ProfileComponent implements OnInit {
   private chatService = inject(ChatService);
   private analyticsService = inject(AnalyticsService);
   private blockService = inject(BlockService);
+  private dialogService = inject(DialogService);
 
   // Video player reference for tracking
   @ViewChild('videoPlayer') videoPlayer?: ElementRef<HTMLVideoElement>;
@@ -3185,7 +3187,7 @@ export class ProfileComponent implements OnInit {
       const storagePath = this.extractStoragePathFromUrl(mediaUrl);
       if (!storagePath) {
         console.error('Could not extract storage path from URL:', mediaUrl);
-        alert('Failed to delete media. Could not parse storage path.');
+        this.dialogService.error('Failed to delete media. Could not parse storage path.', this.currentUserRole() as 'actor' | 'producer');
         return;
       }
 
@@ -3231,7 +3233,7 @@ export class ProfileComponent implements OnInit {
       console.log(`${mediaType} deleted successfully`);
     } catch (error) {
       console.error('Error deleting media:', error);
-      alert(`Failed to delete ${mediaType}. Please try again.`);
+      this.dialogService.error(`Failed to delete ${mediaType}. Please try again.`, this.currentUserRole() as 'actor' | 'producer');
     }
   }
 
@@ -3386,10 +3388,10 @@ export class ProfileComponent implements OnInit {
       await this.blockService.blockUser(currentUser.uid, targetId);
       this.isUserBlocked.set(true);
       this.showBlockMenu.set(false);
-      alert('User has been blocked');
+      this.dialogService.success('User has been blocked', this.currentUserRole() as 'actor' | 'producer');
     } catch (error) {
       console.error('Error blocking user:', error);
-      alert('Failed to block user');
+      this.dialogService.error('Failed to block user', this.currentUserRole() as 'actor' | 'producer');
     }
   }
 
@@ -3405,10 +3407,10 @@ export class ProfileComponent implements OnInit {
     try {
       await this.blockService.unblockUser(currentUser.uid, targetId);
       this.isUserBlocked.set(false);
-      alert('User has been unblocked');
+      this.dialogService.success('User has been unblocked', this.currentUserRole() as 'actor' | 'producer');
     } catch (error) {
       console.error('Error unblocking user:', error);
-      alert('Failed to unblock user');
+      this.dialogService.error('Failed to unblock user', this.currentUserRole() as 'actor' | 'producer');
     }
   }
 

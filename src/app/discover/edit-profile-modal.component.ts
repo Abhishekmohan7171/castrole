@@ -32,6 +32,7 @@ import {
   Education,
   Work,
 } from '../../assets/interfaces/profile.interfaces';
+import { DialogService } from '../services/dialog.service';
 
 @Component({
   selector: 'app-edit-profile-modal',
@@ -724,6 +725,7 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
   private fb = inject(FormBuilder);
   private firestore = inject(Firestore);
   private storage = inject(Storage);
+  private dialogService = inject(DialogService);
 
   profileForm!: FormGroup;
   isSaving = signal(false);
@@ -990,13 +992,13 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
 
     // Validate file type and size
     if (!file.type.startsWith('audio/')) {
-      alert('Please select a valid audio file');
+      this.dialogService.error('Please select a valid audio file', this.isActor ? 'actor' : 'producer');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
       // 10MB limit
-      alert('Audio file must be less than 10MB');
+      this.dialogService.error('Audio file must be less than 10MB', this.isActor ? 'actor' : 'producer');
       return;
     }
 
@@ -1025,12 +1027,12 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
       }).catch((error) => {
         console.error('Upload failed:', error);
         this.voiceUploadProgress.set(0);
-        alert('Failed to upload voice intro. Please try again.');
+        this.dialogService.error('Failed to upload voice intro. Please try again.', this.isActor ? 'actor' : 'producer');
       });
     } catch (error) {
       console.error('Upload initialization failed:', error);
       this.voiceUploadProgress.set(0);
-      alert('Failed to upload voice intro. Please try again.');
+      this.dialogService.error('Failed to upload voice intro. Please try again.', this.isActor ? 'actor' : 'producer');
     }
   }
 
@@ -1215,7 +1217,7 @@ export class EditProfileModalComponent implements OnInit, OnChanges {
       this.closeModal();
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      this.dialogService.error('Failed to save profile. Please try again.', this.isActor ? 'actor' : 'producer');
     } finally {
       this.isSaving.set(false);
     }

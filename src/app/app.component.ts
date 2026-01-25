@@ -6,11 +6,12 @@ import { inject } from '@angular/core';
 import { LoadingService } from './services/loading.service';
 import { SessionValidationService } from './services/session-validation.service';
 import { ToastComponent } from './common-components/toast/toast.component';
+import { DialogComponent } from './shared/dialog.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, ToastComponent],
+  imports: [RouterOutlet, CommonModule, ToastComponent, DialogComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
