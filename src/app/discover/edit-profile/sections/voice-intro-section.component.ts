@@ -4,6 +4,7 @@ import { ComponentCanDeactivate } from '../../../guards/pending-changes.guard';
 import { CommonModule } from '@angular/common';
 import { Storage, ref, uploadBytes, getDownloadURL, listAll } from '@angular/fire/storage';
 import { Profile } from '../../../../assets/interfaces/profile.interfaces';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-voice-intro-section',
@@ -196,6 +197,7 @@ export class VoiceIntroSectionComponent implements OnInit, OnDestroy, ComponentC
   @Output() save = new EventEmitter<any>();
 
   private storage = inject(Storage);
+  private dialogService = inject(DialogService);
 
   currentVoiceUrl = signal<string | null>(null);
   isRecording = signal(false);
@@ -274,7 +276,7 @@ export class VoiceIntroSectionComponent implements OnInit, OnDestroy, ComponentC
       }, 1000);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Could not access microphone. Please check permissions.');
+      this.dialogService.error('Could not access microphone. Please check permissions.', 'actor');
     }
   }
 
@@ -294,13 +296,13 @@ export class VoiceIntroSectionComponent implements OnInit, OnDestroy, ComponentC
 
     // Validate file type
     if (!file.type.startsWith('audio/')) {
-      alert('Please select an audio file');
+      this.dialogService.error('Please select an audio file', 'actor');
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Audio file must be less than 10MB');
+      this.dialogService.error('Audio file must be less than 10MB', 'actor');
       return;
     }
 
@@ -333,7 +335,7 @@ export class VoiceIntroSectionComponent implements OnInit, OnDestroy, ComponentC
       this.onSave();
     } catch (error) {
       console.error('Error uploading audio:', error);
-      alert('Failed to upload audio. Please try again.');
+      this.dialogService.error('Failed to upload audio. Please try again.', 'actor');
     } finally {
       this.isUploading.set(false);
     }

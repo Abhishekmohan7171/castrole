@@ -25,6 +25,7 @@ import {
   getDownloadURL,
 } from '@angular/fire/storage';
 import { Profile } from '../../../../assets/interfaces/profile.interfaces';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-basic-info-section',
@@ -616,6 +617,7 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
 
   private fb = inject(FormBuilder);
   private storage = inject(Storage);
+  private dialogService = inject(DialogService);
   private destroy$ = new Subject<void>();
 
   form!: FormGroup;
@@ -737,13 +739,13 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      this.dialogService.error('Please select an image file', 'actor');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
+      this.dialogService.error('Image must be less than 5MB', 'actor');
       return;
     }
 
@@ -765,7 +767,7 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
       this.onSave();
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      this.dialogService.error('Failed to upload image. Please try again.', 'actor');
     } finally {
       this.isUploading.set(false);
     }

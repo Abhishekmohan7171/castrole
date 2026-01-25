@@ -7,6 +7,7 @@ import {
   OnDestroy,
   signal,
   computed,
+  inject,
 } from '@angular/core';
 import { Subject, Observable, of } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
@@ -17,6 +18,7 @@ import {
   Language,
   Skill,
 } from '../../../../assets/interfaces/profile.interfaces';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-languages-skills-section',
@@ -502,6 +504,7 @@ import {
 export class LanguagesSkillsSectionComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   private destroy$ = new Subject<void>();
   private autosaveChange$ = new Subject<void>();
+  private dialogService = inject(DialogService);
 
   @Input() profile: Profile | null = null;
   @Output() save = new EventEmitter<any>();
@@ -928,7 +931,7 @@ export class LanguagesSkillsSectionComponent implements OnInit, OnDestroy, Compo
     if (
       currentLangs.some((l) => l.language.toLowerCase() === name.toLowerCase())
     ) {
-      alert('This language is already added');
+      this.dialogService.warning('This language is already added', 'actor');
       return;
     }
 
@@ -982,7 +985,7 @@ export class LanguagesSkillsSectionComponent implements OnInit, OnDestroy, Compo
     if (
       currentSkills.some((s) => s.skill.toLowerCase() === name.toLowerCase())
     ) {
-      alert('This skill is already added');
+      this.dialogService.warning('This skill is already added', 'actor');
       return;
     }
 

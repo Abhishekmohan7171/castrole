@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { Profile, Education, Work } from '../../../../assets/interfaces/profile.interfaces';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-education-section',
@@ -368,6 +369,7 @@ export class EducationSectionComponent implements OnInit, OnDestroy, ComponentCa
 
   private fb = inject(FormBuilder);
   private storage = inject(Storage);
+  private dialogService = inject(DialogService);
   private destroy$ = new Subject<void>();
 
   form!: FormGroup;
@@ -514,7 +516,7 @@ export class EducationSectionComponent implements OnInit, OnDestroy, ComponentCa
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      this.dialogService.error('File size must be less than 10MB', 'actor');
       return;
     }
 
@@ -533,7 +535,7 @@ export class EducationSectionComponent implements OnInit, OnDestroy, ComponentCa
       });
     } catch (error) {
       console.error('Error uploading certificate:', error);
-      alert('Failed to upload certificate. Please try again.');
+      this.dialogService.error('Failed to upload certificate. Please try again.', 'actor');
     } finally {
       this.isUploading.set(false);
     }
