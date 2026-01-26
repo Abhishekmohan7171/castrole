@@ -20,8 +20,7 @@ export interface SearchFilters {
   gender: string;
   minHeight: number;  // Min height in cm
   maxHeight: number;  // Max height in cm
-  minWeight: number;  // Min weight in kg
-  maxWeight: number;  // Max weight in kg
+  bodyType: string;  // Single body type selection
   languages: string[];
   skills: string[];
   location: string;
@@ -47,8 +46,7 @@ export class FilterPersistenceService {
     gender: 'any',
     minHeight: 140,
     maxHeight: 200,
-    minWeight: 40,
-    maxWeight: 120,
+    bodyType: '',
     languages: [],
     skills: [],
     location: ''
@@ -144,8 +142,7 @@ export class FilterPersistenceService {
       gender: this.validateString(data.gender, 'any'),
       minHeight: this.validateNumber(data.minHeight, 140, 100, 250),
       maxHeight: this.validateNumber(data.maxHeight, 200, 100, 250),
-      minWeight: this.validateNumber(data.minWeight, 40, 30, 150),
-      maxWeight: this.validateNumber(data.maxWeight, 120, 30, 150),
+      bodyType: this.validateString(data.bodyType, ''),
       languages: this.validateArray(data.languages),
       skills: this.validateArray(data.skills),
       location: this.validateString(data.location, '')

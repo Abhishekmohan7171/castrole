@@ -417,7 +417,7 @@ import {
                   </div>
                   }
 
-                  <!-- Basic Stats - Updated Order: Age → Height → Weight → Gender -->
+                  <!-- Basic Stats - Updated Order: Age → Height → Body Type → Gender -->
                   @if (isActor()) {
                   <div class="grid grid-cols-4 gap-2 text-center">
                     @if (profileData()?.age) {
@@ -434,12 +434,12 @@ import {
                       }}</span>
                       <span class="text-xs text-neutral-500">height</span>
                     </div>
-                    } @if (profileData()?.actorProfile?.weight) {
+                    } @if (profileData()?.actorProfile?.bodyType) {
                     <div class="flex flex-col">
                       <span class="text-base font-medium text-neutral-200">{{
-                        formatWeight(profileData()?.actorProfile?.weight)
+                        formatBodyType(profileData()?.actorProfile?.bodyType)
                       }}</span>
-                      <span class="text-xs text-neutral-500">weight</span>
+                      <span class="text-xs text-neutral-500">body type</span>
                     </div>
                     } @if (profileData()?.gender) {
                     <div class="flex flex-col">
@@ -3582,17 +3582,15 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Format weight to ensure it has 'kg' suffix
+   * Format body type to display with proper capitalization
    */
-  formatWeight(weight: string | undefined): string {
-    if (!weight) return '';
+  formatBodyType(bodyType: string | undefined): string {
+    if (!bodyType) return '';
 
-    // If already has kg suffix, return as is
-    if (weight.toLowerCase().includes('kg')) {
-      return weight;
-    }
-
-    // Otherwise, add kg suffix
-    return `${weight} kg`;
+    // Capitalize first letter of each word
+    return bodyType
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('-');
   }
 }

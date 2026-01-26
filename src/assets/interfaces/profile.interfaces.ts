@@ -34,7 +34,7 @@ export interface ActorProfile {
   // Basic info
   stageName: string;
   height?: string;
-  weight?: string;
+  bodyType?: string;
   actorProfileImageUrl?: string;
   carouselImagesUrl?: string[]; // Carousel images of each actor
   voiceIntro?: string;

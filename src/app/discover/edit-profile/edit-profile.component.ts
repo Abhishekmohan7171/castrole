@@ -706,7 +706,7 @@ export class EditProfileComponent implements OnInit {
             ...currentProfile.actorProfile,
             stageName: data.stageName,
             height: data.height,
-            weight: data.weight,
+            bodyType: data.bodyType,
             actorProfileImageUrl:
               data.profileImageUrl ||
               currentProfile.actorProfile?.actorProfileImageUrl,
@@ -839,7 +839,7 @@ export class EditProfileComponent implements OnInit {
       if (currentProfile.age) completedFields++; // age is at Profile level
       if (currentProfile.gender) completedFields++; // gender is at Profile level
       if (actorProfile.height) completedFields++;
-      if (actorProfile.weight) completedFields++;
+      if (actorProfile.bodyType) completedFields++;
       if (currentProfile.location) completedFields++; // location is at Profile level
       if (actorProfile.skills && actorProfile.skills.length > 0) completedFields++;
       if (actorProfile.languages && actorProfile.languages.length > 0) completedFields++;

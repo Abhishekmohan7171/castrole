@@ -24,7 +24,7 @@ interface ActorSearchResult {
   gender?: string;
   location?: string;
   height?: string;
-  weight?: string;
+  bodyType?: string;
   skills?: string[];
   languages?: string[];
   characterTypes?: string[]; // Extracted from video/image tags
@@ -44,8 +44,7 @@ interface SearchFilters {
   gender: string;
   minHeight: number;  // Min height in cm
   maxHeight: number;  // Max height in cm
-  minWeight: number;  // Min weight in kg
-  maxWeight: number;  // Max weight in kg
+  bodyType: string;  // Single body type selection
   languages: string[];
   skills: string[];
   location: string;
@@ -270,28 +269,19 @@ interface ParsedSearchQuery {
                 </div>
               </div>
 
-              <!-- Weight Range (kg) -->
+              <!-- Body Type (Dropdown) -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-neutral-300 mb-2">Weight (kg)</label>
-                <div class="flex items-center gap-3">
-                  <input 
-                    type="number" 
-                    [value]="filters().minWeight"
-                    (input)="updateFilter('minWeight', +$any($event.target).value)"
-                    min="30" 
-                    max="150"
-                    class="w-16 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-neutral-200 text-center text-sm focus:outline-none focus:border-[#455A64]">
-                  <div class="flex-1 relative">
-                    <input 
-                      type="range" 
-                      [value]="filters().maxWeight"
-                      (input)="updateFilter('maxWeight', +$any($event.target).value)"
-                      min="30" 
-                      max="150"
-                      class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#455A64]">
-                  </div>
-                  <span class="w-12 text-center text-neutral-300 text-sm">{{ filters().maxWeight }}</span>
-                </div>
+                <label class="block text-sm font-medium text-neutral-300 mb-2">Body Type</label>
+                <select 
+                  [value]="filters().bodyType"
+                  (change)="updateFilter('bodyType', $any($event.target).value)"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-[#455A64]"
+                >
+                  <option value="">All Body Types</option>
+                  @for (bodyType of availableBodyTypes; track bodyType) {
+                    <option [value]="bodyType.toLowerCase()">{{ bodyType }}</option>
+                  }
+                </select>
               </div>
 
               <!-- Skills (Searchable Multi-select) -->
@@ -560,10 +550,10 @@ interface ParsedSearchQuery {
                   </span>
                 }
                 
-                @if (filters().minWeight !== 40 || filters().maxWeight !== 120) {
+                @if (filters().bodyType) {
                   <span class="inline-flex items-center gap-1 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-sm">
-                    Weight: {{ filters().minWeight }}-{{ filters().maxWeight }}kg
-                    <button (click)="updateFilter('minWeight', 40); updateFilter('maxWeight', 120)" class="hover:text-neutral-100">
+                    Body Type: {{ filters().bodyType }}
+                    <button (click)="updateFilter('bodyType', '')" class="hover:text-neutral-100">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
@@ -890,6 +880,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   readonly availableSkills = AVAILABLE_SKILLS;
   readonly availableLanguages = AVAILABLE_LANGUAGES;
   readonly availableLocations = AVAILABLE_LOCATIONS_ALL;
+  readonly availableBodyTypes = ['Slim', 'Average', 'Athletic', 'Muscular', 'Curvy', 'Stocky', 'Plus-size'];
 
   // Search state
   searchQuery = signal('');
@@ -915,8 +906,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     gender: 'any',
     minHeight: 140,  // Min height in cm
     maxHeight: 200,  // Max height in cm
-    minWeight: 40,   // Min weight in kg
-    maxWeight: 120,  // Max weight in kg
+    bodyType: '',   // Single body type selection
     languages: [],
     skills: [],
     location: ''
@@ -1069,8 +1059,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       currentFilters.maxAge !== 100 ||
       currentFilters.minHeight !== 140 ||
       currentFilters.maxHeight !== 200 ||
-      currentFilters.minWeight !== 40 ||
-      currentFilters.maxWeight !== 120 ||
+      currentFilters.bodyType !== '' ||
       currentFilters.languages.length > 0 ||
       currentFilters.skills.length > 0 ||
       currentFilters.location !== '';
@@ -1142,15 +1131,14 @@ export class SearchComponent implements OnInit, OnDestroy {
       this.logger.log(`Height filter (${currentFilters.minHeight}-${currentFilters.maxHeight}cm): ${beforeCount} → ${actors.length} actors`);
     }
 
-    // Apply weight range filter
-    const hasWeightFilter = currentFilters.minWeight !== 40 || currentFilters.maxWeight !== 120;
-    if (hasWeightFilter) {
+    // Apply body type filter
+    if (currentFilters.bodyType) {
       const beforeCount = actors.length;
       actors = actors.filter(actor => {
-        const actorWeight = parseInt(actor.weight || '0');
-        return actorWeight >= currentFilters.minWeight && actorWeight <= currentFilters.maxWeight;
+        if (!actor.bodyType) return false;
+        return actor.bodyType.toLowerCase() === currentFilters.bodyType.toLowerCase();
       });
-      this.logger.log(`Weight filter (${currentFilters.minWeight}-${currentFilters.maxWeight}kg): ${beforeCount} → ${actors.length} actors`);
+      this.logger.log(`Body type filter (${currentFilters.bodyType}): ${beforeCount} → ${actors.length} actors`);
     }
 
     // Apply skills filter
@@ -1470,7 +1458,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       gender: profile.gender,
       location: profile.location,
       height: actor.height,
-      weight: actor.weight,
+      bodyType: actor.bodyType,
       skills: extractSkills(actor.skills),
       languages: extractLanguages(actor.languages),
       characterTypes: characterTypes, // Character types from video/image tags
@@ -1717,8 +1705,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       currentFilters.maxAge !== 100 ||
       currentFilters.minHeight !== 140 ||
       currentFilters.maxHeight !== 200 ||
-      currentFilters.minWeight !== 40 ||
-      currentFilters.maxWeight !== 120 ||
+      currentFilters.bodyType !== '' ||
       currentFilters.languages.length > 0 ||
       currentFilters.skills.length > 0 ||
       currentFilters.location !== ''
@@ -1946,8 +1933,7 @@ export class SearchComponent implements OnInit, OnDestroy {
       gender: 'any',
       minHeight: 140,
       maxHeight: 200,
-      minWeight: 40,
-      maxWeight: 120,
+      bodyType: '',
       languages: [],
       skills: [],
       location: ''
@@ -1972,7 +1958,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     if (currentFilters.gender !== 'any') count++;
     if (currentFilters.minAge !== 0 || currentFilters.maxAge !== 100) count++;
     if (currentFilters.minHeight !== 140 || currentFilters.maxHeight !== 200) count++;
-    if (currentFilters.minWeight !== 40 || currentFilters.maxWeight !== 120) count++;
+    if (currentFilters.bodyType) count++;
     if (currentFilters.languages.length > 0) count++;
     if (currentFilters.skills.length > 0) count++;
     if (currentFilters.location) count++;

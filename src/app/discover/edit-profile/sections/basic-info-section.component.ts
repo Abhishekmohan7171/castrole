@@ -167,7 +167,7 @@ import { DialogService } from '../../../services/dialog.service';
         </div>
 
         @if (isActor) {
-        <!-- Height and Weight Grid -->
+        <!-- Height and Body Type Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <!-- Height -->
           <div>
@@ -216,15 +216,15 @@ import { DialogService } from '../../../services/dialog.service';
             }
           </div>
 
-          <!-- Weight -->
+          <!-- Body Type -->
           <div>
             <label
               class="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide"
-              >weight</label
+              >body type</label
             >
             <div class="relative">
               <div
-                class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 z-10"
               >
                 <svg
                   class="w-4 h-4"
@@ -236,31 +236,57 @@ import { DialogService } from '../../../services/dialog.service';
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
               </div>
-              <input
-                type="number"
-                formControlName="weight"
-                min="0"
-                step="0.1"
-                [class.border-red-500]="
-                  form.get('weight')?.invalid && form.get('weight')?.touched
-                "
-                class="w-full pl-12 pr-16 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg placeholder-neutral-600 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                placeholder="75"
-              />
-              <span
-                class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium"
-                >kg</span
+              <select
+                formControlName="bodyType"
+                class="w-full pl-12 pr-10 py-4 bg-neutral-900/80 border border-neutral-800 rounded-2xl text-white text-lg appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all cursor-pointer"
               >
+                <option value="" disabled class="bg-neutral-900 text-neutral-500">
+                  select body type
+                </option>
+                <option value="slim" class="bg-neutral-900 text-white">
+                  slim
+                </option>
+                <option value="average" class="bg-neutral-900 text-white">
+                  average
+                </option>
+                <option value="athletic" class="bg-neutral-900 text-white">
+                  athletic
+                </option>
+                <option value="muscular" class="bg-neutral-900 text-white">
+                  muscular
+                </option>
+                <option value="curvy" class="bg-neutral-900 text-white">
+                  curvy
+                </option>
+                <option value="stocky" class="bg-neutral-900 text-white">
+                  stocky
+                </option>
+                <option value="plus-size" class="bg-neutral-900 text-white">
+                  plus-size
+                </option>
+              </select>
+              <div
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
             </div>
-            @if (form.get('weight')?.invalid && form.get('weight')?.touched) {
-            <p class="text-xs text-red-400 mt-1.5 ml-1">
-              Please enter weight in kilograms
-            </p>
-            }
           </div>
         </div>
         } @if (isActor) {
@@ -662,7 +688,7 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
           ],
         ],
         height: ['', [Validators.min(0), Validators.max(300)]],
-        weight: ['', [Validators.min(0), Validators.max(500)]],
+        bodyType: [''],
         age: [
           '',
           [Validators.required, Validators.min(16), Validators.max(100)],
@@ -692,20 +718,16 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
     if (!this.profile) return;
 
     if (this.isActor && this.profile.actorProfile) {
-      // Parse height and weight to extract numeric values
+      // Parse height to extract numeric value
       const heightValue = this.profile.actorProfile.height
         ? parseFloat(this.profile.actorProfile.height.replace(/[^\d.]/g, '')) ||
-          ''
-        : '';
-      const weightValue = this.profile.actorProfile.weight
-        ? parseFloat(this.profile.actorProfile.weight.replace(/[^\d.]/g, '')) ||
           ''
         : '';
 
       this.form.patchValue({
         stageName: this.profile.actorProfile.stageName || '',
         height: heightValue,
-        weight: weightValue,
+        bodyType: this.profile.actorProfile.bodyType || '',
         age: this.profile.age || '',
         gender: this.profile.gender || '',
         location: this.profile.location || '',
@@ -841,7 +863,7 @@ export class BasicInfoSectionComponent implements OnInit, OnDestroy, ComponentCa
       data.gender = formValue.gender;
       data.stageName = formValue.stageName;
       data.height = formValue.height ? `${formValue.height} cm` : '';
-      data.weight = formValue.weight ? `${formValue.weight} kg` : '';
+      data.bodyType = formValue.bodyType || '';
     } else {
       data.name = formValue.name;
       data.designation = formValue.designation;
