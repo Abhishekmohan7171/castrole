@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { AuthService } from '../services/auth.service';
 import { ProfileUrlService } from '../services/profile-url.service';
 import { ChatService } from '../services/chat.service';
@@ -46,7 +47,7 @@ import {
 @Component({
   selector: 'app-discover-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NgxSkeletonLoaderModule],
   template: `
     <div
       class="min-h-screen bg-transparent text-white relative"
@@ -54,6 +55,75 @@ import {
       (click)="closeMenu(); closeShareMenu()"
     >
       <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        @if (isLoadingProfile()) {
+        <!-- Skeleton Loading State -->
+        <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
+          <!-- Left: Profile card skeleton -->
+          <section class="space-y-4">
+            <div class="rounded-xl p-5 border bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30 backdrop-blur-xl">
+              <div class="grid grid-cols-[140px_1fr] gap-6 items-start pt-8">
+                <!-- Profile Picture Skeleton -->
+                <ngx-skeleton-loader 
+                  count="1" 
+                  appearance="circle"
+                  [theme]="{ 
+                    'width.px': 128, 
+                    'height.px': 128, 
+                    'background-color': '#1a1a1a',
+                    'border': '2px solid #2a2a2a'
+                  }"
+                ></ngx-skeleton-loader>
+                
+                <!-- Info Skeleton -->
+                <div class="space-y-3 pt-2">
+                  <ngx-skeleton-loader 
+                    count="1"
+                    [theme]="{ 'width.px': 200, 'height.px': 28, 'background-color': '#1a1a1a', 'border-radius': '6px' }"
+                  ></ngx-skeleton-loader>
+                  <ngx-skeleton-loader 
+                    count="1"
+                    [theme]="{ 'width.px': 120, 'height.px': 16, 'background-color': '#151515', 'border-radius': '4px' }"
+                  ></ngx-skeleton-loader>
+                  <ngx-skeleton-loader 
+                    count="2" 
+                    appearance="line"
+                    [theme]="{ 'height.px': 14, 'background-color': '#151515', 'margin-bottom': '8px', 'border-radius': '4px' }"
+                  ></ngx-skeleton-loader>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Media Skeleton -->
+            <div class="rounded-xl p-4 border bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30">
+              <ngx-skeleton-loader 
+                count="4" 
+                appearance="line"
+                [theme]="{ 
+                  'height.px': 200, 
+                  'border-radius': '8px', 
+                  'background-color': '#1a1a1a',
+                  'margin-bottom': '12px'
+                }"
+              ></ngx-skeleton-loader>
+            </div>
+          </section>
+          
+          <!-- Right: Content skeleton -->
+          <section class="space-y-4">
+            <div class="rounded-xl p-5 border bg-[#101214]/95 ring-1 ring-[#53565F]/20 border-[#364361]/30">
+              <ngx-skeleton-loader 
+                count="1"
+                [theme]="{ 'width.px': 150, 'height.px': 24, 'background-color': '#1a1a1a', 'border-radius': '6px', 'margin-bottom': '16px' }"
+              ></ngx-skeleton-loader>
+              <ngx-skeleton-loader 
+                count="5" 
+                appearance="line"
+                [theme]="{ 'height.px': 14, 'background-color': '#151515', 'margin-bottom': '10px', 'border-radius': '4px' }"
+              ></ngx-skeleton-loader>
+            </div>
+          </section>
+        </div>
+        } @else {
         <div class="grid grid-cols-1 lg:grid-cols-[430px_1fr] gap-6 lg:gap-8">
           <!-- Left: Profile card + media -->
           <section class="space-y-4">
@@ -1344,6 +1414,7 @@ import {
             }
           </section>
         </div>
+        }
       </div>
     </div>
 
@@ -1760,6 +1831,31 @@ import {
       .actor-theme {
         position: relative;
       }
+      
+      /* Subtle skeleton shimmer animation */
+      ::ng-deep ngx-skeleton-loader {
+        opacity: 0.1;
+      }
+      
+      ::ng-deep .skeleton-loader {
+        background: linear-gradient(
+          90deg,
+          #1a1a1a 0%,
+          #1f1f1f 50%,
+          #1a1a1a 100%
+        ) !important;
+        background-size: 200% 100% !important;
+        animation: subtle-shimmer 2.5s ease-in-out infinite !important;
+      }
+      
+      @keyframes subtle-shimmer {
+        0%, 100% {
+          background-position: 0% 0;
+        }
+        50% {
+          background-position: 100% 0;
+        }
+      }
     `,
   ],
 })
@@ -1833,6 +1929,7 @@ export class ProfileComponent implements OnInit {
   imageUrls = signal<Array<{ url: string; timeCreated: Date }>>([]);
   allImageUrls = computed(() => this.imageUrls().map((img) => img.url));
   isLoadingMedia = signal(false);
+  isLoadingProfile = signal(true);
 
   // Gallery images (excluding profile picture)
   galleryImageUrls = computed(() => {
@@ -2260,6 +2357,8 @@ export class ProfileComponent implements OnInit {
       // Error loading profile, redirect to discover
       console.error('Error loading profile:', error);
       this.router.navigate(['/discover']);
+    } finally {
+      this.isLoadingProfile.set(false);
     }
   }
 
@@ -2430,6 +2529,8 @@ export class ProfileComponent implements OnInit {
       } catch (error) {
         // Default to actor if there's an error
         this.userRole.set('actor');
+      } finally {
+        this.isLoadingProfile.set(false);
       }
     }
   }
