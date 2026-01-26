@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal, computed, effect } from '
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, distinctUntilChanged, filter, from, interval, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription, combineLatest, debounceTime, delay, distinctUntilChanged, filter, from, interval, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { ChatService } from '../services/chat.service';
@@ -497,7 +497,7 @@ interface GroupedMessage {
                     [class.justify-end]="item.message.senderId === meUid"
                   >
                     <div
-                      class="max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2 text-sm"
+                      class="max-w-[50%] rounded-2xl px-3 py-2 text-sm break-words"
                       [ngClass]="{
                         'bg-white/10 text-neutral-100 rounded-tr-sm':
                           item.message.senderId !== meUid,
@@ -506,8 +506,9 @@ interface GroupedMessage {
                         'bg-[#90ACC8]/20 text-[#90ACC8] rounded-tl-sm':
                           item.message.senderId === meUid && myRole() !== 'actor'
                       }"
+                      style="word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;"
                     >
-                      <div>{{ item.message.text }}</div>
+                      <div class="whitespace-pre-wrap">{{ item.message.text }}</div>
                       <div class="mt-1 text-[10px] text-neutral-400 flex items-center gap-1.5">
                         <span>{{ formatTime(item.message.timestamp) }}</span>
                         <!-- Read receipt status for my messages -->
@@ -764,6 +765,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   
   // Mobile sidebar state
   sidebarOpen = signal(false);
+  
+  // Track if chatroom is actually visible to user (not just active in background)
+  isChatVisible = signal(false);
 
   // Block functionality
   isCounterpartBlocked = signal(false);
@@ -1141,6 +1145,21 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.initialLoading.set(false);
     }));
 
+    // Mark all incoming messages as delivered when rooms are loaded
+    // This ensures sender sees double grey tick immediately when receiver gets message
+    this.roomsSub.add(
+      this.rooms$!.pipe(
+        tap(rooms => {
+          if (rooms.length && this.meUid) {
+            // Mark messages as delivered for all rooms on load
+            rooms.forEach(room => {
+              this.chat.markMessagesAsDelivered(room.id!, this.meUid!);
+            });
+          }
+        })
+      ).subscribe()
+    );
+
     // Active conversation stream: restore last or pick first
     this.active$ = combineLatest([
       this.conversations$!,
@@ -1247,16 +1266,27 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.rawMessages.set(msgs);
       }),
       switchMap((msgs: (ChatMessage & { id: string })[]) => {
-        // Mark messages as delivered when they arrive (but not if I've blocked the sender)
+        // Mark messages as delivered when they arrive (for grey double tick)
+        // Then mark as read ONLY if chatroom is actually visible to user
         const activeConv = this.active();
         if (activeConv && this.meUid) {
           const counterpartId = this.counterpartByRoom.get(activeConv.id);
           if (counterpartId) {
-            // Check if I have blocked the counterpart and mark as delivered if not
+            // Check if I have blocked the counterpart
             return from(this.blockService.isUserBlockedAsync(this.meUid, counterpartId)).pipe(
               switchMap(iHaveBlockedThem => {
                 if (!iHaveBlockedThem) {
-                  return from(this.chat.markMessagesAsDelivered(activeConv.id, this.meUid!));
+                  // Always mark as delivered first (grey double tick)
+                  return from(this.chat.markMessagesAsDelivered(activeConv.id, this.meUid!)).pipe(
+                    delay(500),
+                    // Only mark as read if chatroom is visible (user has explicitly opened it)
+                    switchMap(() => {
+                      if (this.isChatVisible()) {
+                        return from(this.chat.markMessagesAsRead(activeConv.id, this.meUid!));
+                      }
+                      return of(null);
+                    })
+                  );
                 }
                 return of(null);
               }),
@@ -1403,6 +1433,12 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.active.set(c);
     this.activeRoomId$.next(c.id);
     
+    // Delay setting chatroom as visible to allow grey tick to show first
+    // This ensures grey double tick appears for 500ms before turning blue
+    setTimeout(() => {
+      this.isChatVisible.set(true);
+    }, 500);
+    
     // Close sidebar on mobile when conversation is selected
     this.closeSidebar();
 
@@ -1427,8 +1463,8 @@ export class ChatComponent implements OnInit, OnDestroy {
         }
       }
       
-      // Mark messages as read in the database
-      this.chat.markMessagesAsRead(c.id, this.meUid);
+      // Note: markMessagesAsRead is now handled automatically by messages$ stream
+      // with proper delay to show grey tick before blue tick
 
       // Force refresh of unread counts to update UI immediately
       // Re-initialize the observable to force a fresh query
@@ -1614,6 +1650,18 @@ export class ChatComponent implements OnInit, OnDestroy {
     // Check if message has been read
     const hasReadAt = message.readAt && message.readAt !== null;
     const hasDeliveredAt = message.deliveredAt && message.deliveredAt !== null;
+    
+    // Debug logging
+    if (message.senderId === this.meUid) {
+      console.log('📊 Message Status Check:', {
+        messageId: message.id,
+        hasReadAt,
+        hasDeliveredAt,
+        readAt: message.readAt,
+        deliveredAt: message.deliveredAt,
+        status: hasReadAt ? 'seen' : hasDeliveredAt ? 'delivered' : 'sent'
+      });
+    }
     
     // Prioritize readAt timestamp for "seen" status
     // If readAt exists, show blue ticks (seen)
