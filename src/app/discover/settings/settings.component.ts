@@ -87,11 +87,6 @@ export class SettingsComponent implements OnInit {
     }
 
     const profileData = this.profileService.profileData();
-    console.log(
-      profileData,
-      profileData?.actorProfile?.isSubscribed,
-      '>>>>>>>>>>>><<<<<<<<<<'
-    );
     return profileData?.actorProfile?.isSubscribed ?? false;
   });
 
@@ -236,11 +231,15 @@ export class SettingsComponent implements OnInit {
       }
     });
 
-    const user = this.auth.getCurrentUser();
-    if (user) {
-      await this.loadUserData();
-      await this.profileService.loadProfileData();
-    }
+    // Defer data loading to avoid ExpressionChangedAfterItHasBeenCheckedError
+    // This prevents computed signals from being triggered during initial change detection
+    setTimeout(async () => {
+      const user = this.auth.getCurrentUser();
+      if (user) {
+        await this.loadUserData();
+        await this.profileService.loadProfileData();
+      }
+    }, 0);
   }
 
   private isValidTab(tab: string): tab is SettingsTab {
@@ -1202,8 +1201,11 @@ export class SettingsComponent implements OnInit {
       console.log('✓ Payment completed, reloading profile...');
 
       // Reload profile data to get updated subscription status
-      await this.profileService.refreshProfileData();
-      await this.loadUserData();
+      // Defer to next tick to avoid ExpressionChangedAfterItHasBeenCheckedError
+      setTimeout(async () => {
+        await this.profileService.refreshProfileData();
+        await this.loadUserData();
+      }, 0);
 
       this.toastService.success('Subscription activated successfully! Welcome to premium.');
       
