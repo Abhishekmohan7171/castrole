@@ -1,0 +1,11 @@
+{
+  "/api/*": {
+    "target": "https://us-central1-yberhood-castrole.cloudfunctions.net",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api": ""
+    },
+    "logLevel": "debug"
+  }
+}
