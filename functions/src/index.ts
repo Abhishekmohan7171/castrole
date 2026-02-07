@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as ffmpeg from 'fluent-ffmpeg';
+import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -17,6 +17,17 @@ export {
   processScheduledDeletions,
   sendDeletionReminders,
 } from './scheduledDeletion';
+
+// ==================== PAYMENT FUNCTIONS ====================
+
+// Razorpay payment integration - 5 secure Cloud Functions
+export {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  razorpayWebhook,
+  getPaymentHistory,
+  cancelSubscription,
+} from './payments';
 
 // ==================== VIDEO PROCESSING FUNCTIONS ====================
 
@@ -101,17 +112,17 @@ export const processVideo = functions.storage
           ])
           .audioCodec('aac')
           .audioBitrate('128k')
-          .on('start', (commandLine) => {
+          .on('start', (commandLine: string) => {
             console.log('FFmpeg command:', commandLine);
           })
-          .on('progress', (progress) => {
+          .on('progress', (progress: any) => {
             console.log('Processing: ' + progress.percent + '% done');
           })
           .on('end', () => {
             console.log('Processing finished successfully');
             resolve();
           })
-          .on('error', (err) => {
+          .on('error', (err: Error) => {
             console.error('FFmpeg error:', err);
             reject(err);
           })
@@ -138,7 +149,7 @@ export const processVideo = functions.storage
       const [processedMetadata] = await bucket
         .file(processedPath)
         .getMetadata();
-      const processedSize = parseInt(processedMetadata.size || '0');
+      const processedSize = parseInt(String(processedMetadata.size || '0'));
       const processedSizeMB = processedSize / (1024 * 1024);
 
       console.log(`Processed video size: ${processedSizeMB.toFixed(2)}MB`);

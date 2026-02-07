@@ -1,3 +1,5 @@
+import { SubscriptionMetadata } from '../../app/interfaces/payment.interfaces';
+
 export interface Profile {
   // Common fields
   uid: string; // Identifying the user
@@ -25,6 +27,7 @@ export interface ProducerProfile {
 
   // Payment related
   isSubscribed?: boolean; // Default false
+  subscriptionMetadata?: SubscriptionMetadata; // Subscription details (optional)
   isBadgedVerified?: boolean; // 1- isPaidMember, 2- KYC (complete questionnaire + work entries)
 
   // NOTE: Wishlist is now stored in wishlists collection, not in producer profile
@@ -47,6 +50,7 @@ export interface ActorProfile {
 
   // Payment related
   isSubscribed?: boolean; // Default false
+  subscriptionMetadata?: SubscriptionMetadata; // Subscription details (optional)
 }
 
 export interface Language {

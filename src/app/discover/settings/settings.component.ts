@@ -9,6 +9,7 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { UserService } from '../../services/user.service';
 import { ToastService } from '../../services/toast.service';
 import { DataExportService } from '../../services/data-export.service';
+import { PaymentService } from '../../services/payment.service';
 import {
   Firestore,
   doc,
@@ -20,6 +21,7 @@ import {
 } from '@angular/fire/firestore';
 import { UserDoc, UserAnalytics } from '../../../assets/interfaces/interfaces';
 import { Profile } from '../../../assets/interfaces/profile.interfaces';
+import { PaymentTransaction } from '../../interfaces/payment.interfaces';
 import { filter, take } from 'rxjs';
 import {
   SettingsSidebarComponent,
@@ -33,6 +35,7 @@ import { SupportSectionComponent } from './sections/support-section.component';
 import { LegalSectionComponent } from './sections/legal-section.component';
 import { AddAccountModalComponent } from './components/add-account-modal.component';
 import { EmailChangeModalComponent } from './components/email-change-modal.component';
+import { PaymentHistoryModalComponent } from './components/payment-history-modal.component';
 import { OtpComponent } from '../../common-components/otp/otp.component';
 import { OtpVerificationService } from '../../services/otp-verification.service';
 
@@ -51,6 +54,7 @@ import { OtpVerificationService } from '../../services/otp-verification.service'
     LegalSectionComponent,
     AddAccountModalComponent,
     EmailChangeModalComponent,
+    PaymentHistoryModalComponent,
     OtpComponent,
   ],
   templateUrl: './settings.component.html',
@@ -68,6 +72,7 @@ export class SettingsComponent implements OnInit {
   private toastService = inject(ToastService);
   private dataExportService = inject(DataExportService);
   private otpVerificationService = inject(OtpVerificationService);
+  private paymentService = inject(PaymentService);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -94,6 +99,11 @@ export class SettingsComponent implements OnInit {
 
   // Active tab signal
   activeTab = signal<SettingsTab>('account');
+
+  // Payment-related signals
+  isProcessingPayment = signal<boolean>(false);
+  showPaymentHistoryModal = signal<boolean>(false);
+  paymentHistoryList = signal<PaymentTransaction[]>([]);
 
   // User data signals
   userData = signal<(UserDoc & Profile) | null>(null);
@@ -1154,14 +1164,67 @@ export class SettingsComponent implements OnInit {
   }
 
   // Subscription management methods
-  upgradeSubscription(plan: 'monthly' | 'yearly') {
-    // TODO: Implement subscription upgrade flow
-    // This would involve:
-    // 1. Redirecting to payment gateway
-    // 2. Processing payment
-    // 3. Updating user subscription status
-    console.log('✓ Upgrade subscription initiated:', plan);
-    // For now, just show success message
+  async upgradeSubscription(plan: 'monthly' | 'yearly') {
+    const userData = this.userData();
+    
+    console.log('🔍 upgradeSubscription called with plan:', plan);
+    console.log('🔍 userData:', userData);
+    
+    if (!userData) {
+      console.error('❌ No userData found');
+      this.toastService.error('User data not found. Please refresh the page.');
+      return;
+    }
+
+    // Validate user has required data
+    if (!userData.name || !userData.email || !userData.phone) {
+      console.error('❌ Missing required fields:', {
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone
+      });
+      this.toastService.error('Please complete your profile before subscribing.');
+      return;
+    }
+
+    try {
+      this.isProcessingPayment.set(true);
+      
+      console.log('✓ Starting payment initiation...');
+
+      // Initiate payment via PaymentService
+      await this.paymentService.initiatePayment(plan, {
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+      });
+
+      console.log('✓ Payment completed, reloading profile...');
+
+      // Reload profile data to get updated subscription status
+      await this.profileService.refreshProfileData();
+      await this.loadUserData();
+
+      this.toastService.success('Subscription activated successfully! Welcome to premium.');
+      
+      console.log('✓ Subscription activated:', plan);
+    } catch (error: any) {
+      console.error('❌ Payment error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        stack: error.stack
+      });
+      
+      // Don't show error if user cancelled
+      if (error.message !== 'Payment cancelled by user') {
+        // Show more specific error message
+        const errorMessage = error.message || error.details?.message || 'Payment failed. Please try again or contact support.';
+        this.toastService.error(errorMessage);
+      }
+    } finally {
+      this.isProcessingPayment.set(false);
+    }
   }
 
   // Handlers passed to child components as callbacks
@@ -1170,26 +1233,82 @@ export class SettingsComponent implements OnInit {
   upgradeToYearlyFromAnalyticsHandler = () =>
     this.upgradeSubscription('yearly');
 
-  manageSubscription() {
-    // TODO: Implement subscription management
-    // This could show a modal or redirect to billing portal
-    // Features to include:
-    // - Change payment method
-    // - Update billing address
-    // - Cancel subscription
-    // - Download invoices
-    console.log('✓ Manage subscription opened');
+  async manageSubscription() {
+    // Check if user has active subscription
+    if (!this.profileService.isSubscriptionActive()) {
+      this.toastService.info('You do not have an active subscription.');
+      return;
+    }
+
+    // Get subscription details
+    const metadata = this.profileService.getSubscriptionMetadata();
+    const plan = this.profileService.getSubscriptionPlan();
+    const endDate = this.profileService.getSubscriptionEndDate();
+    const daysRemaining = this.profileService.getDaysRemaining();
+
+    if (!metadata || !plan || !endDate) {
+      this.toastService.error('Unable to load subscription details.');
+      return;
+    }
+
+    // Show confirmation dialog
+    const planName = plan === 'monthly' ? 'Monthly' : 'Yearly';
+    const endDateStr = endDate.toLocaleDateString('en-IN', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    const confirmed = confirm(
+      `Cancel ${planName} Subscription?\n\n` +
+      `Your subscription will remain active until ${endDateStr} (${daysRemaining} days).\n\n` +
+      `Are you sure you want to cancel?`
+    );
+
+    if (!confirmed) return;
+
+    // Ask for cancellation reason
+    const reason = prompt(
+      'Please tell us why you\'re cancelling (optional):\n\n' +
+      'This helps us improve our service.'
+    );
+
+    try {
+      const success = await this.paymentService.cancelSubscription(reason || undefined);
+
+      if (success) {
+        // Reload profile data
+        await this.profileService.refreshProfileData();
+        await this.loadUserData();
+
+        this.toastService.success(
+          `Subscription cancelled. You'll have access until ${endDateStr}.`
+        );
+        
+        console.log('✓ Subscription cancelled');
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+    }
   }
 
-  viewPaymentHistory() {
-    // TODO: Implement payment history view
-    // This could show a modal with:
-    // - List of past payments
-    // - Invoice downloads
-    // - Receipt downloads
-    // - Payment method used
-    // - Status of each payment
-    console.log('✓ Payment history opened');
+  async viewPaymentHistory() {
+    try {
+      // Fetch payment history from PaymentService
+      const transactions = await this.paymentService.getPaymentHistory();
+      
+      this.paymentHistoryList.set(transactions);
+      this.showPaymentHistoryModal.set(true);
+      
+      console.log('✓ Payment history loaded:', transactions.length, 'transactions');
+    } catch (error) {
+      console.error('Error loading payment history:', error);
+      this.toastService.error('Failed to load payment history. Please try again.');
+    }
+  }
+
+  closePaymentHistoryModal() {
+    this.showPaymentHistoryModal.set(false);
   }
 
   // Support form methods

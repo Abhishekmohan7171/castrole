@@ -139,7 +139,6 @@ export async function sendDeletionReminderEmail(
     day: 'numeric',
   });
 
-  const urgencyClass = daysRemaining === 1 ? 'urgent' : 'warning';
   const urgencyColor = daysRemaining === 1 ? '#ef4444' : '#f59e0b';
 
   const mailOptions = {

@@ -5,7 +5,7 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs18"
+    "runtime": "nodejs20"
   },
   "storage": {
     "rules": "storage.rules"
@@ -14,6 +14,18 @@
     "public": "dist/castrole/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
+      {
+        "source": "/api/createRazorpayOrder",
+        "function": "createRazorpayOrder"
+      },
+      {
+        "source": "/api/verifyRazorpayPayment",
+        "function": "verifyRazorpayPayment"
+      },
+      {
+        "source": "/api/razorpayWebhook",
+        "function": "razorpayWebhook"
+      },
       {
         "source": "**",
         "destination": "/index.html"

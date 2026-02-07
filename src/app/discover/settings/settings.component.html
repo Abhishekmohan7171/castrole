@@ -153,10 +153,10 @@
           } @case ('subscriptions') {
           <app-subscriptions-section
             [isActor]="isActor()"
-            [upgradeToMonthly]="upgradeToMonthlyHandler"
-            [upgradeToYearly]="upgradeToYearlyHandler"
-            [manageSubscription]="manageSubscription"
-            [viewPaymentHistory]="viewPaymentHistory"
+            (upgradeToMonthly)="upgradeSubscription('monthly')"
+            (upgradeToYearly)="upgradeSubscription('yearly')"
+            (manageSubscription)="manageSubscription()"
+            (viewPaymentHistory)="viewPaymentHistory()"
           />
           } @case ('analytics') {
           <app-analytics-section
@@ -1020,6 +1020,14 @@
     [currentEmail]="userData()?.email || ''"
     (close)="closeEmailChangeModal()"
     (success)="closeEmailChangeModal()"
+  />
+  }
+
+  <!-- Payment History Modal -->
+  @if (showPaymentHistoryModal()) {
+  <app-payment-history-modal
+    [transactions]="paymentHistoryList()"
+    (close)="closePaymentHistoryModal()"
   />
   }
 

@@ -10,25 +10,29 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {
     "@google-cloud/storage": "^7.7.0",
+    "cors": "^2.8.6",
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^4.5.0",
     "fluent-ffmpeg": "^2.1.2",
-    "nodemailer": "^7.0.12"
+    "nodemailer": "^7.0.12",
+    "razorpay": "^2.9.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/fluent-ffmpeg": "^2.1.24",
+    "@types/nodemailer": "^6.4.14",
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
     "eslint": "^8.9.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
     "ts-node": "^10.9.2",
-    "typescript": "^4.9.0"
+    "typescript": "^5.3.3"
   },
   "private": true
 }
