@@ -492,23 +492,38 @@ export class DiscoverComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       onAuthStateChanged(this.firebaseAuth, (user) => {
         if (user) {
-          // Get user document from Firestore
+          // Get user document from Firestore to determine role
           this.subscriptions.add(
             this.getUserDoc(user.uid).subscribe(
               (userData: DocumentData | undefined) => {
                 if (userData) {
-                  this.userName =
-                    userData['name'] || user.email?.split('@')[0] || 'User';
-                  this.userNameLoaded = true;
+                  const currentRole = (userData['currentRole'] || 'actor') as 'actor' | 'producer';
                   this.uid = user.uid;
-                  // Set user role for theming
-                  this.userRole.set(userData['currentRole'] || 'actor');
+                  this.userRole.set(currentRole);
+                  
+                  // Fetch profile document to get display name
+                  this.subscriptions.add(
+                    this.getProfileDoc(user.uid).subscribe(
+                      (profileData: DocumentData | undefined) => {
+                        if (profileData) {
+                          // Set display name based on role from profile data
+                          if (currentRole === 'actor') {
+                            this.userName = profileData['actorProfile']?.['stageName'] || 'User';
+                          } else {
+                            this.userName = profileData['producerProfile']?.['name'] || 'User';
+                          }
+                        } else {
+                          this.userName = 'User';
+                        }
+                        this.userNameLoaded = true;
+                      }
+                    )
+                  );
 
                   // Fetch profile photo
                   this.fetchProfilePhoto(user.uid);
 
                   // Initialize real-time notifications
-                  const currentRole = userData['currentRole'] as 'actor' | 'producer';
                   this.subscriptions.add(
                     this.notificationService.observeNotifications(user.uid, currentRole).subscribe(
                       (notifications) => {
@@ -620,6 +635,30 @@ export class DiscoverComponent implements OnInit, OnDestroy {
       );
 
       // Return unsubscribe function
+      return () => unsubscribe();
+    });
+  }
+
+  // Get profile document from Firestore
+  getProfileDoc(uid: string): Observable<DocumentData | undefined> {
+    return new Observable<DocumentData | undefined>((observer) => {
+      const profileDocRef = doc(this.firestore, 'profiles', uid);
+
+      const unsubscribe = onSnapshot(
+        profileDocRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            observer.next(docSnap.data());
+          } else {
+            observer.next(undefined);
+          }
+        },
+        (error) => {
+          this.logger.error('Error fetching profile document:', error);
+          observer.error(error);
+        }
+      );
+
       return () => unsubscribe();
     });
   }

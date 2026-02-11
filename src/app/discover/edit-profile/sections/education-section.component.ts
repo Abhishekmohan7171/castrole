@@ -194,7 +194,11 @@ import { DialogService } from '../../../services/dialog.service';
         <button
           type="button"
           (click)="addEducation()"
-          class="w-full md:w-auto px-6 py-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+          [ngClass]="{
+            'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300': isActor,
+            'bg-[#90ACC8]/20 hover:bg-[#90ACC8]/30 text-[#90ACC8]': !isActor
+          }"
+          class="w-full md:w-auto px-6 py-3 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -349,7 +353,11 @@ import { DialogService } from '../../../services/dialog.service';
           <button
             type="button"
             (click)="addExperience()"
-            class="w-full md:w-auto px-6 py-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+            [ngClass]="{
+              'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300': isActor,
+              'bg-[#90ACC8]/20 hover:bg-[#90ACC8]/30 text-[#90ACC8]': !isActor
+            }"
+            class="w-full md:w-auto px-6 py-3 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

@@ -1006,7 +1006,7 @@ import {
 
               <!-- Social Links -->
               @if (hasSocialLinks() || isActor() || isViewingOwnProfile()) {
-              <div class="pt-3 border-t border-neutral-800">
+              <div class="pt-3 border-t border-neutral-800" [ngClass]="{ 'mt-4': !isActor() }">
                 <div class="text-sm text-neutral-500 mb-2">social links</div>
                 <div class="flex items-center gap-2">
                   @if (profileData()?.social?.instaIdUrl) {
