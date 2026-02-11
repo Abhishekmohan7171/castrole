@@ -68,34 +68,46 @@ export class ProfileService {
 
     try {
       const profileDocRef = doc(this.firestore, 'profiles', user.uid);
-      await updateDoc(profileDocRef, {
-        'actorProfile.isSubscribed': isSubscribed
-      });
-      
-      // Update local state
       const currentProfile = this.profileData();
+      
+      // Update based on which profile exists
       if (currentProfile?.actorProfile) {
+        await updateDoc(profileDocRef, {
+          'actorProfile.isSubscribed': isSubscribed
+        });
         currentProfile.actorProfile.isSubscribed = isSubscribed;
+        this.profileData.set({ ...currentProfile });
+      } else if (currentProfile?.producerProfile) {
+        await updateDoc(profileDocRef, {
+          'producerProfile.isSubscribed': isSubscribed
+        });
+        currentProfile.producerProfile.isSubscribed = isSubscribed;
         this.profileData.set({ ...currentProfile });
       }
     } catch (error) {
-      console.error('Error updating actor subscription:', error);
+      console.error('Error updating subscription:', error);
     }
   }
 
   // ==================== SUBSCRIPTION METADATA METHODS ====================
 
   /**
-   * Get subscription metadata for actor
+   * Get subscription metadata for actor or producer
    * @returns SubscriptionMetadata or null if not subscribed
    */
   getSubscriptionMetadata(): SubscriptionMetadata | null {
-    const actorProfile = this.getActorProfile();
-    return actorProfile?.subscriptionMetadata || null;
+    const profile = this.profileData();
+    if (!profile) return null;
+    
+    // Check actor profile first, then producer profile
+    const actorMetadata = profile.actorProfile?.subscriptionMetadata;
+    const producerMetadata = profile.producerProfile?.subscriptionMetadata;
+    
+    return actorMetadata || producerMetadata || null;
   }
 
   /**
-   * Update subscription metadata for actor
+   * Update subscription metadata for actor or producer
    * Used by Cloud Functions after successful payment
    * 
    * @param metadata - Complete subscription metadata

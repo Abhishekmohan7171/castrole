@@ -89,15 +89,14 @@ import { ToastService } from '../../services/toast.service';
             @if (toast.duration && toast.duration > 0 && toast.type !== 'upload') {
               <div class="mt-3 h-1 bg-black/20 rounded-full overflow-hidden">
                 <div
-                  class="h-full transition-all ease-linear"
+                  class="h-full ease-linear"
                   [ngClass]="{
                     'bg-emerald-400': toast.type === 'success',
                     'bg-red-400': toast.type === 'error',
                     'bg-amber-400': toast.type === 'warning',
                     'bg-blue-400': toast.type === 'info'
                   }"
-                  [style.width.%]="getProgress(toast)"
-                  [style.transition-duration.ms]="toast.duration"
+                  [style.animation]="'shrink ' + toast.duration + 'ms linear'"
                 ></div>
               </div>
             }
@@ -116,20 +115,22 @@ import { ToastService } from '../../services/toast.service';
         animate('200ms ease-in', style({ transform: 'translateX(400px)', opacity: 0 }))
       ])
     ])
-  ]
+  ],
+  styles: [`
+    @keyframes shrink {
+      from {
+        width: 100%;
+      }
+      to {
+        width: 0%;
+      }
+    }
+  `]
 })
 export class ToastComponent {
   toastService = inject(ToastService);
 
   dismiss(id: string): void {
     this.toastService.dismiss(id);
-  }
-
-  getProgress(toast: { timestamp: number; duration?: number }): number {
-    if (!toast.duration || toast.duration <= 0) return 100;
-
-    const elapsed = Date.now() - toast.timestamp;
-    const progress = 100 - (elapsed / toast.duration) * 100;
-    return Math.max(0, Math.min(100, progress));
   }
 }

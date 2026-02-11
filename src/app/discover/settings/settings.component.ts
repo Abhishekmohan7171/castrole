@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -63,7 +63,7 @@ import { OtpVerificationService } from '../../services/otp-verification.service'
 export class SettingsComponent implements OnInit {
   private auth = inject(AuthService);
   private firestore = inject(Firestore);
-  private profileService = inject(ProfileService);
+  profileService = inject(ProfileService); // Public for template access
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private loadingService = inject(LoadingService);
@@ -73,6 +73,7 @@ export class SettingsComponent implements OnInit {
   private dataExportService = inject(DataExportService);
   private otpVerificationService = inject(OtpVerificationService);
   private paymentService = inject(PaymentService);
+  private cdr = inject(ChangeDetectorRef);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -80,14 +81,17 @@ export class SettingsComponent implements OnInit {
   isProducer = computed(() => this.userRole() === 'producer');
   settingsTheme = computed(() => (this.isActor() ? 'actor-theme' : ''));
 
-  // Subscription status for actors
+  // Subscription status for actors and producers
   isSubscribed = computed(() => {
-    if (!this.isActor()) {
-      return false;
-    }
-
     const profileData = this.profileService.profileData();
-    return profileData?.actorProfile?.isSubscribed ?? false;
+    
+    if (this.isActor()) {
+      return profileData?.actorProfile?.isSubscribed ?? false;
+    } else if (this.isProducer()) {
+      return profileData?.producerProfile?.isSubscribed ?? false;
+    }
+    
+    return false;
   });
 
   readReceipts = signal<boolean>(true);
@@ -238,6 +242,8 @@ export class SettingsComponent implements OnInit {
       if (user) {
         await this.loadUserData();
         await this.profileService.loadProfileData();
+        // Manually trigger change detection after data is loaded
+        this.cdr.detectChanges();
       }
     }, 0);
   }
@@ -1205,6 +1211,8 @@ export class SettingsComponent implements OnInit {
       setTimeout(async () => {
         await this.profileService.refreshProfileData();
         await this.loadUserData();
+        // Manually trigger change detection after profile reload
+        this.cdr.detectChanges();
       }, 0);
 
       this.toastService.success('Subscription activated successfully! Welcome to premium.');

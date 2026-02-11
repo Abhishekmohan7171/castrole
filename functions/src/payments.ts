@@ -182,7 +182,14 @@ export const verifyRazorpayPayment = functions
 
   try {
     // Generate expected signature
-    const key_secret = functions.config().razorpay.key_secret;
+    // Use the same safe fallback logic as createRazorpayOrder
+    const config = functions.config().razorpay || {};
+    const key_secret = config.key_secret || process.env.RAZORPAY_KEY_SECRET || 'BZ9nMfG09MSIk62VkkCs8E39';
+
+    if (!key_secret) {
+      throw new functions.https.HttpsError('internal', 'Razorpay key_secret missing');
+    }
+
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', key_secret)
@@ -247,7 +254,7 @@ export const verifyRazorpayPayment = functions
         amountPaise: paymentData?.amountPaise,
         amountRupees: paymentData?.amountRupees,
         startDate,
-        endDate: admin.firestore.Timestamp.fromDate(endDate),
+        endDate: endDate,
         paymentId: razorpay_payment_id,
         autoRenew: false,
         status: 'active',
@@ -395,7 +402,7 @@ export const razorpayWebhook = functions.https.onRequest(async (req, res) => {
                 amountPaise: paymentData?.amountPaise,
                 amountRupees: paymentData?.amountRupees,
                 startDate,
-                endDate: admin.firestore.Timestamp.fromDate(endDate),
+                endDate: endDate,
                 paymentId,
                 autoRenew: false,
                 status: 'active',

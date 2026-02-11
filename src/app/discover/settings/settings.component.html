@@ -153,6 +153,10 @@
           } @case ('subscriptions') {
           <app-subscriptions-section
             [isActor]="isActor()"
+            [isSubscribed]="isSubscribed()"
+            [currentPlan]="profileService.getSubscriptionPlan()"
+            [subscriptionEndDate]="profileService.getSubscriptionEndDate()"
+            [daysRemaining]="profileService.getDaysRemaining()"
             (upgradeToMonthly)="upgradeSubscription('monthly')"
             (upgradeToYearly)="upgradeSubscription('yearly')"
             (manageSubscription)="manageSubscription()"
