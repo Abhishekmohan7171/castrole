@@ -35,6 +35,9 @@ interface ActorSearchResult {
   wishlistCount?: number;
   // For search relevance
   relevanceScore?: number;
+  // For sorting priority
+  isSubscribed?: boolean;
+  profileCompletionScore?: number; // 0-100 score based on profile completeness
 }
 
 interface SearchFilters {
@@ -1200,6 +1203,62 @@ export class SearchComponent implements OnInit, OnDestroy {
     }
 
     this.logger.log(`Filtered results: ${actors.length} actors found`);
+    
+    // Multi-tier sorting: Premium + Completed > Premium > Completed > Others
+    // Within each tier, sort by relevance score
+    actors.sort((a, b) => {
+      const aIsPremium = a.isSubscribed || false;
+      const bIsPremium = b.isSubscribed || false;
+      const aCompletionScore = a.profileCompletionScore || 0;
+      const bCompletionScore = b.profileCompletionScore || 0;
+      const aRelevance = a.relevanceScore || 0;
+      const bRelevance = b.relevanceScore || 0;
+      
+      // Define completion threshold (80% or higher is considered "complete")
+      const COMPLETION_THRESHOLD = 80;
+      const aIsComplete = aCompletionScore >= COMPLETION_THRESHOLD;
+      const bIsComplete = bCompletionScore >= COMPLETION_THRESHOLD;
+      
+      // Tier 1: Premium + Complete profiles
+      const aIsTier1 = aIsPremium && aIsComplete;
+      const bIsTier1 = bIsPremium && bIsComplete;
+      if (aIsTier1 && !bIsTier1) return -1;
+      if (!aIsTier1 && bIsTier1) return 1;
+      if (aIsTier1 && bIsTier1) {
+        // Both are tier 1, sort by completion score first, then relevance
+        if (bCompletionScore !== aCompletionScore) return bCompletionScore - aCompletionScore;
+        return bRelevance - aRelevance;
+      }
+      
+      // Tier 2: Premium profiles (not complete)
+      const aIsTier2 = aIsPremium && !aIsComplete;
+      const bIsTier2 = bIsPremium && !bIsComplete;
+      if (aIsTier2 && !bIsTier2) return -1;
+      if (!aIsTier2 && bIsTier2) return 1;
+      if (aIsTier2 && bIsTier2) {
+        // Both are tier 2, sort by completion score first, then relevance
+        if (bCompletionScore !== aCompletionScore) return bCompletionScore - aCompletionScore;
+        return bRelevance - aRelevance;
+      }
+      
+      // Tier 3: Complete profiles (not premium)
+      const aIsTier3 = !aIsPremium && aIsComplete;
+      const bIsTier3 = !aIsPremium && bIsComplete;
+      if (aIsTier3 && !bIsTier3) return -1;
+      if (!aIsTier3 && bIsTier3) return 1;
+      if (aIsTier3 && bIsTier3) {
+        // Both are tier 3, sort by completion score first, then relevance
+        if (bCompletionScore !== aCompletionScore) return bCompletionScore - aCompletionScore;
+        return bRelevance - aRelevance;
+      }
+      
+      // Tier 4: Others (not premium, not complete)
+      // Sort by completion score first, then relevance
+      if (bCompletionScore !== aCompletionScore) return bCompletionScore - aCompletionScore;
+      return bRelevance - aRelevance;
+    });
+    
+    this.logger.log(`Sorted results by priority: Premium+Complete > Premium > Complete > Others`);
     return actors;
   });
 
@@ -1408,6 +1467,53 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Calculate profile completion score (0-100)
+   * Higher score means more complete profile
+   */
+  private calculateProfileCompletionScore(profile: Profile): number {
+    if (!profile.actorProfile) return 0;
+    
+    const actor = profile.actorProfile;
+    let score = 0;
+    const weights = {
+      stageName: 10,
+      profileImage: 15,
+      age: 5,
+      gender: 5,
+      location: 5,
+      height: 5,
+      bodyType: 5,
+      carouselImages: 15,
+      voiceIntro: 10,
+      skills: 10,
+      languages: 10,
+      characterTypes: 5
+    };
+
+    // Required fields
+    if (actor.stageName) score += weights.stageName;
+    if (actor.actorProfileImageUrl) score += weights.profileImage;
+    if (profile.age) score += weights.age;
+    if (profile.gender) score += weights.gender;
+    if (profile.location) score += weights.location;
+    if (actor.height) score += weights.height;
+    if (actor.bodyType) score += weights.bodyType;
+    
+    // Media
+    if (actor.carouselImagesUrl && actor.carouselImagesUrl.length > 0) score += weights.carouselImages;
+    if (actor.voiceIntro) score += weights.voiceIntro;
+    
+    // Skills and languages
+    if (actor.skills && actor.skills.length > 0) score += weights.skills;
+    if (actor.languages && actor.languages.length > 0) score += weights.languages;
+    
+    // Character types
+    if (actor.characterTypes && actor.characterTypes.length > 0) score += weights.characterTypes;
+
+    return score;
+  }
+
+  /**
    * Transform Profile document to ActorSearchResult
    */
   private transformProfileToSearchResult(profile: Profile, characterTypes: string[] = []): ActorSearchResult | null {
@@ -1466,7 +1572,9 @@ export class SearchComponent implements OnInit, OnDestroy {
       carouselImages: actor.carouselImagesUrl || [],
       voiceIntroUrl: actor.voiceIntro,
       profileViewCount: 0, // Analytics moved to separate collection
-      wishlistCount: 0 // Analytics moved to separate collection
+      wishlistCount: 0, // Analytics moved to separate collection
+      isSubscribed: actor.isSubscribed || false,
+      profileCompletionScore: this.calculateProfileCompletionScore(profile)
     };
     
     this.logger.log(`Transformed actor: ${result.stageName}, characterTypes:`, result.characterTypes);
