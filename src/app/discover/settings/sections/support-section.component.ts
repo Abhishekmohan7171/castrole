@@ -1,4 +1,4 @@
-import { Component, input, signal, effect } from '@angular/core';
+import { Component, input, output, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -112,9 +112,9 @@ import { FormsModule } from '@angular/forms';
             "
             class="w-full sm:w-auto px-8 py-3 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             [ngClass]="{
-              'bg-purple-600 hover:bg-purple-700 text-white disabled:hover:bg-purple-600':
+              'bg-fuchsia-600 hover:bg-fuchsia-700 text-white disabled:hover:bg-fuchsia-600':
                 isActor(),
-              'bg-neutral-600 hover:bg-neutral-700 text-white disabled:hover:bg-neutral-600':
+              'bg-[#90ACC8] hover:bg-[#7A96B2] text-white disabled:hover:bg-[#90ACC8]':
                 !isActor()
             }"
           >
@@ -236,9 +236,9 @@ export class SupportSectionComponent {
   isSubmittingSupport = input.required<boolean>();
   submitSupportForm = input.required<() => void>();
 
-  onSubmitSupportForm() {
-    this.submitSupportForm()();
-  }
+  // Output events to sync local form values back to parent
+  subjectChange = output<string>();
+  concernChange = output<string>();
 
   // Local form state
   localSupportSubject = signal('');
@@ -250,5 +250,16 @@ export class SupportSectionComponent {
       this.localSupportSubject.set(this.supportSubject());
       this.localSupportConcern.set(this.supportConcern());
     }, { allowSignalWrites: true });
+  }
+
+  onSubmitSupportForm() {
+    // Sync local values to parent before submitting
+    this.subjectChange.emit(this.localSupportSubject());
+    this.concernChange.emit(this.localSupportConcern());
+
+    // Small delay to ensure parent signals are updated before submit runs
+    setTimeout(() => {
+      this.submitSupportForm()();
+    });
   }
 }

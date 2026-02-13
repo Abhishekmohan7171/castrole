@@ -35,6 +35,7 @@ import { AddAccountModalComponent } from './components/add-account-modal.compone
 import { EmailChangeModalComponent } from './components/email-change-modal.component';
 import { OtpComponent } from '../../common-components/otp/otp.component';
 import { OtpVerificationService } from '../../services/otp-verification.service';
+import { EmailJsService } from '../../services/emailjs.service';
 
 @Component({
   selector: 'app-discover-settings',
@@ -68,6 +69,7 @@ export class SettingsComponent implements OnInit {
   private toastService = inject(ToastService);
   private dataExportService = inject(DataExportService);
   private otpVerificationService = inject(OtpVerificationService);
+  private emailJsService = inject(EmailJsService);
 
   // User role signals
   userRole = signal<string>('actor');
@@ -1215,19 +1217,42 @@ export class SettingsComponent implements OnInit {
 
     try {
       const userData = this.userData();
+      const profileData = this.profileService.profileData();
+      const subject = this.supportSubject().trim();
+      const concern = this.supportConcern().trim();
+      const userName = this.isActor()
+        ? profileData?.actorProfile?.stageName || userData?.name || ''
+        : profileData?.producerProfile?.name || userData?.name || '';
+      const userEmail = userData?.email || user.email || '';
+      const userPhone = userData?.phone || '';
+      const userRole = this.userRole();
+
       const supportTicket = {
         userId: user.uid,
-        userEmail: userData?.email || user.email || '',
-        userName: userData?.name || '',
-        subject: this.supportSubject().trim(),
-        concern: this.supportConcern().trim(),
+        userEmail,
+        userName,
+        userPhone,
+        userRole,
+        subject,
+        concern,
         status: 'open',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
+      // Save to Firestore and send email in parallel
       const supportCollection = collection(this.firestore, 'support_tickets');
-      await addDoc(supportCollection, supportTicket);
+      await Promise.all([
+        addDoc(supportCollection, supportTicket),
+        this.emailJsService.sendSupportEmail({
+          subject,
+          concern,
+          userName,
+          userEmail,
+          userPhone,
+          userRole,
+        }),
+      ]);
 
       // Reset form and show success state
       this.supportSubject.set('');
@@ -1239,7 +1264,6 @@ export class SettingsComponent implements OnInit {
         4000
       );
     } catch (error) {
-      console.error('Error submitting support form:', error);
       this.isSubmittingSupport.set(false);
       this.toastService.error(
         'Failed to submit your feedback. Please try again.',

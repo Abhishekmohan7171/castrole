@@ -170,6 +170,8 @@
             [supportConcern]="supportConcern()"
             [isSubmittingSupport]="isSubmittingSupport()"
             [submitSupportForm]="submitSupportForm.bind(this)"
+            (subjectChange)="supportSubject.set($event)"
+            (concernChange)="supportConcern.set($event)"
           />
           } @case ('legal') {
           <app-legal-section [isActor]="isActor()" />
