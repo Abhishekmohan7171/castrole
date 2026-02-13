@@ -247,48 +247,110 @@ import { CommonModule } from '@angular/common';
             'prose-neutral text-neutral-300': !isActor()
           }"
         >
-          <!-- Terms content would go here -->
           <div>
-            <h3 class="font-medium mb-2">1. Acceptance of Terms</h3>
+            <h3 class="font-medium mb-3 text-base">TERMS OF SERVICE (ToS)</h3>
+            <p class="text-xs mb-2">Effective Date: [Date]</p>
+            <p class="text-xs mb-4">Jurisdiction: India (Governed by IT Act, 2000)</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">1. Contractual Relationship</h3>
             <p>
-              By accessing and using Castrole, you accept and agree to be bound
-              by the terms and provision of this agreement.
+              These Terms of Service ("Terms") govern the access or use by you ("User", "Actor", "Producer") of the platform "Kalacast" (the "App"), provided by [Your Company Name].
+            </p>
+            <p class="mt-2">
+              <strong>Acceptance:</strong> By registering via Email or OTP, you enter into a binding contract with Kalacast.
+            </p>
+            <p class="mt-2">
+              <strong>Age Restriction:</strong> You must be 18+ to register. Minors (under 18) must have accounts managed strictly by a parent/guardian.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">2. User Accounts</h3>
+            <h3 class="font-medium mb-2">2. Account, Identity & Security</h3>
             <p>
-              You are responsible for maintaining the confidentiality of your
-              account and password. You agree to accept responsibility for all
-              activities that occur under your account.
+              <strong>Verification:</strong> Accounts are authenticated via Mobile OTP or Google Auth. You agree that the mobile number provided belongs to you.
+            </p>
+            <p class="mt-2">
+              <strong>Dual Roles:</strong> Users may switch between "Actor" and "Producer" profiles in Settings. You are responsible for all activities that occur under either role. Misusing the Producer role to harass Actors or scrape data for non-casting purposes will result in an immediate permanent ban.
+            </p>
+            <p class="mt-2">
+              <strong>Ghost Mode:</strong> Enabling "Ghost Mode" hides your profile from Search and Discovery. However, existing chat threads and previously shared data with Producers may remain visible to them. Ghost Mode does not delete your data from our servers.
+            </p>
+            <p class="mt-2">
+              <strong>Device Security:</strong> You are responsible for logging out of devices you no longer use. Kalacast is not liable for data breaches resulting from your failure to secure your device or OTP.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">3. Platform Usage</h3>
+            <h3 class="font-medium mb-2">3. Services & Communication</h3>
             <p>
-              Castrole provides a platform connecting actors and producers.
-              Users must use the service in accordance with applicable laws and
-              these terms.
+              <strong>The Chat Protocol:</strong> Chat functionality is "Request-Based." A Producer may send a chat request; messaging capabilities are only unlocked once the Actor accepts the request.
+            </p>
+            <p class="mt-2">
+              <strong>No Guarantee of Employment:</strong> Kalacast is an intermediary platform (venue). We do not guarantee auditions, roles, or employment. We are not responsible for the outcome of any interaction between Actor and Producer.
+            </p>
+            <p class="mt-2">
+              <strong>Analytics Sharing:</strong>
+            </p>
+            <ul class="list-disc list-inside ml-4 mt-1">
+              <li>For Actors: You acknowledge that your profile analytics (views, demographics) are derived from Producer activity.</li>
+              <li>For Producers: You acknowledge that when you view an Actor's profile in depth, this interaction data is anonymized and shared with the Actor as part of their "Analytics" feature.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">4. Subscriptions, Payments & Free Trial</h3>
+            <p>
+              <strong>90-Day Free Trial:</strong> All new users receive 90 days of premium access. Upon expiration, access to Premium Features (Search filters for Producers; Analytics/10 Reels for Actors) will be locked until a subscription is purchased.
+            </p>
+            <p class="mt-2">
+              <strong>Pricing:</strong>
+            </p>
+            <ul class="list-disc list-inside ml-4 mt-1">
+              <li>Actor: ₹222/mo or ₹2,222/yr.</li>
+              <li>Producer: ₹2,222/mo or ₹22,222/yr.</li>
+            </ul>
+            <p class="mt-2">
+              <strong>Automatic Renewal:</strong> Subscriptions auto-renew unless cancelled 24 hours prior to the cycle end.
+            </p>
+            <p class="mt-2">
+              <strong>Refund Policy:</strong> Strict No-Refund Policy. Since Kalacast offers a 90-day trial to test the service, no refunds will be issued for subscriptions once paid, except where required by law.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">4. Content Guidelines</h3>
+            <h3 class="font-medium mb-2">5. User-Generated Content (UGC) & License</h3>
             <p>
-              All content uploaded must be appropriate and comply with our
-              community guidelines. We reserve the right to remove content that
-              violates these terms.
+              <strong>Your Content:</strong> You retain ownership of your videos, voice intros, and photos.
+            </p>
+            <p class="mt-2">
+              <strong>License to Kalacast:</strong> By uploading, you grant Kalacast a worldwide, non-exclusive, royalty-free license to host, store (via Google Cloud), modify (for transcoding/compression), and display your content to other Users for the purpose of operating the App.
+            </p>
+            <p class="mt-2">
+              <strong>Prohibited Content:</strong> You strictly agree NOT to upload:
+            </p>
+            <ul class="list-disc list-inside ml-4 mt-1">
+              <li>Nudity or sexually explicit material.</li>
+              <li>Content that infringes on third-party copyrights (e.g., movie clips you do not own rights to).</li>
+              <li>Misleading tags (e.g., tagging a "Comedy" video as "Action" to game the search results).</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">6. Limitation of Liability & Indemnity</h3>
+            <p>
+              <strong>Indemnity:</strong> You agree to indemnify and hold Kalacast harmless from any claims, legal fees, or damages arising from your content (e.g., if you upload a copyrighted song in your audition tape) or your conduct off-app (e.g., physical auditions).
+            </p>
+            <p class="mt-2">
+              <strong>Service Availability:</strong> We do not guarantee 100% uptime. Services may be interrupted for maintenance.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">5. Limitation of Liability</h3>
+            <h3 class="font-medium mb-2">7. Termination</h3>
             <p>
-              Castrole shall not be liable for any direct, indirect, incidental,
-              special, or consequential damages resulting from your use of the
-              platform.
+              Kalacast reserves the right to suspend or delete your account without notice if you violate these Terms, specifically regarding harassment, fake profiles, or safety violations.
             </p>
           </div>
         </div>
@@ -338,49 +400,82 @@ import { CommonModule } from '@angular/common';
             'prose-neutral text-neutral-300': !isActor()
           }"
         >
-          <!-- Privacy policy content-->
           <div>
-            <h3 class="font-medium mb-2">Information We Collect</h3>
+            <h3 class="font-medium mb-3 text-base">PRIVACY POLICY</h3>
+            <p class="text-xs mb-4">Note: This policy is drafted in compliance with the Digital Personal Data Protection (DPDP) Act.</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">1. Data We Collect</h3>
+            <p>To operate Kalacast, we collect:</p>
+            <ul class="list-disc list-inside ml-4 mt-2">
+              <li><strong>Identity Data:</strong> Name, Age, Gender, Location, Mobile Number, Email ID.</li>
+              <li><strong>Physical Characteristics:</strong> Height, Body Type (essential for Casting search).</li>
+              <li><strong>Professional Data:</strong> Education (School, Course, Year), Experience (Role, Genre, Project Link), Skills, Languages.</li>
+              <li><strong>Biometric & Media Data:</strong> Photographs, Audition Videos (User-tagged), Voice Intro (30-sec Audio).</li>
+              <li><strong>Device Data:</strong> IP Address, Device Model (for "Recent Logins" security feature).</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">2. How We Use Your Data</h3>
             <p>
-              We collect information you provide directly to us, such as when
-              you create an account, update your profile, or contact us for
-              support.
+              <strong>Matchmaking:</strong> To index your profile in the "Producer Search" engine using filters like height, age, and skills.
+            </p>
+            <p class="mt-2">
+              <strong>Analytics:</strong> To generate performance reports. Actors can see that they were viewed; Producers' specific identities are protected unless they interact.
+            </p>
+            <p class="mt-2">
+              <strong>Communication:</strong> To facilitate the Chat Request system and send OTPs.
+            </p>
+            <p class="mt-2">
+              <strong>Ghost Mode:</strong> When enabled, we process a "flag" on your account that removes your profile from public query results, though your data remains stored.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">How We Use Your Information</h3>
+            <h3 class="font-medium mb-2">3. Data Storage & Retention</h3>
             <p>
-              We use the information we collect to provide, maintain, and
-              improve our services, process transactions, and communicate with
-              you.
+              <strong>Infrastructure:</strong> All data, including high-resolution video and images, is stored securely on Google Cloud Platform (GCP) servers.
+            </p>
+            <p class="mt-2">
+              <strong>Retention:</strong> We retain your data as long as your account is active.
+            </p>
+            <p class="mt-2">
+              <strong>Deletion:</strong> If you select "Delete Account" in Settings, your data is marked for permanent deletion after a 30-day grace period, barring any legal requirement to retain transaction records.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">Information Sharing</h3>
+            <h3 class="font-medium mb-2">4. Disclosure to Third Parties</h3>
+            <p>We do not sell your data. We share data only with:</p>
+            <ul class="list-disc list-inside ml-4 mt-2">
+              <li><strong>Cloud Providers:</strong> Google Cloud (for hosting).</li>
+              <li><strong>Payment Processors:</strong> (e.g., Razorpay/Stripe) for subscription processing.</li>
+              <li><strong>Legal Authorities:</strong> If required by Indian Law Enforcement agencies via valid legal process.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">5. Your Rights & Controls</h3>
             <p>
-              We do not sell, trade, or rent your personal information to third
-              parties. We may share your information in certain limited
-              circumstances as outlined in this policy.
+              <strong>Ghost Mode:</strong> You may toggle visibility instantly in Privacy Settings.
+            </p>
+            <p class="mt-2">
+              <strong>Block & Report:</strong> You may block users or report specific chat messages.
+            </p>
+            <p class="mt-2">
+              <strong>Session Management:</strong> You can view "Recent Logins" and "Log Out of All Devices" via Settings.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">Data Security</h3>
-            <p>
-              We implement appropriate security measures to protect your
-              personal information against unauthorized access, alteration,
-              disclosure, or destruction.
-            </p>
-          </div>
-
-          <div>
-            <h3 class="font-medium mb-2">Your Rights</h3>
-            <p>
-              You have the right to access, update, or delete your personal
-              information. You may also opt out of certain communications from
-              us.
+            <h3 class="font-medium mb-2">6. Grievance Redressal</h3>
+            <p>If you have concerns regarding your data or safety:</p>
+            <p class="mt-2">
+              Grievance Officer: [Name]<br/>
+              Email: [support&#64;kalacast.com]<br/>
+              Address: [Your Office Address, Kochi]
             </p>
           </div>
         </div>
@@ -430,48 +525,41 @@ import { CommonModule } from '@angular/common';
             'prose-neutral text-neutral-300': !isActor()
           }"
         >
-          <!-- Community guidelines content would go here -->
           <div>
-            <h3 class="font-medium mb-2">Respectful Communication</h3>
+            <h3 class="font-medium mb-3 text-base">COMMUNITY GUIDELINES</h3>
+            <p class="mb-4">The Kalacast Code of Conduct</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium mb-2">1. Authenticity & Integrity</h3>
             <p>
-              Treat all community members with respect and professionalism.
-              Harassment, discrimination, or abusive behavior is not tolerated.
+              <strong>No Catfishing:</strong> Your profile photos must be recent and of you. Impersonating other actors or producers is grounds for a permanent ban.
+            </p>
+            <p class="mt-2">
+              <strong>Honest Tagging:</strong> Do not misuse "Emotion Tags." If a video is a "Monologue," do not tag it as "Stunt" just to get views. Misleading metadata hurts the ecosystem and lowers your trust score.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">Authentic Content</h3>
+            <h3 class="font-medium mb-2">2. Safety & Respect</h3>
             <p>
-              Share only authentic content that accurately represents your work
-              and capabilities. Misleading information or impersonation is
-              prohibited.
+              <strong>Chat Etiquette:</strong> The "Request" feature exists for a reason. Producers must send professional initial requests. Actors have the absolute right to Decline.
+            </p>
+            <p class="mt-2">
+              <strong>Zero Tolerance for Harassment:</strong> Any user (Actor or Producer) found sending abusive, sexual, or threatening messages will be banned. We keep "Read Receipts" and chat logs for moderation purposes if a report is filed.
+            </p>
+            <p class="mt-2">
+              <strong>Physical Safety:</strong> Kalacast is an online discovery tool. We strongly advise that all in-person auditions take place in public, professional environments.
             </p>
           </div>
 
           <div>
-            <h3 class="font-medium mb-2">Professional Conduct</h3>
+            <h3 class="font-medium mb-2">3. Content Standards</h3>
             <p>
-              Maintain professional standards in all interactions. This includes
-              timely communication and honoring commitments made through the
-              platform.
+              <strong>No Nudity:</strong> This is a professional casting platform. No swimsuit/lingerie photos unless explicitly required for a verified modeling portfolio, and strictly NO full nudity.
             </p>
-          </div>
-
-          <div>
-            <h3 class="font-medium mb-2">Content Standards</h3>
-            <p>
-              All uploaded content must be appropriate for a professional
-              environment. Explicit, offensive, or inappropriate material will
-              be removed.
-            </p>
-          </div>
-
-          <div>
-            <h3 class="font-medium mb-2">Reporting Violations</h3>
-            <p>
-              If you encounter behavior that violates these guidelines, please
-              report it through our support system. We take all reports
-              seriously.
+            <p class="mt-2">
+              <strong>Copyright:</strong> Only upload showreels that you have permission to use. Do not upload copyrighted movie clips, songs, or other content that you do not have rights to use.
             </p>
           </div>
         </div>
